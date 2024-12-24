@@ -1,17 +1,22 @@
+// services/database.js
 const { Pool } = require('pg');
+require('dotenv').config();
 
-// PostgreSQL Connection Pool
+// Create a PostgreSQL connection pool
 const pool = new Pool({
-    user: 'postgres',          // Replace with your DB username
-    host: 'localhost',         // Replace with your DB host
-    database: 'discord_bot_stats',
-    password: 'PASSWORD HERE', // Replace with your DB password
-    port: 5432,                // Default PostgreSQL port
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
 });
 
-// Test Connection
+// Test the connection
 pool.connect()
-    .then(() => console.log('✅ Connected to PostgreSQL Database'))
-    .catch(err => console.error('❌ Connection Error:', err));
+    .then(() => console.log('✅ Connected to the PostgreSQL database!'))
+    .catch(err => console.error('❌ Error connecting to the database:', err));
 
-module.exports = pool;
+// Export query method for easy usage
+module.exports = {
+    query: (text, params) => pool.query(text, params),
+};
