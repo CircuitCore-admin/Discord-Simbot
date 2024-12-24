@@ -1,26 +1,43 @@
+// Import required modules from Discord.js and Node.js
+// SlashCommandBuilder: Define commands for Discord interactions
+// EmbedBuilder: Create rich embed messages for Discord responses
+// fs: File system module for reading data from files
+// path: Module for handling file paths
+// carModels: Map car model identifiers to human-readable names
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const carModels = require('../data/carModels');
 
-// Helper function to format lap times (from ms to MM:SS:MS)
-function formatLapTime(ms) {
+// Helper function to format lap time from milliseconds into MM:SS:MS
+// Handles cases where input is 'N/A' or null
+const formatLapTime = ms => {
     if (ms === 'N/A' || ms == null) return 'N/A';
-
-    const minutes = Math.floor(ms / 60000); // 1 minute = 60000 ms
-    const seconds = Math.floor((ms % 60000) / 1000); // Remaining seconds
-    const milliseconds = ms % 1000; // Remaining milliseconds
-
+    const minutes = Math.floor(ms / 60000); // Extract minutes
+    const seconds = Math.floor((ms % 60000) / 1000); // Extract seconds
+    const milliseconds = Math.round(ms % 1000); // Round milliseconds
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(3, '0')}`;
-}
+};
 
-// Helper function to determine position change emoji
-function getPositionChangeEmoji(startPos, finishPos) {
-    if (startPos > finishPos) return '📈'; // Gained positions
-    if (startPos < finishPos) return '📉'; // Lost positions
-    return '➖'; // No change
-}
+// Helper function to determine emoji based on position change
+// 📈: Improved position, 📉: Lost position, ➖: No change
+const getPositionChangeEmoji = (start, finish) => start > finish ? '📈' : start < finish ? '📉' : '➖';
 
+// Helper function to load and parse JSON data from a file
+// Throws an error if the file cannot be read or parsed
+const loadData = filePath => {
+    try { return JSON.parse(fs.readFileSync(filePath, 'utf-8')); }
+    catch { throw new Error(`❌ Could not load data from ${filePath}`); }
+};
+
+// Helper function to find a driver in a leaderboard by their full name
+// Matches the driver's first and last name against the provided driverName
+const findDriverEntry = (leaderboard, driverName) => leaderboard.find(entry =>
+    `${entry.car?.drivers?.[0]?.firstName} ${entry.car?.drivers?.[0]?.lastName}`.trim().toLowerCase() === driverName.toLowerCase()
+);
+
+// Define the command structure for 'driver_stats'
+// Accepts a required string option: driver_name
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('driver_stats')
@@ -28,154 +45,94 @@ module.exports = {
         .addStringOption(option =>
             option.setName('driver_name')
                 .setDescription('Name of the driver')
-                .setRequired(true)),
+                .setRequired(true)
+        ),
 
+    // Main command execution function
+    // Handles data retrieval, calculations, and embeds construction
     async execute(interaction) {
+        // Extract driver name from user input
         const driverName = interaction.options.getString('driver_name');
-        console.log('Received driver_name:', driverName);
 
-        const raceFilePath = path.join(__dirname, '../data/241216_224343_R(1).json');
-        const qualyFilePath = path.join(__dirname, '../data/241216_213338_Q(1).json');
+        // Load race and qualifying data from JSON files
+        const raceData = loadData(path.join(__dirname, '../data/241216_224343_R(1).json'));
+        const qualyData = loadData(path.join(__dirname, '../data/241216_213338_Q(1).json'));
 
-        let raceData, qualyData;
-
-        // Load race data
-        try {
-            const raceFile = fs.readFileSync(raceFilePath, 'utf-8');
-            raceData = JSON.parse(raceFile);
-        } catch (error) {
-            console.error('❌ Error reading race results file:', error);
-            return interaction.reply({
-                content: '❌ Could not load race results data.',
-                ephemeral: true,
-            });
-        }
-
-        // Load qualifying data
-        try {
-            const qualyFile = fs.readFileSync(qualyFilePath, 'utf-8');
-            qualyData = JSON.parse(qualyFile);
-        } catch (error) {
-            console.error('❌ Error reading qualification results file:', error);
-            return interaction.reply({
-                content: '❌ Could not load qualification results data.',
-                ephemeral: true,
-            });
-        }
-
-        // Find the driver in race results
+        // Extract leaderboards from loaded data
         const raceLeaderboard = raceData?.sessionResult?.leaderBoardLines || [];
-        const driverRaceEntry = raceLeaderboard.find(entry => {
-            const driver = entry.car?.drivers?.[0];
-            return `${driver?.firstName} ${driver?.lastName}`.trim().toLowerCase() === driverName.toLowerCase();
-        });
-
-        if (!driverRaceEntry) {
-            console.log(`Driver ${driverName} not found in race results.`);
-            return interaction.reply({
-                content: `❌ Driver **${driverName}** not found in race results.`,
-                ephemeral: true,
-            });
-        }
-
-        // Find the driver in qualification results
         const qualyLeaderboard = qualyData?.sessionResult?.leaderBoardLines || [];
-        const driverQualyEntry = qualyLeaderboard.find(entry => {
-            const driver = entry.car?.drivers?.[0];
-            return `${driver?.firstName} ${driver?.lastName}`.trim().toLowerCase() === driverName.toLowerCase();
-        });
 
-        if (!driverQualyEntry) {
-            console.log(`Driver ${driverName} not found in qualification results.`);
+        // Find driver entries in race and qualifying leaderboards
+        const driverRaceEntry = findDriverEntry(raceLeaderboard, driverName);
+        const driverQualyEntry = findDriverEntry(qualyLeaderboard, driverName);
+
+        // If driver not found in either leaderboard, reply with an error
+        if (!driverRaceEntry || !driverQualyEntry) {
             return interaction.reply({
-                content: `❌ Driver **${driverName}** not found in qualification results.`,
+                content: `❌ Driver **${driverName}** not found in results.`,
                 ephemeral: true,
             });
         }
 
-        // Extract starting and finishing positions
+        // Determine driver's starting and finishing positions
         const startPos = qualyLeaderboard.indexOf(driverQualyEntry) + 1;
         const finishPos = raceLeaderboard.indexOf(driverRaceEntry) + 1;
         const positionChangeEmoji = getPositionChangeEmoji(startPos, finishPos);
 
-        // Extract car model
-        const carModel = driverRaceEntry.car?.carModel || 'N/A';
-        const displayedCarModel = carModels[carModel] || carModel;
+        // Retrieve car model, falling back to 'N/A' if undefined
+        const carModel = carModels[driverRaceEntry.car?.carModel] || driverRaceEntry.car?.carModel || 'N/A';
 
-        // Extract driver's total time
+        // Calculate driver's total time and leader interval
         const driverTotalTime = driverRaceEntry.timing?.totalTime || 0;
+        const leaderTotalTime = raceLeaderboard[0]?.timing?.totalTime || 0;
 
-        // Extract leader's total time (P1)
-        const leaderEntry = raceLeaderboard[0];
-        const leaderTotalTime = leaderEntry?.timing?.totalTime || 0;
+        const leaderInterval = finishPos === 1 ? "00:00:000" :
+            driverTotalTime > 0 && leaderTotalTime > 0
+                ? `+${formatLapTime(driverTotalTime - leaderTotalTime)}` : 'N/A';
 
-        // Calculate Leader Interval
-        let leaderInterval = 'N/A';
-        if (finishPos === 1) {
-            leaderInterval = "00:00:000"; // If P1, show 00:00:000 time
-        } else if (driverTotalTime > 0 && leaderTotalTime > 0) {
-            const interval = driverTotalTime - leaderTotalTime;
-            leaderInterval = "+" + formatLapTime(interval);
-        }
-
-        // Build driver stats
-        const driverStats = {
-            driver_name: `${driverRaceEntry.car.drivers[0]?.firstName} ${driverRaceEntry.car.drivers[0]?.lastName}`,
-            car: displayedCarModel,
-            fastest_lap: (driverRaceEntry.timing?.bestLap && driverRaceEntry.timing.bestLap > 0 && driverRaceEntry.timing.bestLap !== 2147483647)
-                ? formatLapTime(driverRaceEntry.timing.bestLap)
-                : 'N/A',
-            lap_count: driverRaceEntry.timing?.lapCount || 'N/A',
-            total_time: driverRaceEntry.timing?.totalTime
-                ? formatLapTime(driverRaceEntry.timing.totalTime)
-                : 'N/A',
-            leader_delta: leaderInterval,
-            starting_position: `P${startPos}`,
-            finishing_position: `P${finishPos} ${positionChangeEmoji}`
-        };
-
-        // Filter laps and calculate average lap times
-        const laps = raceData?.laps || [];
-        const driverLaps = laps.filter(lap => lap.carId === driverRaceEntry.car.carId);
-
+        // Filter laps belonging to the driver and validate them
+        const driverLaps = (raceData?.laps || []).filter(lap => lap.carId === driverRaceEntry.car.carId);
         const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
-        const invalidLaps = driverLaps.filter(lap => !lap.isValidForBest).length;
+        const invalidLaps = driverLaps.length - validLaps.length;
 
-        // Calculate Best Possible Time from fastest sectors
-        let bestSectors = [];
-        driverLaps.forEach((lap) => {
-            if (lap.isValidForBest && lap.splits) {
-                lap.splits.forEach((sectorTime, index) => {
-                    if (bestSectors[index] === undefined || (sectorTime != null && sectorTime < bestSectors[index])) {
-                        bestSectors[index] = sectorTime;
-                    }
-                });
-            }
-        });
+        // Calculate best sector times for the driver
+        const bestSectors = [];
+        driverLaps.forEach(lap => lap.splits?.forEach((sector, i) => {
+            if (sector != null && (bestSectors[i] == null || sector < bestSectors[i])) bestSectors[i] = sector;
+        }));
 
-        const bestPossibleTimeInMs = bestSectors.length > 0 && bestSectors.every(sector => sector !== null && sector !== undefined)
-            ? bestSectors.reduce((total, sector) => total + sector, 0)
-            : null;
+        // Calculate best possible time from sector times
+        const bestPossibleTime = bestSectors.length ? formatLapTime(bestSectors.reduce((a, b) => a + b, 0)) : 'N/A';
 
-        driverStats.best_possible_time = bestPossibleTimeInMs
-            ? formatLapTime(Math.round(bestPossibleTimeInMs))
-            : 'N/A';
-
-        driverStats.average_valid_lap_time = validLaps.length
+        // Calculate average lap times
+        const averageValidLapTime = validLaps.length
             ? formatLapTime(Math.round(validLaps.reduce((a, b) => a + b, 0) / validLaps.length))
             : 'N/A';
-
-        driverStats.average_lap_time = driverLaps.length
+        const averageLapTime = driverLaps.length
             ? formatLapTime(Math.round(driverLaps.reduce((a, b) => a + b.laptime, 0) / driverLaps.length))
             : 'N/A';
 
-        driverStats.off_tracks = invalidLaps;
+        // Build driver statistics object
+        const driverStats = {
+            driver_name: `${driverRaceEntry.car.drivers[0]?.firstName} ${driverRaceEntry.car.drivers[0]?.lastName}`,
+            car: carModel,
+            fastest_lap: formatLapTime(driverRaceEntry.timing?.bestLap),
+            lap_count: driverRaceEntry.timing?.lapCount || 'N/A',
+            total_time: formatLapTime(driverTotalTime),
+            leader_delta: leaderInterval,
+            starting_position: `P${startPos}`,
+            finishing_position: `P${finishPos} ${positionChangeEmoji}`,
+            best_possible_time: bestPossibleTime,
+            average_valid_lap_time: averageValidLapTime,
+            average_lap_time: averageLapTime,
+            off_tracks: invalidLaps,
+        };
 
-        // Build the embed response
+        // Build an embed with driver stats
         const embed = new EmbedBuilder()
             .setColor('#0099ff')
             .setTitle(`🏎️ Driver Stats: ${driverStats.driver_name}`)
-            .setThumbnail(interaction.guild.iconURL({ dynamic: true })) // Add server icon as thumbnail
+            .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
             .addFields(
                 { name: '🏎️ Car', value: driverStats.car, inline: true },
                 { name: '📊 Positions', value: `${driverStats.starting_position} > ${driverStats.finishing_position}`, inline: true },
@@ -189,10 +146,11 @@ module.exports = {
             )
             .setFooter({
                 text: `Server: ${interaction.guild.name}`,
-                iconURL: interaction.guild.iconURL({ dynamic: true }) // Add server icon in the footer
+                iconURL: interaction.guild.iconURL({ dynamic: true })
             })
-            .setTimestamp(); // Add current timestamp
+            .setTimestamp();
 
+        // Send the embed as a response
         await interaction.reply({ embeds: [embed] });
     },
 };
