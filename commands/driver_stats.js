@@ -7,9 +7,9 @@ const carModels = require('../data/carModels');
 function formatLapTime(ms) {
     if (ms === 'N/A' || ms == null) return 'N/A';
 
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    const milliseconds = ms % 1000;
+    const minutes = Math.floor(ms / 60000); // 1 minute = 60000 ms
+    const seconds = Math.floor((ms % 60000) / 1000); // Remaining seconds
+    const milliseconds = ms % 1000; // Remaining milliseconds
 
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(3, '0')}`;
 }
@@ -102,13 +102,34 @@ module.exports = {
         const carModel = driverRaceEntry.car?.carModel || 'N/A';
         const displayedCarModel = carModels[carModel] || carModel;
 
+        // Extract driver's total time
+        const driverTotalTime = driverRaceEntry.timing?.totalTime || 0;
+
+        // Extract leader's total time (P1)
+        const leaderEntry = raceLeaderboard[0];
+        const leaderTotalTime = leaderEntry?.timing?.totalTime || 0;
+
+        // Calculate Leader Interval
+        let leaderInterval = 'N/A';
+        if (finishPos === 1) {
+            leaderInterval = "00:00:000"; // If P1, show 00:00:000 time
+        } else if (driverTotalTime > 0 && leaderTotalTime > 0) {
+            const interval = driverTotalTime - leaderTotalTime;
+            leaderInterval = "+" + formatLapTime(interval);
+        }
+
         // Build driver stats
         const driverStats = {
             driver_name: `${driverRaceEntry.car.drivers[0]?.firstName} ${driverRaceEntry.car.drivers[0]?.lastName}`,
             car: displayedCarModel,
-            fastest_lap: formatLapTime(driverRaceEntry.timing?.bestLap),
+            fastest_lap: (driverRaceEntry.timing?.bestLap && driverRaceEntry.timing.bestLap > 0 && driverRaceEntry.timing.bestLap !== 2147483647)
+                ? formatLapTime(driverRaceEntry.timing.bestLap)
+                : 'N/A',
             lap_count: driverRaceEntry.timing?.lapCount || 'N/A',
-            total_time: formatLapTime(driverRaceEntry.timing?.totalTime),
+            total_time: driverRaceEntry.timing?.totalTime
+                ? formatLapTime(driverRaceEntry.timing.totalTime)
+                : 'N/A',
+            leader_delta: leaderInterval,
             starting_position: `P${startPos}`,
             finishing_position: `P${finishPos} ${positionChangeEmoji}`
         };
@@ -120,24 +141,32 @@ module.exports = {
         const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
         const invalidLaps = driverLaps.filter(lap => !lap.isValidForBest).length;
 
-        // Calculate average valid lap time
-        const averageValidLapTimeInMs = validLaps.length > 0
-            ? (validLaps.reduce((a, b) => a + b, 0) / validLaps.length)
+        // Calculate Best Possible Time from fastest sectors
+        let bestSectors = [];
+        driverLaps.forEach((lap) => {
+            if (lap.isValidForBest && lap.splits) {
+                lap.splits.forEach((sectorTime, index) => {
+                    if (bestSectors[index] === undefined || (sectorTime != null && sectorTime < bestSectors[index])) {
+                        bestSectors[index] = sectorTime;
+                    }
+                });
+            }
+        });
+
+        const bestPossibleTimeInMs = bestSectors.length > 0 && bestSectors.every(sector => sector !== null && sector !== undefined)
+            ? bestSectors.reduce((total, sector) => total + sector, 0)
             : null;
 
-        // Calculate overall average lap time
-        const allLaps = driverLaps.map(lap => lap.laptime);
-        const averageLapTimeInMs = allLaps.length > 0
-            ? (allLaps.reduce((a, b) => a + b, 0) / allLaps.length)
-            : null;
-
-        // Format the times
-        driverStats.average_valid_lap_time = averageValidLapTimeInMs
-            ? formatLapTime(Math.round(averageValidLapTimeInMs))
+        driverStats.best_possible_time = bestPossibleTimeInMs
+            ? formatLapTime(Math.round(bestPossibleTimeInMs))
             : 'N/A';
 
-        driverStats.average_lap_time = averageLapTimeInMs
-            ? formatLapTime(Math.round(averageLapTimeInMs))
+        driverStats.average_valid_lap_time = validLaps.length
+            ? formatLapTime(Math.round(validLaps.reduce((a, b) => a + b, 0) / validLaps.length))
+            : 'N/A';
+
+        driverStats.average_lap_time = driverLaps.length
+            ? formatLapTime(Math.round(driverLaps.reduce((a, b) => a + b.laptime, 0) / driverLaps.length))
             : 'N/A';
 
         driverStats.off_tracks = invalidLaps;
@@ -146,16 +175,23 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor('#0099ff')
             .setTitle(`🏎️ Driver Stats: ${driverStats.driver_name}`)
+            .setThumbnail(interaction.guild.iconURL({ dynamic: true })) // Add server icon as thumbnail
             .addFields(
+                { name: '🏎️ Car', value: driverStats.car, inline: true },
                 { name: '📊 Positions', value: `${driverStats.starting_position} > ${driverStats.finishing_position}`, inline: true },
+                { name: '🏆 Leader Delta', value: driverStats.leader_delta, inline: true },
                 { name: '⚡ Fastest Lap', value: driverStats.fastest_lap, inline: true },
-                { name: '⏱️ Average Lap Time', value: driverStats.average_lap_time, inline: true },
-                { name: '⏱️ Average Valid Lap Time', value: driverStats.average_valid_lap_time, inline: true },
+                { name: '⏱️ Average Lap', value: driverStats.average_lap_time, inline: true },
+                { name: '⏱️ Average Valid Lap', value: driverStats.average_valid_lap_time, inline: true },
+                { name: '🏁 Best Possible Time', value: driverStats.best_possible_time, inline: true },
                 { name: '🏁 Total Laps', value: driverStats.lap_count.toString(), inline: true },
-                { name: '🚩 Total Off-Tracks', value: driverStats.off_tracks.toString(), inline: true },
-                { name: '🏎️ Car', value: driverStats.car, inline: false }
+                { name: '🚩 Total Off-Tracks', value: driverStats.off_tracks.toString(), inline: true }
             )
-            .setFooter({ text: 'ACC Race Stats', iconURL: 'https://i.imgur.com/AfFp7pu.png' });
+            .setFooter({
+                text: `Server: ${interaction.guild.name}`,
+                iconURL: interaction.guild.iconURL({ dynamic: true }) // Add server icon in the footer
+            })
+            .setTimestamp(); // Add current timestamp
 
         await interaction.reply({ embeds: [embed] });
     },
