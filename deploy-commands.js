@@ -92,6 +92,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 default_member_permissions: 0,
                 options: [
                     {
+                        name: 'track_id',
+                        type: 3, // STRING
+                        description: 'Unique track identifier (e.g., red_bull_ring)',
+                        required: true,
+                    },
+                    {
                         name: 'track_name',
                         type: 3, // STRING
                         description: 'Name of the track',
@@ -108,12 +114,6 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         type: 10, // NUMBER
                         description: 'Length of the track in kilometers or meters',
                         required: true,
-                    },
-                    {
-                        name: 'layout',
-                        type: 3, // STRING
-                        description: 'Layout of the track (optional)',
-                        required: false, // Make optional
                     }
                 ],
             }
