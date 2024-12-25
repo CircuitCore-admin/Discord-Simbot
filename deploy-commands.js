@@ -41,18 +41,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
             },
             {
                 name: 'register_driver',
-                description: 'Register a driver with their ACC name and Steam ID or Steam Link',
+                description: 'Register or update a driver with Discord ID and Steam ID',
                 options: [
-                    {
-                        name: 'acc_name',
-                        type: 3, // STRING type
-                        description: 'ACC Driver Name',
-                        required: true,
-                    },
                     {
                         name: 'steam_input',
                         type: 3, // STRING type
-                        description: 'Steam ID or Steam Profile Link',
+                        description: 'Steam Profile Link or Vanity Username',
                         required: true,
                     },
                 ],
@@ -91,7 +85,40 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         required: false,
                     }
                 ],
+            },
+            {
+                name: 'add_track',
+                description: 'Add a new track to the database',
+                default_member_permissions: 0,
+                options: [
+                    {
+                        name: 'track_name',
+                        type: 3, // STRING
+                        description: 'Name of the track',
+                        required: true,
+                    },
+                    {
+                        name: 'location',
+                        type: 3, // STRING
+                        description: 'Location of the track',
+                        required: true,
+                    },
+                    {
+                        name: 'track_length',
+                        type: 10, // NUMBER
+                        description: 'Length of the track in kilometers or meters',
+                        required: true,
+                    },
+                    {
+                        name: 'layout',
+                        type: 3, // STRING
+                        description: 'Layout of the track (optional)',
+                        required: false, // Make optional
+                    }
+                ],
             }
+            
+            
         ];
 
         console.log('🔄 Redeploying commands...');
