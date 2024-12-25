@@ -84,6 +84,11 @@ function extractDriverStats(driver, lapsData, raceLeaderboard) {
         if (sector != null && (bestSectors[i] == null || sector < bestSectors[i])) bestSectors[i] = sector;
     }));
 
+    // ✅ Assign sector times to variables
+    const fastest_s1 = bestSectors[0] ?? null; // Default to null if undefined
+    const fastest_s2 = bestSectors[1] ?? null; // Default to null if undefined
+    const fastest_s3 = bestSectors[2] ?? null; // Default to null if undefined
+
     // ✅ Leader Delta Handling
     const driverTotalTime = driver.timing?.totalTime || 0;
     const leaderTotalTime = raceLeaderboard[0]?.timing?.totalTime || 0;
@@ -131,7 +136,10 @@ function extractDriverStats(driver, lapsData, raceLeaderboard) {
         totalRaceTime: driverTotalTime,
         leaderDelta,
         finishingPosition: finishPos,
-        cupCategory: formattedCupCategory
+        cupCategory: formattedCupCategory,
+        fastest_s1,
+        fastest_s2,
+        fastest_s3
     };
 }
 
@@ -200,8 +208,8 @@ async function processSessionFiles() {
 
                 await db.query(
                     `INSERT INTO driver_session_stats 
-                    (session_id, steam_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_laps, total_off_tracks)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                    (session_id, steam_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_laps, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
                     [
                         sessionId,
                         steamId,
@@ -215,7 +223,10 @@ async function processSessionFiles() {
                         stats.cupCategory !== null ? stats.cupCategory : null,
                         stats.totalRaceTime,
                         stats.totalLaps,
-                        stats.totalOffTracks
+                        stats.totalOffTracks,
+                        stats.fastest_s1,
+                        stats.fastest_s2,
+                        stats.fastest_s3
                     ]
                 );
             }
