@@ -181,6 +181,14 @@ async function processSessionFiles() {
         console.error('❌ Failed to process session files:', error.message);
     }
 }
+// Interval in milliseconds (e.g., every 5 minutes)
+const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+// Periodic check for new files
+setInterval(() => {
+    console.log('🔄 Checking for new session files...');
+    processSessionFiles();
+}, CHECK_INTERVAL);
 
 // Initial run
 processSessionFiles();

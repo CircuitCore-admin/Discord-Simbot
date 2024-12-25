@@ -56,7 +56,8 @@ module.exports = {
         .addStringOption(option =>
             option.setName('steam_input')
                 .setDescription('Steam Profile Link or Vanity Username')
-                .setRequired(true)),
+                .setRequired(true)
+        ),
 
     async execute(interaction) {
         const discordId = interaction.user.id;
@@ -73,32 +74,18 @@ module.exports = {
                 throw new Error('Failed to resolve SteamID.');
             }
 
-            // Check if the driver already exists
-            const result = await db.query(
-                `SELECT * FROM driver_info WHERE discord_id = $1`,
-                [discordId]
+            // Insert or Update Driver Information
+            await db.query(
+                `INSERT INTO driver_info (discord_id, username, steam_id)
+                 VALUES ($1, $2, $3)
+                 ON CONFLICT (steam_id) DO UPDATE
+                 SET discord_id = EXCLUDED.discord_id,
+                     username = EXCLUDED.username`,
+                [discordId, discordUsername, steamID]
             );
 
-            if (result.rows.length > 0) {
-                // Update existing driver
-                await db.query(
-                    `UPDATE driver_info 
-                     SET username = $1, steam_id = $2 
-                     WHERE discord_id = $3`,
-                    [discordUsername, steamID, discordId]
-                );
-                console.log(`🔄 Updated Driver: ${discordId}`);
-                await interaction.reply(`🔄 Driver info updated successfully for **${discordUsername}** with SteamID: **${steamID}**.`);
-            } else {
-                // Insert new driver
-                await db.query(
-                    `INSERT INTO driver_info (discord_id, username, steam_id) 
-                     VALUES ($1, $2, $3)`,
-                    [discordId, discordUsername, steamID]
-                );
-                console.log(`🆕 Added Driver: ${discordId}`);
-                await interaction.reply(`🆕 Driver **${discordUsername}** registered successfully with SteamID: **${steamID}**.`);
-            }
+            console.log(`✅ Driver successfully registered or updated: ${discordUsername} (${steamID})`);
+            await interaction.reply(`✅ Driver **${discordUsername}** registered/updated successfully with SteamID: **${steamID}**.`);
         } catch (error) {
             console.error('❌ Database or API error:', error.message);
             await interaction.reply(`❌ Database or API error: ${error.message}`);
