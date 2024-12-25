@@ -72,46 +72,71 @@ async function ensureDriversExist(driverStats) {
         }
     }
 }
+// ✅ Validator for Invalid Sector and Lap Times
+function validateTime(time, invalidValues) {
+    return invalidValues.includes(time) ? null : time;
+}
 
 // ✅ Extract driver-specific stats
-function extractDriverStats(driver, lapsData, raceLeaderboard) {
+function extractDriverStats(driver, lapsData, raceLeaderboard, sessionType) {
     const driverLaps = lapsData.filter(lap => lap.carId === driver.car.carId);
     const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
     const invalidLaps = driverLaps.length - validLaps.length;
 
-    const bestSectors = [];
-    driverLaps.forEach(lap => lap.splits?.forEach((sector, i) => {
-        if (sector != null && (bestSectors[i] == null || sector < bestSectors[i])) bestSectors[i] = sector;
-    }));
+    // ✅ Pull best sector times directly from timing.bestSplits and validate them
+    const bestSplits = driver.timing?.bestSplits || [null, null, null];
+    const fastest_s1 = validateTime(bestSplits[0], [2147483647]);
+    const fastest_s2 = validateTime(bestSplits[1], [2147483647]);
+    const fastest_s3 = validateTime(bestSplits[2], [2147483647]);
 
-    // ✅ Assign sector times to variables
-    const fastest_s1 = bestSectors[0] ?? null; // Default to null if undefined
-    const fastest_s2 = bestSectors[1] ?? null; // Default to null if undefined
-    const fastest_s3 = bestSectors[2] ?? null; // Default to null if undefined
+    // ✅ Validate fastest_possible_lap
+    let fastestPossibleLap = bestSplits.every(split => split !== null)
+        ? bestSplits.reduce((a, b) => a + b, 0)
+        : null;
+
+    fastestPossibleLap = validateTime(fastestPossibleLap, [6442450941]);
 
     // ✅ Leader Delta Handling
+    let leaderDelta = null;
+
+    const driverFastestLap = validateTime(driver.timing?.bestLap || null, [2147483647]);
+    const leaderFastestLap = validateTime(raceLeaderboard[0]?.timing?.bestLap || null, [2147483647]);
+
     const driverTotalTime = driver.timing?.totalTime || 0;
     const leaderTotalTime = raceLeaderboard[0]?.timing?.totalTime || 0;
     const driverLapCount = driver.timing?.lapCount || 0;
     const leaderLapCount = raceLeaderboard[0]?.timing?.lapCount || 0;
 
-    let leaderDelta = null;
+    // ✅ Check if the driver has valid laps or completed laps
+    const hasValidLaps = validLaps.length > 0;
+    const hasCompletedLaps = driverLapCount > 0;
 
-    if (driverLapCount < leaderLapCount) {
-        const lapDifference = leaderLapCount - driverLapCount;
-        leaderDelta = `+${lapDifference} Lap${lapDifference > 1 ? 's' : ''}`;
-    } else if (leaderTotalTime > 0 && driverTotalTime > 0) {
-        const timeDelta = driverTotalTime - leaderTotalTime;
-        leaderDelta = `+${formatLapTime(timeDelta)}`;
-    } else {
+    if (!hasCompletedLaps) {
+        // ❌ If no completed laps, set leader_delta to NULL
         leaderDelta = null;
+    } else if (sessionType === 'FP' || sessionType === 'Q') {
+        // ✅ Free Practice & Qualifying
+        if (driverFastestLap && leaderFastestLap) {
+            const timeDelta = driverFastestLap - leaderFastestLap;
+            leaderDelta = `+${formatLapTime(timeDelta)}`;
+        } else {
+            leaderDelta = null; // Invalid lap times
+        }
+    } else if (sessionType === 'R') {
+        // ✅ Race Sessions
+        if (driverLapCount < leaderLapCount) {
+            const lapDifference = leaderLapCount - driverLapCount;
+            leaderDelta = `+${lapDifference} Lap${lapDifference > 1 ? 's' : ''}`;
+        } else if (driverLapCount === leaderLapCount && leaderTotalTime > 0 && driverTotalTime > 0) {
+            const timeDelta = driverTotalTime - leaderTotalTime;
+            leaderDelta = `+${formatLapTime(timeDelta)}`;
+        } else {
+            leaderDelta = null; // Default to NULL if neither condition applies
+        }
     }
 
     // ✅ Fastest Lap Handling
-    let fastestLap = driver.timing?.bestLap || null;
-    if (fastestLap === 2147483647) {
-        fastestLap = null; // Use NULL for invalid fastest lap times
-    }
+    let fastestLap = validateTime(driver.timing?.bestLap || null, [2147483647]);
 
     // ✅ Finishing Position
     const finishPos = raceLeaderboard.indexOf(driver) + 1;
@@ -128,9 +153,7 @@ function extractDriverStats(driver, lapsData, raceLeaderboard) {
         averageValidLap: validLaps.length
             ? Math.round(validLaps.reduce((a, b) => a + b, 0) / validLaps.length)
             : null,
-        fastestPossibleLap: bestSectors.length
-            ? bestSectors.reduce((a, b) => a + b, 0)
-            : null,
+        fastestPossibleLap,
         totalLaps: driverLaps.length,
         totalOffTracks: invalidLaps,
         totalRaceTime: driverTotalTime,
@@ -198,7 +221,7 @@ async function processSessionFiles() {
 
             for (const driver of raceLeaderboard) {
                 const steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
-                const stats = extractDriverStats(driver, fileContent.laps || [], raceLeaderboard);
+                const stats = extractDriverStats(driver, fileContent.laps || [], raceLeaderboard, sessionType);
 
                 // ✅ Skip drivers who didn't finish (totalLaps === 0)
                 if (stats.totalLaps === 0) {
@@ -241,7 +264,7 @@ async function processSessionFiles() {
 
 
 // Periodic check for new files
-setInterval(processSessionFiles, 5 * 60 * 1000);
+setInterval(processSessionFiles, 1 * 60 * 1000);
 
 // Initial run
 processSessionFiles();
