@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./services/database');
 const carModels = require('./data/carModels');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args)); // Dynamic import for node-fetch v3+
 
 // Paths
 const resultsPath = path.join(__dirname, 'results');
@@ -43,7 +42,6 @@ const loadData = filePath => {
 async function ensureDriversExist(driverStats) {
     for (const driver of driverStats) {
         let steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
-
         const firstName = driver.car?.drivers?.[0]?.firstName || 'Unknown';
         const lastName = driver.car?.drivers?.[0]?.lastName || 'Driver';
         const realName = `${firstName} ${lastName}`.trim();
@@ -54,14 +52,12 @@ async function ensureDriversExist(driverStats) {
         }
 
         try {
-            // Check if driver exists in driver_info
             let driverResult = await db.query(
                 `SELECT steam_id FROM driver_info WHERE steam_id = $1`,
                 [steamId]
             );
 
             if (driverResult.rows.length === 0) {
-                // Add driver if they don't exist
                 await db.query(
                     `INSERT INTO driver_info (steam_id, real_name) 
                      VALUES ($1, $2)`,
@@ -76,6 +72,70 @@ async function ensureDriversExist(driverStats) {
         }
     }
 }
+
+// ✅ Extract driver-specific stats
+function extractDriverStats(driver, lapsData, raceLeaderboard) {
+    const driverLaps = lapsData.filter(lap => lap.carId === driver.car.carId);
+    const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
+    const invalidLaps = driverLaps.length - validLaps.length;
+
+    const bestSectors = [];
+    driverLaps.forEach(lap => lap.splits?.forEach((sector, i) => {
+        if (sector != null && (bestSectors[i] == null || sector < bestSectors[i])) bestSectors[i] = sector;
+    }));
+
+    // ✅ Leader Delta Handling
+    const driverTotalTime = driver.timing?.totalTime || 0;
+    const leaderTotalTime = raceLeaderboard[0]?.timing?.totalTime || 0;
+    const driverLapCount = driver.timing?.lapCount || 0;
+    const leaderLapCount = raceLeaderboard[0]?.timing?.lapCount || 0;
+
+    let leaderDelta = null;
+
+    if (driverLapCount < leaderLapCount) {
+        const lapDifference = leaderLapCount - driverLapCount;
+        leaderDelta = `+${lapDifference} Lap${lapDifference > 1 ? 's' : ''}`;
+    } else if (leaderTotalTime > 0 && driverTotalTime > 0) {
+        const timeDelta = driverTotalTime - leaderTotalTime;
+        leaderDelta = `+${formatLapTime(timeDelta)}`;
+    } else {
+        leaderDelta = null;
+    }
+
+    // ✅ Fastest Lap Handling
+    let fastestLap = driver.timing?.bestLap || null;
+    if (fastestLap === 2147483647) {
+        fastestLap = null; // Use NULL for invalid fastest lap times
+    }
+
+    // ✅ Finishing Position
+    const finishPos = raceLeaderboard.indexOf(driver) + 1;
+
+    // ✅ Handle cup_category correctly
+    const cupCategory = driver.car?.cupCategory ?? null;
+    const formattedCupCategory = (cupCategory === null || cupCategory === undefined) ? 'N/A' : cupCategory;
+
+    return {
+        fastestLap,
+        averageLap: driverLaps.length
+            ? Math.round(driverLaps.reduce((a, b) => a + b.laptime, 0) / driverLaps.length)
+            : null,
+        averageValidLap: validLaps.length
+            ? Math.round(validLaps.reduce((a, b) => a + b, 0) / validLaps.length)
+            : null,
+        fastestPossibleLap: bestSectors.length
+            ? bestSectors.reduce((a, b) => a + b, 0)
+            : null,
+        totalLaps: driverLaps.length,
+        totalOffTracks: invalidLaps,
+        totalRaceTime: driverTotalTime,
+        leaderDelta,
+        finishingPosition: finishPos,
+        cupCategory: formattedCupCategory
+    };
+}
+
+
 
 // ✅ Main function to process session files
 async function processSessionFiles() {
@@ -93,102 +153,84 @@ async function processSessionFiles() {
             const filePath = path.join(resultsPath, file);
             console.log(`📄 Processing file: ${file}`);
 
-            try {
-                const fileContent = loadData(filePath);
+            const fileContent = loadData(filePath);
 
-                // Extract Metadata
-                const sessionMeta = fileContent.sessionInfo || {};
-                const driverStats = fileContent.sessionResult?.leaderBoardLines || [];
-                const lapsData = fileContent.laps || [];
+            // Extract Metadata
+            const sessionType = detectSessionType(file);
+            const trackId = fileContent.trackName?.toLowerCase().replace(/\s+/g, '_').trim();
+            const serverName = fileContent.serverName || 'Unknown Server';
+            const resultsName = file;
+            const sessionDate = fileContent.Date || new Date().toISOString();
+            const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
 
-                const sessionName = sessionMeta.name || file.split('.')[0];
-                const sessionType = detectSessionType(file);
-
-                if (!sessionType) {
-                    console.warn(`❌ Unknown session type in ${file}. Skipping.`);
-                    continue;
-                }
-
-                // ✅ Extract track ID from `trackName`
-                const trackId = fileContent.trackName?.toLowerCase().replace(/\s+/g, '_').trim();
-
-                if (!trackId) {
-                    console.warn(`❌ Track ID (trackName) missing from metadata. Skipping session.`);
-                    continue;
-                }
-
-                // ✅ Validate track exists in `track_info`
-                let trackResult = await db.query(
-                    `SELECT track_id FROM track_info WHERE track_id = $1`,
-                    [trackId]
-                );
-
-                if (trackResult.rows.length === 0) {
-                    console.warn(`❌ Track not found in database: ${trackId}. Skipping session.`);
-                    continue;
-                }
-
-                console.log(`🔗 Found track: ${trackId}`);
-
-                // ✅ Insert session info
-                const sessionResult = await db.query(
-                    `INSERT INTO session_info (track_id, session_type, session_name, date) 
-                    VALUES ($1, $2, $3, NOW()) RETURNING id`,
-                    [trackId, sessionType, file]
-                );
-
-                const sessionId = sessionResult.rows[0].id; // Correct reference to "id"
-                console.log(`✅ Added session: ${file} (${sessionType})`);
-
-                // ✅ Ensure all drivers exist before proceeding
-                await ensureDriversExist(driverStats);
-
-                // ✅ Insert driver stats
-                for (const driver of driverStats) {
-                    let steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
-
-                    const carModel = carModels[driver.car?.carModel] || driver.car?.carModel || 'N/A';
-                    const finishingPosition = driver.position || null;
-                    const leaderDelta = driver.timing?.gap || null;
-                    const fastestLap = driver.timing?.bestLap || null;
-                    const averageLap = driver.timing?.avgLap || null;
-                    const averageValidLap = driver.timing?.avgValidLap || null;
-                    const fastestPossibleLap = driver.timing?.optimalLap || null;
-                    const totalLaps = driver.timing?.lapCount || 0;
-                    const totalOffTracks = driver.timing?.offTracks || 0;
-
-                    await db.query(
-                        `INSERT INTO driver_session_stats 
-                        (session_id, steam_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, total_laps, total_off_tracks)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-                        [
-                            sessionId, steamId, carModel, finishingPosition, leaderDelta,
-                            fastestLap, averageLap, averageValidLap, fastestPossibleLap, totalLaps, totalOffTracks
-                        ]
-                    );
-                    console.log(`✅ Added driver stats for session: ${sessionName}, SteamID: ${steamId}`);
-                }
-
-                console.log(`✅ Processed drivers for session: ${sessionName}`);
-                fs.renameSync(filePath, path.join(processedPath, file));
-            } catch (err) {
-                console.error(`❌ Error processing file ${file}:`, err.message);
+            if (!sessionType || !trackId) {
+                console.warn(`❌ SessionType or TrackID missing. Skipping session.`);
+                continue;
             }
-        }
 
-        console.log('✅ All session files processed.');
+            let trackResult = await db.query(
+                `SELECT track_id FROM track_info WHERE track_id = $1`,
+                [trackId]
+            );
+
+            if (trackResult.rows.length === 0) {
+                console.warn(`❌ Track not found in database: ${trackId}. Skipping session.`);
+                continue;
+            }
+
+            const sessionResult = await db.query(
+                `INSERT INTO session_info (track_id, session_type, session_name, results_name, date, uploaded_at) 
+                 VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
+                [trackId, sessionType, serverName, resultsName, sessionDate]
+            );
+
+            const sessionId = sessionResult.rows[0].id;
+
+            await ensureDriversExist(raceLeaderboard);
+
+            for (const driver of raceLeaderboard) {
+                const steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
+                const stats = extractDriverStats(driver, fileContent.laps || [], raceLeaderboard);
+
+                // ✅ Skip drivers who didn't finish (totalLaps === 0)
+                if (stats.totalLaps === 0) {
+                    console.warn(`⏩ Skipping driver ${steamId}: Did not finish the race (0 laps completed).`);
+                    continue;
+                }
+
+                await db.query(
+                    `INSERT INTO driver_session_stats 
+                    (session_id, steam_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_laps, total_off_tracks)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                    [
+                        sessionId,
+                        steamId,
+                        driver.car?.carModel,
+                        stats.finishingPosition,
+                        stats.leaderDelta,
+                        stats.fastestLap !== null ? stats.fastestLap : null,
+                        stats.averageLap !== null ? stats.averageLap : null,
+                        stats.averageValidLap !== null ? stats.averageValidLap : null,
+                        stats.fastestPossibleLap !== null ? stats.fastestPossibleLap : null,
+                        stats.cupCategory !== null ? stats.cupCategory : null,
+                        stats.totalRaceTime,
+                        stats.totalLaps,
+                        stats.totalOffTracks
+                    ]
+                );
+            }
+
+            fs.renameSync(filePath, path.join(processedPath, file));
+            console.log(`✅ Session ${file} processed successfully.`);
+        }
     } catch (error) {
         console.error('❌ Failed to process session files:', error.message);
     }
 }
-// Interval in milliseconds (e.g., every 5 minutes)
-const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 
 // Periodic check for new files
-setInterval(() => {
-    console.log('🔄 Checking for new session files...');
-    processSessionFiles();
-}, CHECK_INTERVAL);
+setInterval(processSessionFiles, 5 * 60 * 1000);
 
 // Initial run
 processSessionFiles();
