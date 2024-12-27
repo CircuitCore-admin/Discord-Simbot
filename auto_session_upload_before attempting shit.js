@@ -50,6 +50,7 @@ const loadData = filePath => {
     }
 };
 
+
 // ✅ Ensure drivers exist in `driver_info`
 async function ensureDriversExist(driverStats) {
     for (const driver of driverStats) {
