@@ -1,0 +1,106 @@
+{
+  "laps": [
+    {
+      "carId": 1001,
+      "driverIndex": 0,
+      "isValidForBest": true,
+      "laptime": 140342,
+      "splits": [
+        41360,
+        61777,
+        37205
+      ]
+    },
+    {
+      "carId": 1001,
+      "driverIndex": 0,
+      "isValidForBest": true,
+      "laptime": 138820,
+      "splits": [
+        40870,
+        61297,
+        36652
+      ]
+    },
+    {
+      "carId": 1001,
+      "driverIndex": 0,
+      "isValidForBest": true,
+      "laptime": 138590,
+      "splits": [
+        40735,
+        61205,
+        36650
+      ]
+    }
+  ],
+  "penalties": [],
+  "post_race_penalties": [],
+  "sessionIndex": 0,
+  "raceWeekendIndex": 1,
+  "sessionResult": {
+    "bestSplits": [
+      40735,
+      61205,
+      36650
+    ],
+    "bestlap": 138590,
+    "isWetSession": 0,
+    "leaderBoardLines": [
+      {
+        "car": {
+          "carId": 1001,
+          "carModel": 20,
+          "carGroup": "GT3",
+          "carGuid": -1,
+          "teamGuid": -1,
+          "cupCategory": 0,
+          "drivers": [
+            {
+              "firstName": "Antonio",
+              "lastName": "Crescenzo",
+              "playerId": "S76561198959388301",
+              "shortName": "CRE"
+            }
+          ],
+          "nationality": 0,
+          "raceNumber": 969,
+          "teamName": ""
+        },
+        "currentDriver": {
+          "firstName": "Antonio",
+          "lastName": "Crescenzo",
+          "playerId": "S76561198959388301",
+          "shortName": "CRE"
+        },
+        "currentDriverIndex": 0,
+        "driverTotalTimes": [],
+        "missingMandatoryPitstop": -1,
+        "timing": {
+          "bestLap": 138590,
+          "bestSplits": [
+            40735,
+            61205,
+            36650
+          ],
+          "lapCount": 3,
+          "lastLap": 138590,
+          "lastSplitId": 0,
+          "lastSplits": [
+            40735,
+            61205,
+            36650
+          ],
+          "totalTime": 48265985
+        }
+      }
+    ],
+    "type": 0
+  },
+  "sessionType": "FP",
+  "trackName": "spa",
+  "serverName": "WGC - Spa 2.4h Timewarp Team Practice",
+  "metaData": "championship-pre-practice",
+  "Date": "2024-11-30T13:01:51Z",
+  "SessionFile": "241130_130151_FP"
+}

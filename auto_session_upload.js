@@ -3,6 +3,15 @@ const path = require('path');
 const db = require('./services/database');
 const carModels = require('./data/carModels');
 
+const loadSQL = (file) => fs.readFileSync(path.join(__dirname, `./services/queries/${file}`), 'utf-8');
+
+// ✅ Query Functions
+const driverInfoQuery = loadSQL('driverInfo.sql');
+const driverTrackInfoQuery = loadSQL('driverTrackInfo.sql');
+const driverCarTrackInfoQuery = loadSQL('driverCarTrackInfo.sql');
+const teamSessionStatsQuery = loadSQL('teamSessionStats.sql');
+const teamDriverStatsQuery = loadSQL('teamDriverStats.sql');
+
 // Paths
 const resultsPath = path.join(__dirname, 'results');
 const processedPath = path.join(__dirname, 'processed');
@@ -66,9 +75,9 @@ async function ensureDriversExist(driverStats) {
                      VALUES ($1, $2)`,
                     [steamId, realName]
                 );
-                console.log(`🆕 Added new driver: ${steamId}`);
+                // console.log(`🆕 Added new driver: ${steamId}`);
             } else {
-                console.log(`🔗 Found driver: ${steamId}`);
+                // console.log(`🔗 Found driver: ${steamId}`);
             }
         } catch (err) {
             console.error(`❌ Failed to ensure driver exists for ${realName}:`, err.message);
@@ -76,261 +85,83 @@ async function ensureDriversExist(driverStats) {
     }
 }
 
-// ✅ Refresh driver_track_info
-async function refreshDriverTrackInfo() {
-    try {
-        await db.query(`
-            INSERT INTO driver_track_info (
-                steam_id,
-                track_id,
-                car_class,
-                car_id,
-                distance_covered,
-                total_sessions,
-                best_q_position,
-                best_r_position,
-                average_valid_fp,
-                average_valid_q,
-                average_valid_r,
-                average_fp,
-                average_q,
-                average_r,
-                fastest_q_lap,
-                fastest_r_lap,
-                fastest_possible_q,
-                fastest_possible_r,
-                fastest_possible_overall,
-                total_off_tracks,
-                total_laps,
-                created_at
-            )
-            SELECT 
-                dss.steam_id,
-                si.track_id,
-                MAX(ci.car_class) AS car_class,
-                MAX(dss.car_id) AS car_id,
-                SUM(dss.total_laps) * MAX(t.track_length) AS distance_covered,
-                COUNT(DISTINCT dss.session_id) AS total_sessions,
-                MIN(CASE WHEN si.session_type = 'Q' THEN dss.finishing_position END) AS best_q_position,
-                MIN(CASE WHEN si.session_type = 'R' THEN dss.finishing_position END) AS best_r_position,
-                AVG(CASE WHEN si.session_type = 'FP' THEN dss.average_valid_lap END) AS average_valid_fp,
-                AVG(CASE WHEN si.session_type = 'Q' THEN dss.average_valid_lap END) AS average_valid_q,
-                AVG(CASE WHEN si.session_type = 'R' THEN dss.average_valid_lap END) AS average_valid_r,
-                AVG(CASE WHEN si.session_type = 'FP' THEN dss.average_lap END) AS average_fp,
-                AVG(CASE WHEN si.session_type = 'Q' THEN dss.average_lap END) AS average_q,
-                AVG(CASE WHEN si.session_type = 'R' THEN dss.average_lap END) AS average_r,
-                MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_lap END) AS fastest_q_lap,
-                MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_lap END) AS fastest_r_lap,
-                (MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s1 END) +
-                MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s2 END) +
-                MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s3 END)) AS fastest_possible_q,
-                (MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s1 END) +
-                MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s2 END) +
-                MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s3 END)) AS fastest_possible_r,
-                (LEAST(
-                    MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s1 END),
-                    MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s1 END)
-                ) +
-                LEAST(
-                    MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s2 END),
-                    MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s2 END)
-                ) +
-                LEAST(
-                    MIN(CASE WHEN si.session_type = 'Q' THEN dss.fastest_possible_s3 END),
-                    MIN(CASE WHEN si.session_type = 'R' THEN dss.fastest_possible_s3 END)
-                )) AS fastest_possible_overall,
-                SUM(dss.total_off_tracks) AS total_off_tracks,
-                SUM(dss.total_laps) AS total_laps,
-                NOW()
-            FROM driver_session_stats dss
-            JOIN session_info si ON dss.session_id = si.id
-            JOIN track_info t ON si.track_id = t.track_id
-            JOIN car_info ci ON dss.car_id = ci.car_id
-            GROUP BY dss.steam_id, si.track_id
-            ON CONFLICT (steam_id, track_id)
-            DO UPDATE SET
-                car_class = EXCLUDED.car_class,
-                car_id = EXCLUDED.car_id,
-                distance_covered = EXCLUDED.distance_covered,
-                total_sessions = EXCLUDED.total_sessions,
-                best_q_position = LEAST(driver_track_info.best_q_position, EXCLUDED.best_q_position),
-                best_r_position = LEAST(driver_track_info.best_r_position, EXCLUDED.best_r_position),
-                average_valid_fp = EXCLUDED.average_valid_fp,
-                average_valid_q = EXCLUDED.average_valid_q,
-                average_valid_r = EXCLUDED.average_valid_r,
-                average_fp = EXCLUDED.average_fp,
-                average_q = EXCLUDED.average_q,
-                average_r = EXCLUDED.average_r,
-                fastest_q_lap = EXCLUDED.fastest_q_lap,
-                fastest_r_lap = EXCLUDED.fastest_r_lap,
-                fastest_possible_q = EXCLUDED.fastest_possible_q,
-                fastest_possible_r = EXCLUDED.fastest_possible_r,
-                fastest_possible_overall = EXCLUDED.fastest_possible_overall,
-                total_off_tracks = EXCLUDED.total_off_tracks,
-                total_laps = EXCLUDED.total_laps,
-                created_at = NOW();
-
-        `);
-
-        console.log('🔄 Driver track info refreshed successfully.');
-    } catch (error) {
-        console.error('❌ Failed to refresh driver track info:', error.message);
-    }
-}
-
-// ✅ Update driver_info table
+// ✅ Refresh Driver Info
 async function refreshDriverInfo() {
     try {
-        await db.query(`
-            UPDATE driver_info di
-                SET 
-                    podiums = COALESCE((
-                        SELECT COUNT(*) 
-                        FROM driver_session_stats dss
-                        JOIN session_info si ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'R'
-                        AND dss.finishing_position BETWEEN 1 AND 3
-                    ), 0),
-
-                    distance_covered = COALESCE((
-                        SELECT SUM(dti.distance_covered)
-                        FROM driver_track_info dti
-                        WHERE dti.steam_id = di.steam_id
-                    ), 0.0),
-
-                    best_position = COALESCE((
-                        SELECT MIN(dss.finishing_position)
-                        FROM driver_session_stats dss
-                        JOIN session_info si ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'R'
-                    ), NULL),
-
-                    total_wins = COALESCE((
-                        SELECT COUNT(*)
-                        FROM driver_session_stats dss
-                        JOIN session_info si ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'R'
-                        AND dss.finishing_position = 1
-                    ), 0),
-
-                    total_poles = COALESCE((
-                        SELECT COUNT(*)
-                        FROM driver_session_stats dss
-                        JOIN session_info si ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'Q'
-                        AND dss.finishing_position = 1
-                    ), 0),
-
-                    total_sessions = COALESCE((
-                        SELECT COUNT(DISTINCT dss.session_id)
-                        FROM driver_session_stats dss
-                        WHERE dss.steam_id = di.steam_id
-                    ), 0),
-
-                    average_finish_position = COALESCE((
-                        SELECT AVG(dss.finishing_position)
-                        FROM driver_session_stats dss
-                        JOIN session_info si ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'R'
-                        AND dss.finishing_position IS NOT NULL
-                    ), NULL),
-
-                    total_off_tracks = COALESCE((
-                        SELECT SUM(dss.total_off_tracks)
-                        FROM driver_session_stats dss
-                        WHERE dss.steam_id = di.steam_id
-                    ), 0),
-
-                    total_races = COALESCE((
-                        SELECT COUNT(*)
-                        FROM session_info si
-                        JOIN driver_session_stats dss ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'R'
-                    ), 0),
-
-                    total_qualifying_sessions = COALESCE((
-                        SELECT COUNT(*)
-                        FROM session_info si
-                        JOIN driver_session_stats dss ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'Q'
-                    ), 0),
-
-                    total_practice_sessions = COALESCE((
-                        SELECT COUNT(*)
-                        FROM session_info si
-                        JOIN driver_session_stats dss ON dss.session_id = si.id
-                        WHERE dss.steam_id = di.steam_id 
-                        AND si.session_type = 'FP'
-                    ), 0);
-
-        `);
-        console.log('🔄 Driver info refreshed successfully.');
+        await db.query(driverInfoQuery);
+        console.log('✅ Driver info refreshed.');
     } catch (error) {
-        console.error('❌ Failed to refresh driver info:', error.message);
+        console.error('❌ Error refreshing driver info:', error.message);
     }
 }
 
-// -- ✅ Refresh Driver Car Track Info
+// ✅ Refresh Driver Track Info
+async function refreshDriverTrackInfo() {
+    try {
+        await db.query(driverTrackInfoQuery);
+        console.log('✅ Driver track info refreshed.');
+    } catch (error) {
+        console.error('❌ Error refreshing driver track info:', error.message);
+    }
+}
+
+// ✅ Refresh Team Session Stats
+async function refreshTeamSessionStats(sessionId) {
+    try {
+        await db.query(teamSessionStatsQuery, [sessionId]);
+        console.log('✅ Team session stats refreshed.');
+    } catch (error) {
+        console.error('❌ Error refreshing team session stats:', error.message);
+    }
+}
+
+// ✅ Refresh Team Driver Stats
+async function refreshTeamDriverStats() {
+    try {
+        await db.query(teamDriverStatsQuery);
+        console.log('✅ Team driver stats refreshed.');
+    } catch (error) {
+        console.error('❌ Error refreshing team driver stats:', error.message);
+    }
+}
+
+async function markTeamEvent(sessionId) {
+    try {
+        const result = await db.query(`
+            SELECT COUNT(DISTINCT steam_id) AS unique_drivers
+            FROM driver_session_stats
+            WHERE session_id = $1
+            GROUP BY car_id
+            HAVING COUNT(DISTINCT steam_id) > 1
+        `, [sessionId]);
+
+        if (result.rows.length > 0) {
+            await db.query(`
+                UPDATE session_info 
+                SET is_team_event = TRUE 
+                WHERE id = $1
+            `, [sessionId]);
+
+            console.log(`🏁 Session ${sessionId} marked as TEAM event.`);
+        } else {
+            console.log(`🧍 Session ${sessionId} is a SOLO event.`);
+        }
+    } catch (error) {
+        console.error(`❌ Failed to mark session as TEAM event:`, error.message);
+    }
+}
+
+
+
+// ✅ Refresh Driver Car Track Info
 async function refreshDriverCarTrackInfo() {
     try {
-        await db.query(`
-            INSERT INTO driver_car_track_info (
-                steam_id,
-                track_id,
-                car_model,
-                car_class,
-                distance_covered,
-                total_sessions,
-                best_q_position,
-                best_r_position,
-                total_laps,
-                created_at
-            )
-            SELECT 
-                dss.steam_id,
-                si.track_id,
-                ci.car_model,
-                ci.car_class,
-                SUM(dss.total_laps) * t.track_length AS distance_covered,
-                COUNT(DISTINCT dss.session_id || '-' || dss.car_id) AS total_sessions, -- Ensure unique session-car combo
-                MIN(CASE WHEN si.session_type = 'Q' THEN dss.finishing_position END) AS best_q_position,
-                MIN(CASE WHEN si.session_type = 'R' THEN dss.finishing_position END) AS best_r_position,
-                SUM(dss.total_laps) AS total_laps,
-                NOW()
-            FROM driver_session_stats dss
-            JOIN session_info si ON dss.session_id = si.id
-            JOIN track_info t ON si.track_id = t.track_id
-            JOIN car_info ci ON dss.car_id = ci.car_id
-            WHERE dss.steam_id IS NOT NULL 
-            AND dss.car_id IS NOT NULL
-            GROUP BY dss.steam_id, si.track_id, ci.car_model, ci.car_class, t.track_length
-            ON CONFLICT (steam_id, track_id, car_model)
-            DO UPDATE SET
-                distance_covered = EXCLUDED.distance_covered,
-                total_sessions = EXCLUDED.total_sessions,
-                best_q_position = LEAST(driver_car_track_info.best_q_position, EXCLUDED.best_q_position),
-                best_r_position = LEAST(driver_car_track_info.best_r_position, EXCLUDED.best_r_position),
-                total_laps = EXCLUDED.total_laps,
-                car_class = EXCLUDED.car_class,
-                created_at = NOW();
-
-
-        `);
-
-        console.log('🔄 Driver Car Track Info refreshed successfully.');
+        await db.query(driverCarTrackInfoQuery);
+        console.log('✅ Driver Car Track Info refreshed successfully.');
     } catch (error) {
-        console.error('❌ Failed to refresh driver car track info:', error.message);
+        console.error('❌ Failed to refresh Driver Car Track Info:', error.message);
     }
 }
-
-
 
 // ✅ Validator for Invalid Sector and Lap Times
 function validateTime(time, invalidValues) {
@@ -425,6 +256,89 @@ function extractDriverStats(driver, lapsData, raceLeaderboard, sessionType) {
 
 
 // ✅ Main function to process session files
+// ✅ Enhanced Main function to process every driver per car
+// ✅ Helper Function: Fetch Car Details
+async function fetchCarDetails(carModelId) {
+    try {
+        const carResult = await db.query(
+            `SELECT car_id FROM car_info WHERE car_id = $1`, [carModelId]
+        );
+
+        if (carResult.rows.length === 0) {
+            console.warn(`⚠️ Car with ID ${carModelId} not found in car_info.`);
+            return { carId: null, carModel: 'Unknown Model', carClass: 'UNKNOWN' };
+        }
+
+        const carDetails = await db.query(
+            `SELECT car_model, car_class FROM car_info WHERE car_id = $1`, [carResult.rows[0].car_id]
+        );
+
+        return carDetails.rows.length > 0
+            ? { carId: carResult.rows[0].car_id, carModel: carDetails.rows[0].car_model, carClass: carDetails.rows[0].car_class }
+            : { carId: null, carModel: 'Unknown Model', carClass: 'UNKNOWN' };
+    } catch (err) {
+        console.error(`❌ Failed to fetch car details:`, err.message);
+        return { carId: null, carModel: 'Unknown Model', carClass: 'UNKNOWN' };
+    }
+}
+
+// ✅ Helper Function: Process a Single Driver
+async function processDriver(driver, sessionId, carModelId, carId, carModel, carClass, stats, carId) {
+    const steamId = sanitizeSteamId(driver.playerId);
+    const firstName = driver.firstName || 'Unknown';
+    const lastName = driver.lastName || 'Driver';
+    const realName = `${firstName} ${lastName}`.trim();
+
+    if (!steamId) {
+        console.warn(`⚠️ Missing SteamID for driver ${realName}. Skipping.`);
+        return;
+    }
+
+    // ✅ Add Driver to driver_info
+    await db.query(
+        `INSERT INTO driver_info (steam_id, real_name) 
+         VALUES ($1, $2) ON CONFLICT (steam_id) DO NOTHING`,
+        [steamId, realName]
+    );
+
+    // ✅ Skip if no laps completed
+    if (stats.totalLaps === 0) {
+        console.warn(`⏩ Skipping driver ${steamId}: Did not finish the race (0 laps completed).`);
+        return;
+    }
+
+    // ✅ Add Driver Session Stats
+    await db.query(
+        `INSERT INTO driver_session_stats 
+        (session_id, steam_id, car_model_id, car_model, car_class, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_laps, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_id, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())`,
+        [
+            sessionId,
+            steamId,
+            carModelId,
+            carModel,
+            carClass,
+            stats.finishingPosition,
+            stats.leaderDelta,
+            stats.fastestLap,
+            stats.averageLap,
+            stats.averageValidLap,
+            stats.fastestPossibleLap,
+            stats.cupCategory,
+            stats.totalRaceTime,
+            stats.totalLaps,
+            stats.totalOffTracks,
+            stats.fastest_s1,
+            stats.fastest_s2,
+            stats.fastest_s3,
+            carId
+        ]
+    );
+
+    // console.log(`🆕 Driver Processed: ${realName} (SteamID: ${steamId})`);
+}
+
+// ✅ Main Session Processing Function
 async function processSessionFiles() {
     console.log('🚀 Starting session file processing...');
 
@@ -441,25 +355,21 @@ async function processSessionFiles() {
             console.log(`📄 Processing file: ${file}`);
 
             const fileContent = loadData(filePath);
-
-            // Extract Metadata
+            const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
+            
+            // ✅ Extract Metadata
             const sessionType = detectSessionType(file);
             const trackId = fileContent.trackName?.toLowerCase().replace(/\s+/g, '_').trim();
             const serverName = fileContent.serverName || 'Unknown Server';
             const resultsName = file;
             const sessionDate = fileContent.Date || new Date().toISOString();
-            const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
 
             if (!sessionType || !trackId) {
                 console.warn(`❌ SessionType or TrackID missing. Skipping session.`);
                 continue;
             }
 
-            let trackResult = await db.query(
-                `SELECT track_id FROM track_info WHERE track_id = $1`,
-                [trackId]
-            );
-
+            const trackResult = await db.query(`SELECT track_id FROM track_info WHERE track_id = $1`, [trackId]);
             if (trackResult.rows.length === 0) {
                 console.warn(`❌ Track not found in database: ${trackId}. Skipping session.`);
                 continue;
@@ -475,100 +385,48 @@ async function processSessionFiles() {
 
             await ensureDriversExist(raceLeaderboard);
 
-            for (const driver of raceLeaderboard) {
-                const steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
-                const carModelId = driver.car?.carModel; // Get carModelId from the driver data
-
-                // ✅ Fetch car_id from car_info
-                let carId = null;
-                try {
-                    const carResult = await db.query(
-                        `SELECT car_id FROM car_info WHERE car_id = $1`,
-                        [carModelId]
-                    );
-
-                    if (carResult.rows.length > 0) {
-                        carId = carResult.rows[0].car_id;
-                    } else {
-                        console.warn(`⚠️ Car with ID ${carModelId} not found in car_info.`);
-                        continue; // Skip this driver if car_id is invalid
-                    }
-                } catch (err) {
-                    console.error(`❌ Failed to fetch car_id:`, err.message);
-                    continue;
+            // ✅ Loop Through Every Car and Every Driver
+            const laps = fileContent.laps || [];
+            const lapCounts = {};
+            for (const lap of laps) {
+                const key = `${lap.carId}_${lap.driverIndex}`;
+                if (!lapCounts[key]) {
+                    lapCounts[key] = 0;
                 }
-
-                // ✅ Fetch car_model and car_class from car_info using car_id
-                let carModel = null;
-                let carClass = null;
-                try {
-                    const carDetails = await db.query(
-                        `SELECT car_model, car_class FROM car_info WHERE car_id = $1`,
-                        [carId]
-                    );
-
-                    if (carDetails.rows.length > 0) {
-                        carModel = carDetails.rows[0].car_model;
-                        carClass = carDetails.rows[0].car_class;
-                    } else {
-                        console.warn(`⚠️ No details found for car_id: ${carId}`);
-                        carModel = 'Unknown Model';
-                        carClass = 'UNKNOWN';
-                    }
-                } catch (err) {
-                    console.error(`❌ Failed to fetch car details:`, err.message);
-                    carModel = 'Unknown Model';
-                    carClass = 'UNKNOWN';
-                }
-
-                const stats = extractDriverStats(driver, fileContent.laps || [], raceLeaderboard, sessionType);
-
-                // ✅ Skip drivers who didn't finish (totalLaps === 0)
-                if (stats.totalLaps === 0) {
-                    console.warn(`⏩ Skipping driver ${steamId}: Did not finish the race (0 laps completed).`);
-                    continue;
-                }
-
-                await db.query(
-                    `INSERT INTO driver_session_stats 
-                    (session_id, steam_id, car_id, car_model, car_class, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_laps, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, created_at)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())`,
-                    [
-                        sessionId,
-                        steamId,
-                        carId,
-                        carModel,
-                        carClass,
-                        stats.finishingPosition,
-                        stats.leaderDelta,
-                        stats.fastestLap !== null ? stats.fastestLap : null,
-                        stats.averageLap !== null ? stats.averageLap : null,
-                        stats.averageValidLap !== null ? stats.averageValidLap : null,
-                        stats.fastestPossibleLap !== null ? stats.fastestPossibleLap : null,
-                        stats.cupCategory !== null ? stats.cupCategory : null,
-                        stats.totalRaceTime,
-                        stats.totalLaps,
-                        stats.totalOffTracks,
-                        stats.fastest_s1,
-                        stats.fastest_s2,
-                        stats.fastest_s3
-                    ]
-                );
+                lapCounts[key]++;
             }
+
+            for (const key in lapCounts) {
+                const [carId, driverIndex] = key.split('_');
+                // console.log(`CarID: ${carId}, DriverIndex: ${driverIndex}, Total Laps: ${lapCounts[key]}`);
+            }
+            
+            for (const car of raceLeaderboard) {
+                const carModelId = car.car?.carModel;
+                const carId = car.car?.carId;
+                // console.log(carId)
+                const { carId: resolvedCarId, carModel, carClass } = await fetchCarDetails(carModelId);
+
+                for (const driver of car.car?.drivers || []) {
+                    const stats = extractDriverStats(car, fileContent.laps || [], raceLeaderboard, sessionType);
+                    await processDriver(driver, sessionId, carModelId, resolvedCarId, carModel, carClass, stats, carId);
+                }
+            }
+
+            // ✅ Calculate and log the number of laps for each driver
 
             fs.renameSync(filePath, path.join(processedPath, file));
             console.log(`✅ Session ${file} processed successfully.`);
 
+            await markTeamEvent(sessionId);
+            await ensureDriversExist(raceLeaderboard);
             await refreshDriverTrackInfo();
-
-            // ✅ Refresh driver car track info
             await refreshDriverCarTrackInfo();
         }
     } catch (error) {
         console.error('❌ Failed to process session files:', error.message);
     }
 }
-
 
 
 // Periodic check for new files
