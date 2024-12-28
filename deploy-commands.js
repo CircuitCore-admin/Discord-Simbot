@@ -16,15 +16,21 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 description: 'Test command to check bot response',
             },
             {
-                name: 'driver_stats',
-                description: 'Get detailed stats for a specific driver',
+                name: 'driver_info',
+                description: 'Get details about a specific driver or auto-register them if not fully registered',
                 options: [
+                    {
+                        name: 'user',
+                        type: 6, // USER type
+                        description: 'Mention the Discord user',
+                        required: false,
+                    },
                     {
                         name: 'driver_name',
                         type: 3, // STRING type
-                        description: 'Name of the driver',
-                        required: true,
-                    },
+                        description: 'Search by Driver Real Name',
+                        required: false,
+                    }
                 ],
             },
             {
@@ -68,24 +74,24 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 name: 'list_drivers',
                 description: 'List all registered drivers in the database',
             },
-            {
-                name: 'driver_info',
-                description: 'Get details about a specific driver or auto-register them if not fully registered',
-                options: [
-                    {
-                        name: 'user',
-                        type: 6, // USER type
-                        description: 'Mention the Discord user',
-                        required: false,
-                    },
-                    {
-                        name: 'driver_name',
-                        type: 3, // STRING type
-                        description: 'Search by Driver Real Name',
-                        required: false,
-                    }
-                ],
-            },
+            // {
+            //     name: 'driver_info',
+            //     description: 'Get details about a specific driver or auto-register them if not fully registered',
+            //     options: [
+            //         {
+            //             name: 'user',
+            //             type: 6, // USER type
+            //             description: 'Mention the Discord user',
+            //             required: false,
+            //         },
+            //         {
+            //             name: 'driver_name',
+            //             type: 3, // STRING type
+            //             description: 'Search by Driver Real Name',
+            //             required: false,
+            //         }
+            //     ],
+            // },
             {
                 name: 'add_track',
                 description: 'Add a new track to the database',
@@ -117,8 +123,8 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                     }
                 ],
             }
-            
-            
+
+
         ];
 
         console.log('🔄 Redeploying commands...');

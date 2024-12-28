@@ -54,13 +54,14 @@ const loadData = filePath => {
 // ✅ Ensure drivers exist in `driver_info`
 async function ensureDriversExist(driverStats) {
     for (const driver of driverStats) {
+        // console.log(driver)
         let steamId = sanitizeSteamId(driver.car?.drivers?.[0]?.playerId);
         const firstName = driver.car?.drivers?.[0]?.firstName || 'Unknown';
         const lastName = driver.car?.drivers?.[0]?.lastName || 'Driver';
         const realName = `${firstName} ${lastName}`.trim();
 
         if (!steamId) {
-            console.warn(`❌ Missing SteamID for driver: ${realName}, skipping driver entry`);
+            // console.warn(`❌ Missing SteamID for driver: ${realName}, skipping driver entry`);
             continue;
         }
 
@@ -170,7 +171,7 @@ function validateTime(time, invalidValues) {
 }
 
 // ✅ Extract driver-specific stats
-function extractDriverStats(driver, lapsData, raceLeaderboard, sessionType) {
+function extractDriverStatsSolo(driver, lapsData, raceLeaderboard, sessionType) {
     const driverLaps = lapsData.filter(lap => lap.carId === driver.car.carId);
     const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
     const invalidLaps = driverLaps.length - validLaps.length;
@@ -255,6 +256,105 @@ function extractDriverStats(driver, lapsData, raceLeaderboard, sessionType) {
     };
 }
 
+// /**
+//  * ✅ Process Solo Event Data
+//  * @param {Object} driver - Driver object from raceLeaderboard.
+//  * @param {number} sessionId - Session ID from session_info.
+//  * @param {string} sessionType - Type of the session (FP, Q, R).
+//  * @param {Array} lapsData - Array of lap data.
+//  * @param {Array} raceLeaderboard - Full race leaderboard.
+//  */
+async function processSoloEvent(driver, sessionId, sessionType, lapsData, raceLeaderboard) {
+    const carModelId = driver.car?.carModel;
+    const resolvedCarId = driver.car?.carId;
+    const { carId: finalCarId, carModel, carClass } = await fetchCarDetails(carModelId);
+
+    // ✅ Extract Driver Stats
+    const stats = extractDriverStatsSolo(driver, lapsData, raceLeaderboard, sessionType);
+
+    await processDriver(
+        driver,
+        sessionId,
+        carModelId,
+        finalCarId,
+        carModel,
+        carClass,
+        stats,
+        resolvedCarId,
+        stats.totalLaps
+    );
+}
+
+
+// /**
+//  * ✅ Process Team Event Data
+//  * @param {number} carId - The unique car ID.
+//  * @param {Object} carEntry - The car object from raceLeaderboard.
+//  * @param {number} sessionId - Session ID from session_info.
+//  * @param {string} sessionType - Type of the session (FP, Q, R).
+//  * @param {Array} lapsData - Array of lap data.
+//  * @param {Array} raceLeaderboard - Full race leaderboard.
+//  */
+async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard) {
+    if (!carId || !carEntry || !carEntry.car) {
+        console.warn(`⚠️ Invalid CarID or missing car data for team event. Skipping.`);
+        return;
+    }
+
+    if (!carEntry.car.drivers || carEntry.car.drivers.length === 0) {
+        console.warn(`⚠️ No drivers found for CarID: ${carId}. Skipping team event.`);
+        return;
+    }
+
+    const drivers = carEntry.car.drivers;
+
+    let teamTotalLaps = 0,
+        teamValidLaps = 0,
+        teamDriveTime = 0;
+    let teamLapTimes = [],
+        teamValidLapTimes = [],
+        teamLapsForSplits = [];
+    let teamFastestValidLap = Infinity;
+
+    for (const [driverIndex, driver] of drivers.entries()) {
+        const driverLaps = lapsData.filter(lap => lap.carId === carId && lap.driverIndex === driverIndex);
+        const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
+
+        const avgLapTime = driverLaps.length > 0
+            ? Math.round(driverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / driverLaps.length)
+            : 'N/A';
+
+        const avgValidLapTime = validDriverLaps.length > 0
+            ? Math.round(validDriverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / validDriverLaps.length)
+            : 'N/A';
+
+        const fastestValidLap = validDriverLaps.length > 0
+            ? Math.min(...validDriverLaps.map(lap => lap.laptime))
+            : 'N/A';
+
+        const fastestPossibleTime = await calculateFastestPossibleTime(validDriverLaps);
+        // console.log(driverLaps)
+        const carModelId = carEntry.car?.carModel;
+        const resolvedCarId = carEntry.car?.carId;
+        const { carId: finalCarId, carModel, carClass } = await fetchCarDetails(carModelId);
+
+        const stats = extractDriverStats(carEntry, lapsData, raceLeaderboard, sessionType);
+
+        // console.log(driver);
+        await processDriver(driver, sessionId, carModelId, finalCarId, carModel, carClass, stats, resolvedCarId, driverLaps.length);
+
+        const driverDriveTime = driverLaps.reduce((sum, lap) => sum + lap.laptime, 0);
+
+        teamTotalLaps += driverLaps.length;
+        // console.log(teamTotalLaps)
+        teamValidLaps += validDriverLaps.length;
+        teamLapTimes.push(...driverLaps.map(lap => lap.laptime));
+        teamValidLapTimes.push(...validDriverLaps.map(lap => lap.laptime));
+        teamLapsForSplits.push(...validDriverLaps);
+        teamFastestValidLap = Math.min(teamFastestValidLap, fastestValidLap !== 'N/A' ? fastestValidLap : Infinity);
+        teamDriveTime += driverDriveTime;
+    }
+}
 
 // ✅ Main function to process session files
 // ✅ Enhanced Main function to process every driver per car
@@ -285,7 +385,8 @@ async function fetchCarDetails(carModelId) {
 
 // ✅ Helper Function: Process a Single Driver
 async function processDriver(driver, sessionId, carModelId, carId, carModel, carClass, stats, carId, driverLapsCount) {
-    const steamId = sanitizeSteamId(driver.playerId);
+    // console.log(driver.car.drivers[0].playerId)
+    const steamId = sanitizeSteamId(driver.car.drivers[0].playerId);
     const firstName = driver.firstName || 'Unknown';
     const lastName = driver.lastName || 'Driver';
     const realName = `${firstName} ${lastName}`.trim();
@@ -397,109 +498,10 @@ async function processSessionFiles() {
                 continue;
             }
 
-            // Check for multiple drivers per carId before continuing
-            let isDriverSwapRace = false;
-            for (const carEntry of raceLeaderboard) {
-                if (carEntry.car?.drivers && carEntry.car.drivers.length > 1) {
-                    isDriverSwapRace = true;
-                    break;
-                }
-            }
-
-            // if (isDriverSwapRace) {
-            // Perform the other section of code for driver swap races here
-            console.log(`🔄 Driver swap race detected. Processing driver swap logic...`);
-            // YOUR DRIVER SWAP CODE HERE
-            //         const sessionResult = await db.query(
-            //             `INSERT INTO session_info (track_id, session_type, session_name, results_name, date, uploaded_at) 
-            //   VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
-            //             [trackId, sessionType, serverName, resultsName, sessionDate]
-            //         );
-
-            //         const sessionId = sessionResult.rows[0].id;
-
-            //         await ensureDriversExist(raceLeaderboard);
-
-            // for (const carId of carIds) {
-            //     const carEntry = raceLeaderboard.find(entry => entry.car?.carId === carId);
-
-            //     if (!carEntry?.car?.drivers) {
-            //         console.warn(`⚠️ No drivers found for CarID: ${carId}`);
-            //         continue;
-            //     }
-
-            //     const drivers = carEntry.car.drivers;
-
-            //     let teamTotalLaps = 0, teamValidLaps = 0, teamDriveTime = 0;
-            //     let teamLapTimes = [], teamValidLapTimes = [], teamLapsForSplits = [];
-            //     let teamFastestValidLap = Infinity;
-
-            //     for (const [driverIndex, driver] of drivers.entries()) {
-            //         const driverLaps = lapsData.filter(lap => lap.carId === carId && lap.driverIndex === driverIndex);
-            //         const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
-
-            //         const avgLapTime = driverLaps.length > 0
-            //             ? Math.round(driverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / driverLaps.length)
-            //             : 'N/A';
-
-            //         const avgValidLapTime = validDriverLaps.length > 0
-            //             ? Math.round(validDriverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / validDriverLaps.length)
-            //             : 'N/A';
-
-            //         const fastestValidLap = validDriverLaps.length > 0
-            //             ? Math.min(...validDriverLaps.map(lap => lap.laptime))
-            //             : 'N/A';
-
-            //         const fastestPossibleTime = await calculateFastestPossibleTime(validDriverLaps);
-
-            //         const driverDriveTime = driverLaps.reduce((sum, lap) => sum + lap.laptime, 0);
-
-            //         teamTotalLaps += driverLaps.length;
-            //         teamValidLaps += validDriverLaps.length;
-            //         teamLapTimes.push(...driverLaps.map(lap => lap.laptime));
-            //         teamValidLapTimes.push(...validDriverLaps.map(lap => lap.laptime));
-            //         teamLapsForSplits.push(...validDriverLaps);
-            //         teamFastestValidLap = Math.min(teamFastestValidLap, fastestValidLap !== 'N/A' ? fastestValidLap : Infinity);
-            //         teamDriveTime += driverDriveTime;
-
-            //         // console.log(`   👤 Driver ${driverIndex + 1}:`);
-            //         // console.log(`      - Name: ${driver?.firstName || 'Unknown'} ${driver?.lastName || 'Unknown'}`);
-            //         // console.log(`      - Total Laps: ${driverLaps.length}`);
-            //         // console.log(`      - Average Lap Time: ${avgLapTime}`);
-            //         // console.log(`      - Valid Laps: ${validDriverLaps.length}`);
-            //         // console.log(`      - Average Valid Lap Time: ${avgValidLapTime}`);
-            //         // console.log(`      - Fastest Lap Time: ${fastestValidLap}`);
-            //         // console.log(`      - Fastest Possible Time: ${fastestPossibleTime}`);
-            //         // console.log(`      - Total Drive Time: ${driverDriveTime}`);
-            //         // console.log('--------------------------------');
-            //     }
-
-            //     const avgTeamLapTime = teamLapTimes.length > 0
-            //         ? Math.round(teamLapTimes.reduce((sum, lap) => sum + lap, 0) / teamLapTimes.length)
-            //         : 'N/A';
-
-            //     const avgTeamValidLapTime = teamValidLapTimes.length > 0
-            //         ? Math.round(teamValidLapTimes.reduce((sum, lap) => sum + lap, 0) / teamValidLapTimes.length)
-            //         : 'N/A';
-
-                // const fastestPossibleTeamTime = calculateFastestPossibleTime(teamLapsForSplits);
-
-            //     // console.log(`🏁 Team Stats for Car ID: ${carId}`);
-            //     // console.log(`   - Total Team Laps: ${teamTotalLaps}`);
-            //     // console.log(`   - Fastest Team Lap: ${teamFastestValidLap}`);
-            //     // console.log(`   - Fastest Possible Team Lap: ${fastestPossibleTeamTime}`);
-            //     // console.log(`   - Average Team Lap Time: ${avgTeamLapTime}`);
-            //     // console.log(`   - Average Valid Team Lap Time: ${avgTeamValidLapTime}`);
-            //     // console.log(`   - Total Team Drive Time: ${teamDriveTime}`);
-            //     // console.log('================================\n');
-            // }
-            // } else {
-            console.log(`🚗 Single driver race detected. Processing regular logic...`);
-            // Regular processing logic goes here
 
             const sessionResult = await db.query(
                 `INSERT INTO session_info (track_id, session_type, session_name, results_name, date, uploaded_at) 
-          VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
+                VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
                 [trackId, sessionType, serverName, resultsName, sessionDate]
             );
 
@@ -507,83 +509,31 @@ async function processSessionFiles() {
 
             await ensureDriversExist(raceLeaderboard);
 
+            // Check for multiple drivers per carId before continuing
+            let isDriverSwapRace = false;
+            for (const carEntry of raceLeaderboard) {
+                if (carEntry.car?.drivers && carEntry.car.drivers.length > 1) {
+                    isDriverSwapRace = true;
+                    console.log(`🔄 Driver swap race detected. Processing driver swap logic...`);
+                    break;
+                }
+            }
             for (const carId of carIds) {
                 const carEntry = raceLeaderboard.find(entry => entry.car?.carId === carId);
 
-                if (!carEntry?.car?.drivers) {
-                    console.warn(`⚠️ No drivers found for CarID: ${carId}`);
+                if (!carEntry || !carEntry.car) {
+                    console.warn(`⚠️ Invalid or missing car entry for CarID: ${carId}. Skipping.`);
                     continue;
                 }
 
-                const drivers = carEntry.car.drivers;
-
-                let teamTotalLaps = 0,
-                    teamValidLaps = 0,
-                    teamDriveTime = 0;
-                let teamLapTimes = [],
-                    teamValidLapTimes = [],
-                    teamLapsForSplits = [];
-                let teamFastestValidLap = Infinity;
-
-                for (const [driverIndex, driver] of drivers.entries()) {
-                    const driverLaps = lapsData.filter(lap => lap.carId === carId && lap.driverIndex === driverIndex);
-                    const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
-
-                    const avgLapTime = driverLaps.length > 0
-                        ? Math.round(driverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / driverLaps.length)
-                        : 'N/A';
-
-                    const avgValidLapTime = validDriverLaps.length > 0
-                        ? Math.round(validDriverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / validDriverLaps.length)
-                        : 'N/A';
-
-                    const fastestValidLap = validDriverLaps.length > 0
-                        ? Math.min(...validDriverLaps.map(lap => lap.laptime))
-                        : 'N/A';
-
-                    const fastestPossibleTime = await calculateFastestPossibleTime(validDriverLaps);
-                    // console.log(driverLaps)
-                    const carModelId = carEntry.car?.carModel;
-                    const resolvedCarId = carEntry.car?.carId;
-                    const { carId: finalCarId, carModel, carClass } = await fetchCarDetails(carModelId);
-
-                    const stats = extractDriverStats(carEntry, lapsData, raceLeaderboard, sessionType);
-
-                    // console.log(driver);
-                    await processDriver(driver, sessionId, carModelId, finalCarId, carModel, carClass, stats, resolvedCarId, driverLaps.length);
-
-                    const driverDriveTime = driverLaps.reduce((sum, lap) => sum + lap.laptime, 0);
-
-                    teamTotalLaps += driverLaps.length;
-                    // console.log(teamTotalLaps)
-                    teamValidLaps += validDriverLaps.length;
-                    teamLapTimes.push(...driverLaps.map(lap => lap.laptime));
-                    teamValidLapTimes.push(...validDriverLaps.map(lap => lap.laptime));
-                    teamLapsForSplits.push(...validDriverLaps);
-                    teamFastestValidLap = Math.min(teamFastestValidLap, fastestValidLap !== 'N/A' ? fastestValidLap : Infinity);
-                    teamDriveTime += driverDriveTime;
+                if (isDriverSwapRace) {
+                    console.log(`🔄 Processing team event for CarID: ${carId}`);
+                    await processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
+                } else {
+                    console.log(`🚗 Processing solo event for CarID: ${carId}`);
+                    await processSoloEvent(carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
                 }
-
-                const avgTeamLapTime = teamLapTimes.length > 0
-                    ? Math.round(teamLapTimes.reduce((sum, lap) => sum + lap, 0) / teamLapTimes.length)
-                    : 'N/A';
-
-                const avgTeamValidLapTime = teamValidLapTimes.length > 0
-                    ? Math.round(teamValidLapTimes.reduce((sum, lap) => sum + lap, 0) / teamValidLapTimes.length)
-                    : 'N/A';
-
-                const fastestPossibleTeamTime = calculateFastestPossibleTime(teamLapsForSplits);
-
-                // console.log(`🏁 Team Stats for Car ID: ${carId}`);
-                // console.log(`   - Total Team Laps: ${teamTotalLaps}`);
-                // console.log(`   - Fastest Team Lap: ${teamFastestValidLap}`);
-                // console.log(`   - Fastest Possible Team Lap: ${fastestPossibleTeamTime}`);
-                // console.log(`   - Average Team Lap Time: ${avgTeamLapTime}`);
-                // console.log(`   - Average Valid Team Lap Time: ${avgTeamValidLapTime}`);
-                // console.log(`   - Total Team Drive Time: ${teamDriveTime}`);
-                // console.log('================================\n');
             }
-
 
             fs.renameSync(filePath, path.join(processedPath, file));
             console.log(`✅ Session ${file} processed successfully.`);
@@ -592,7 +542,12 @@ async function processSessionFiles() {
             await ensureDriversExist(raceLeaderboard);
             await refreshDriverTrackInfo();
             await refreshDriverCarTrackInfo();
+
+            // } else {
+            console.log(`🚗 Single driver race detected. Processing regular logic...`);
+            // Regular processing logic goes here
             // }
+
         }
     } catch (error) {
         console.error('❌ Failed to process session files:', error.message);
