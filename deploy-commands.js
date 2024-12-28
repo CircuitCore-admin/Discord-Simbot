@@ -16,6 +16,25 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 description: 'Test command to check bot response',
             },
             {
+                name: 'car',
+                description: 'Get driver-specific stats for a selected car model',
+                options: [
+                    {
+                        name: 'car_model',
+                        type: 3, // STRING
+                        description: 'Select a car model (e.g., Ferrari 296 GT3 2023)',
+                        required: true,
+                        autocomplete: true
+                    },
+                    {
+                        name: 'user',
+                        type: 6, // USER
+                        description: 'Mention another user to view their car stats (optional)',
+                        required: false
+                    }
+                ]
+            },
+            {
                 name: 'driver_info',
                 description: 'Get details about a specific driver or auto-register them if not fully registered',
                 options: [
@@ -29,6 +48,50 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         name: 'driver_name',
                         type: 3, // STRING type
                         description: 'Search by Driver Real Name',
+                        required: false,
+                    }
+                ],
+            },
+            {
+                name: 'driver_track',
+                description: 'Get driver-specific stats for a specific track',
+                options: [
+                    {
+                        name: 'user',
+                        type: 6, // USER type
+                        description: 'Mention the Discord user',
+                        required: true,
+                    },
+                    {
+                        name: 'track',
+                        type: 3, // STRING type
+                        description: 'Specify the track ID (e.g., spa)',
+                        required: true,
+                    }
+                ],
+            },
+            {
+                name: 'driver_car_track',
+                description: 'Get driver-specific stats for a track and car model',
+                options: [
+                    {
+                        name: 'track',
+                        type: 3, // STRING
+                        description: 'Specify the track ID (e.g., spa)',
+                        required: true,
+                        autocomplete: true,
+                    },
+                    {
+                        name: 'car_model',
+                        type: 3, // STRING
+                        description: 'Specify the car model (e.g., GT3)',
+                        required: true,
+                        autocomplete: true,
+                    },
+                    {
+                        name: 'user',
+                        type: 6, // USER
+                        description: 'Mention another Discord user (optional)',
                         required: false,
                     }
                 ],

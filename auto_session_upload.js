@@ -10,9 +10,10 @@ const driverInfoQuery = loadSQL('driverInfo.sql');
 const driverTrackInfoQuery = loadSQL('driverTrackInfo.sql');
 const driverCarTrackInfoQuery = loadSQL('driverCarTrackInfo.sql');
 const teamSessionStatsQuery = loadSQL('teamSessionStats.sql');
+const driverCarInfoQuery = loadSQL('driverCarInfo.sql');
 
 // Paths
-const resultsPath = path.join(__dirname, 'results');
+const resultsPath = path.join(__dirname, 'results_cleaned');
 const processedPath = path.join(__dirname, 'processed');
 const entrylistPath = path.join(__dirname, 'entrylists');
 
@@ -108,6 +109,16 @@ async function refreshDriverTrackInfo() {
     }
 }
 
+// ✅ Refresh Driver Car Track Info
+async function refreshCarInfo() {
+    try {
+        await db.query(driverCarInfoQuery);
+        console.log('✅ Driver Car Info refreshed successfully.');
+    } catch (error) {
+        console.error('❌ Failed to refresh Driver Car Info:', error.message);
+    }
+}
+
 // ✅ Refresh Team Session Stats
 async function refreshTeamSessionStats(sessionId) {
     try {
@@ -155,6 +166,8 @@ async function refreshDriverCarTrackInfo() {
         console.error('❌ Failed to refresh Driver Car Track Info:', error.message);
     }
 }
+
+
 
 // ✅ Validator for Invalid Sector and Lap Times
 function validateTime(time, invalidValues) {
@@ -730,6 +743,7 @@ async function processSessionFiles() {
             await refreshDriverTrackInfo();
             await refreshDriverCarTrackInfo();
             await refreshDriverInfo();
+            await refreshCarInfo();
             // }
         }
     } catch (error) {

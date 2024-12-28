@@ -1,4 +1,10 @@
-# Congif
+# Ignore a specific folder
+results/
+results_cleaned/
+processed/
+entrylists/
+
+# Config
 .env
 
 # Logs

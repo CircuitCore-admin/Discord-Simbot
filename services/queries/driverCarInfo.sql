@@ -1,0 +1,83 @@
+INSERT INTO driver_car_stats (
+    steam_id,
+    car_model_id,
+    car_class,
+    total_sessions,
+    total_laps,
+    distance_covered,
+    total_off_tracks,
+    best_r_position,
+    best_q_position,
+    fastest_r_lap,
+    fastest_q_lap,
+    fastest_possible_r,
+    fastest_possible_q,
+    fastest_possible_overall,
+    average_valid_r,
+    average_valid_q,
+    average_r,
+    average_q,
+    created_at
+)
+SELECT
+    steam_id,
+    car_model_id,
+    car_class,
+    COALESCE(SUM(total_sessions), 0) AS total_sessions,
+    COALESCE(SUM(total_laps), 0) AS total_laps,
+    COALESCE(SUM(distance_covered), 0.0) AS distance_covered,
+    COALESCE(SUM(total_off_tracks), 0) AS total_off_tracks,
+    MIN(best_r_position) AS best_r_position,
+    MIN(best_q_position) AS best_q_position,
+    MIN(fastest_r_lap) AS fastest_r_lap,
+    MIN(fastest_q_lap) AS fastest_q_lap,
+    MIN(fastest_possible_r) AS fastest_possible_r,
+    MIN(fastest_possible_q) AS fastest_possible_q,
+    MIN(fastest_possible_overall) AS fastest_possible_overall,
+    AVG(average_valid_r) AS average_valid_r,
+    AVG(average_valid_q) AS average_valid_q,
+    AVG(average_r) AS average_r,
+    AVG(average_q) AS average_q,
+    CURRENT_TIMESTAMP AS created_at
+FROM (
+    SELECT DISTINCT ON (steam_id, car_model_id)
+        steam_id,
+        car_model_id,
+        car_class,
+        total_sessions,
+        total_laps,
+        distance_covered,
+        total_off_tracks,
+        best_r_position,
+        best_q_position,
+        fastest_r_lap,
+        fastest_q_lap,
+        fastest_possible_r,
+        fastest_possible_q,
+        fastest_possible_overall,
+        average_valid_r,
+        average_valid_q,
+        average_r,
+        average_q
+    FROM driver_track_info
+    ORDER BY steam_id, car_model_id, created_at DESC
+) AS unique_driver_data
+GROUP BY steam_id, car_model_id, car_class
+ON CONFLICT (steam_id, car_model_id)
+DO UPDATE SET
+    total_sessions = EXCLUDED.total_sessions,
+    total_laps = EXCLUDED.total_laps,
+    distance_covered = EXCLUDED.distance_covered,
+    total_off_tracks = EXCLUDED.total_off_tracks,
+    best_r_position = LEAST(driver_car_stats.best_r_position, EXCLUDED.best_r_position),
+    best_q_position = LEAST(driver_car_stats.best_q_position, EXCLUDED.best_q_position),
+    fastest_r_lap = LEAST(driver_car_stats.fastest_r_lap, EXCLUDED.fastest_r_lap),
+    fastest_q_lap = LEAST(driver_car_stats.fastest_q_lap, EXCLUDED.fastest_q_lap),
+    fastest_possible_r = LEAST(driver_car_stats.fastest_possible_r, EXCLUDED.fastest_possible_r),
+    fastest_possible_q = LEAST(driver_car_stats.fastest_possible_q, EXCLUDED.fastest_possible_q),
+    fastest_possible_overall = LEAST(driver_car_stats.fastest_possible_overall, EXCLUDED.fastest_possible_overall),
+    average_valid_r = (driver_car_stats.average_valid_r + EXCLUDED.average_valid_r) / 2,
+    average_valid_q = (driver_car_stats.average_valid_q + EXCLUDED.average_valid_q) / 2,
+    average_r = (driver_car_stats.average_r + EXCLUDED.average_r) / 2,
+    average_q = (driver_car_stats.average_q + EXCLUDED.average_q) / 2,
+    created_at = CURRENT_TIMESTAMP;
