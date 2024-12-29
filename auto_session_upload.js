@@ -189,6 +189,80 @@ function findCarClassByModel(carModelId) {
     return 'UNKNOWN'; // Fallback if no match is found
 }
 
+// ✅ Generate Cup Category Leaderboards with Leader Intervals
+function generateCupCategoryLeaderboards(sessionResult, sessionType) {
+    const { leaderBoardLines } = sessionResult;
+
+    if (!leaderBoardLines || leaderBoardLines.length === 0) {
+        console.warn('❌ No leaderboard data available.');
+        return {};
+    }
+
+    const cupLeaderboards = {};
+
+    // Step 1: Group entries by cupCategory while maintaining natural order
+    leaderBoardLines.forEach((entry, index) => {
+        const cupCategory = entry.car?.cupCategory ?? 'UNKNOWN';
+
+        if (!cupLeaderboards[cupCategory]) {
+            cupLeaderboards[cupCategory] = [];
+        }
+
+        cupLeaderboards[cupCategory].push({
+            ...entry,
+            overallPosition: index + 1, // Preserve natural order
+        });
+    });
+
+    // Step 2: Assign cup-specific positions and calculate leader intervals
+    Object.keys(cupLeaderboards).forEach(cupCategory => {
+        const cupDrivers = cupLeaderboards[cupCategory];
+
+        if (cupDrivers.length === 0) return;
+
+        // Leader is the first driver in the cup category
+        const leader = cupDrivers[0];
+        const leaderLaps = leader.timing?.lapCount || 0;
+        const leaderBestLap = leader.timing?.bestLap || 'N/A';
+        const leaderTotalTime = leader.timing?.totalTime || 'N/A';
+
+        cupDrivers.forEach((entry, index) => {
+            entry.cupPosition = index + 1; // Position within cupCategory
+
+            const driverTotalTime = entry.timing?.totalTime || 0;
+            const driverLapCount = entry.timing?.lapCount || 0;
+            const driverBestLap = entry.timing?.bestLap || null;
+
+            let leaderDelta = null;
+
+            if (driverLapCount === 0) {
+                leaderDelta = null; // No completed laps
+            } else if (sessionType === 'FP' || sessionType === 'Q') {
+                if (driverBestLap && leaderBestLap) {
+                    const timeDelta = driverBestLap - leaderBestLap;
+                    leaderDelta = `+${formatLapTime(timeDelta)}`;
+                } else {
+                    leaderDelta = null;
+                }
+            } else if (sessionType === 'R') {
+                if (driverLapCount < leaderLaps) {
+                    const lapDifference = leaderLaps - driverLapCount;
+                    leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
+                } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
+                    const timeDelta = driverTotalTime - leaderTotalTime;
+                    leaderDelta = `+${formatLapTime(timeDelta)}`;
+                } else {
+                    leaderDelta = null;
+                }
+            }
+
+            entry.leaderDelta = leaderDelta;
+        });
+    });
+
+    return cupLeaderboards;
+}
+
 // ✅ Generate Class Leaderboards with Proper DNF Handling
 function generateClassLeaderboards(sessionResult, sessionType) {
     const { leaderBoardLines } = sessionResult;
@@ -543,6 +617,28 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
         classDelta
     }
 
+    let cupPosition = null;
+    let cupDelta = null;
+
+    // Step 1: Generate Cup Category Leaderboards
+    const cupLeaderboards = generateCupCategoryLeaderboards({ leaderBoardLines: raceLeaderboard }, sessionType);
+
+    // Step 2: Find the cup position and delta for the current car
+    Object.keys(cupLeaderboards).forEach(cupCategory => {
+        cupLeaderboards[cupCategory].forEach(entry => {
+            if (entry.car?.carId === carId) {
+                cupPosition = entry.cupPosition;
+                cupDelta = entry.leaderDelta;
+            }
+        });
+    });
+
+    const cupInformation = {
+        carId,
+        cupPosition,
+        cupDelta
+    };
+
     // 🏁 Extract finishing position and leader information
     const finishingPosition = raceLeaderboard.findIndex(entry => entry.car?.carId === carId) + 1;
 
@@ -684,7 +780,9 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
             carClass: carInfo.carClass, // ✅ CarClass for the driver
             driverDriveTime,
             classPosition: classInformation.classPosition,
-            classDelta: classInformation.classDelta            
+            classDelta: classInformation.classDelta,
+            cupPosition: cupInformation.cupPosition,
+            cupDelta: cupInformation.cupDelta
         };
 
         driverStats.push(driverStat);
@@ -712,8 +810,8 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
 
         await db.query(
             `INSERT INTO driver_session_stats 
-            (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time, class_position, class_delta)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+             (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time, class_position, class_delta, category_position, category_delta)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
             [
                 sessionId,
                 driverStat.steamId,
@@ -737,7 +835,9 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
                 driverStat.validLaps,
                 driverStat.driverDriveTime,
                 driverStat.classPosition,
-                driverStat.classDelta
+                driverStat.classDelta,
+                driverStat.cupPosition,
+                driverStat.cupDelta
             ]
         );
         // console.log(`🆕 Driver stats inserted into database: ${driverStat.steamId}`);
