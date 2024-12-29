@@ -179,6 +179,123 @@ function sanitizeNumeric(value) {
     return (value === 'N/A' || value == null || isNaN(value)) ? null : value;
 }
 
+// ✅ Function to Find Car Class by Model ID
+function findCarClassByModel(carModelId) {
+    for (const [carClass, models] of Object.entries(carModels)) {
+        if (models[carModelId]) {
+            return carClass;
+        }
+    }
+    return 'UNKNOWN'; // Fallback if no match is found
+}
+
+// ✅ Generate Class Leaderboards with Proper DNF Handling
+function generateClassLeaderboards(sessionResult, sessionType) {
+    const { leaderBoardLines } = sessionResult;
+    // console.log(leaderBoardLines)
+    if (!leaderBoardLines || leaderBoardLines.length === 0) {
+        console.warn('❌ No leaderboard data available.');
+        return {};
+    }
+
+    const classLeaderboards = {};
+
+    // Step 1: Group entries by class
+    leaderBoardLines.forEach((entry, index) => {
+        const carModelId = entry.car?.carModel;
+        if (!carModelId) {
+            console.warn(`⚠️ Missing carModel for carId: ${entry.car?.carId}`);
+            return;
+        }
+
+        const carClass = findCarClassByModel(carModelId);
+
+        if (!classLeaderboards[carClass]) {
+            classLeaderboards[carClass] = [];
+        }
+
+        classLeaderboards[carClass].push({
+            ...entry,
+            originalOrder: index + 1, // Preserve initial order before separation
+        });
+    });
+
+    // Step 2: Handle valid and DNF drivers separately
+    Object.keys(classLeaderboards).forEach(carClass => {
+        let classDrivers = classLeaderboards[carClass];
+
+        const validDrivers = [];
+        const dnfDrivers = [];
+
+        // Separate valid drivers from DNF
+        classDrivers.forEach((entry) => {
+            const driverLapCount = entry.timing?.lapCount || 0;
+            const driverBestLap = entry.timing?.bestLap || null;
+            const driverTotalTime = entry.timing?.totalTime || 0;
+
+            if (driverLapCount > 0 && driverBestLap && driverTotalTime > 0) {
+                validDrivers.push(entry);
+            } else {
+                entry.leaderDelta = 'DNF';
+                entry.classPosition = null; // Explicitly set to null
+                entry.overallPosition = null; // Explicitly set to null
+                dnfDrivers.push(entry);
+            }
+        });
+
+        // Step 3: Assign `classPosition` and `overallPosition` for valid drivers
+        if (validDrivers.length > 0) {
+            const leader = validDrivers[0];
+            const leaderLaps = leader.timing?.lapCount || 0;
+            const leaderBestLap = leader.timing?.bestLap || 'N/A';
+            const leaderTotalTime = leader.timing?.totalTime || 'N/A';
+
+            validDrivers.forEach((entry, index) => {
+                entry.classPosition = index + 1; // Sequential for valid drivers
+                entry.overallPosition = entry.originalOrder; // Retain race order
+
+                const driverTotalTime = entry.timing?.totalTime || 0;
+                const driverLapCount = entry.timing?.lapCount || 0;
+                const driverBestLap = entry.timing?.bestLap || null;
+
+                let leaderDelta = null;
+
+                if (sessionType === 'FP' || sessionType === 'Q') {
+                    if (driverBestLap && leaderBestLap) {
+                        const timeDelta = driverBestLap - leaderBestLap;
+                        leaderDelta = `+${formatLapTime(timeDelta)}`;
+                    } else {
+                        leaderDelta = 'N/A';
+                    }
+                } else if (sessionType === 'R') {
+                    if (driverLapCount < leaderLaps) {
+                        const lapDifference = leaderLaps - driverLapCount;
+                        leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
+                    } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
+                        const timeDelta = driverTotalTime - leaderTotalTime;
+                        leaderDelta = `+${formatLapTime(timeDelta)}`;
+                    } else {
+                        leaderDelta = 'N/A';
+                    }
+                }
+
+                entry.leaderDelta = leaderDelta;
+            });
+        }
+
+        // Step 4: Set `overallPosition` and `classPosition` for DNF drivers
+        dnfDrivers.forEach((entry) => {
+            entry.classPosition = null; // No class position
+            entry.overallPosition = null; // No overall position
+        });
+
+        // Step 5: Merge valid and DNF drivers
+        classLeaderboards[carClass] = [...validDrivers, ...dnfDrivers];
+    });
+
+    return classLeaderboards;
+}
+
 async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard) {
     if (!carId || !carEntry || !carEntry.car) {
         console.warn(`⚠️ Invalid CarID or missing car data for team event. Skipping.`);
@@ -405,13 +522,26 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
     const car_model_id = carEntry.car.carModel || 'Unknown Model'; // Extract carModel for the team
     const cupCategory = carEntry.car.cupCategory ?? 0; // Extract cupCategory explicitly, default to 0 if undefined
 
-    let teamTotalLaps = 0,
-        teamValidLaps = 0,
-        teamDriveTime = 0;
-    let teamLapTimes = [],
-        teamValidLapTimes = [],
-        teamLapsForSplits = [];
-    let teamFastestValidLap = Infinity;
+    let classPosition = null;
+    let classDelta = null;
+
+    // Step 1: Generate Class Leaderboards
+    const classLeaderboards = generateClassLeaderboards({ leaderBoardLines: raceLeaderboard }, sessionType);
+
+    // Step 2: Find the class position and delta for the current car
+    Object.keys(classLeaderboards).forEach(carClass => {
+        classLeaderboards[carClass].forEach(entry => {
+            if (entry.car?.carId === carId) {
+                classPosition = entry.classPosition;
+                classDelta = entry.leaderDelta;
+            }
+        });
+    });
+    const classInformation = {
+        carId,
+        classPosition,
+        classDelta
+    }
 
     // 🏁 Extract finishing position and leader information
     const finishingPosition = raceLeaderboard.findIndex(entry => entry.car?.carId === carId) + 1;
@@ -552,7 +682,9 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
             fastest_s2,
             fastest_s3,
             carClass: carInfo.carClass, // ✅ CarClass for the driver
-            driverDriveTime
+            driverDriveTime,
+            classPosition: classInformation.classPosition,
+            classDelta: classInformation.classDelta            
         };
 
         driverStats.push(driverStat);
@@ -580,8 +712,8 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
 
         await db.query(
             `INSERT INTO driver_session_stats 
-            (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+            (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time, class_position, class_delta)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
             [
                 sessionId,
                 driverStat.steamId,
@@ -603,7 +735,9 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
                 driverStat.carId,
                 driverStat.totalLaps,
                 driverStat.validLaps,
-                driverStat.driverDriveTime
+                driverStat.driverDriveTime,
+                driverStat.classPosition,
+                driverStat.classDelta
             ]
         );
         // console.log(`🆕 Driver stats inserted into database: ${driverStat.steamId}`);

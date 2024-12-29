@@ -21,15 +21,7 @@ function findCarClassByModel(carModelId) {
     }
     return 'UNKNOWN'; // Fallback if no match is found
 }
-// ✅ Function to Find Car Class by Model ID
-function findCarClassByModel(carModelId) {
-    for (const [carClass, models] of Object.entries(carModels)) {
-        if (models[carModelId]) {
-            return carClass;
-        }
-    }
-    return 'UNKNOWN'; // Fallback if no match is found
-}
+
 // ✅ Format Lap Time
 function formatLapTime(ms) {
     if (ms === 'N/A' || ms == null) return null;
@@ -148,7 +140,7 @@ function generateClassLeaderboards(sessionResult, sessionType) {
 
 // ✅ Example Usage
 try {
-    const sessionResult = loadData('./results_cleaned/241216_195850_R(1)_clean.json').sessionResult;
+    const sessionResult = loadData('./code_snippets/results_cleaned/241216_195850_R(1)_clean.json').sessionResult;
     const sessionType = 'R'; // Adjust based on session type (FP, Q, R)
 
     const classLeaderboards = generateClassLeaderboards(sessionResult, sessionType);
@@ -171,7 +163,7 @@ try {
 
 
 // Example Usage
-const sessionResult = loadData('./results_cleaned/241216_195850_R(1)_clean.json').sessionResult;
+const sessionResult = loadData('./code_snippets/results_cleaned/241216_195850_R(1)_clean.json').sessionResult;
 const classLeaderboards = generateClassLeaderboards(sessionResult);
 
 // Display the GT3 class leaderboard
