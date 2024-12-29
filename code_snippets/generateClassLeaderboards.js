@@ -30,7 +30,6 @@ function findCarClassByModel(carModelId) {
     }
     return 'UNKNOWN'; // Fallback if no match is found
 }
-
 // ✅ Format Lap Time
 function formatLapTime(ms) {
     if (ms === 'N/A' || ms == null) return null;
@@ -40,7 +39,7 @@ function formatLapTime(ms) {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
 }
 
-// ✅ Generate Class Leaderboards with Leader Delta
+// ✅ Generate Class Leaderboards with Proper DNF Handling
 function generateClassLeaderboards(sessionResult, sessionType) {
     const { leaderBoardLines } = sessionResult;
 
@@ -67,54 +66,81 @@ function generateClassLeaderboards(sessionResult, sessionType) {
 
         classLeaderboards[carClass].push({
             ...entry,
-            overallPosition: index + 1, // Preserve natural order
+            originalOrder: index + 1, // Preserve initial order before separation
         });
     });
 
-    // Step 2: Assign class-specific positions and calculate leader intervals
+    // Step 2: Handle valid and DNF drivers separately
     Object.keys(classLeaderboards).forEach(carClass => {
-        const classDrivers = classLeaderboards[carClass];
+        let classDrivers = classLeaderboards[carClass];
 
-        if (classDrivers.length === 0) return;
+        const validDrivers = [];
+        const dnfDrivers = [];
 
-        // Leader is the first driver in the class
-        const leader = classDrivers[0];
-        const leaderLaps = leader.timing?.lapCount || 0;
-        const leaderBestLap = leader.timing?.bestLap || 'N/A';
-        const leaderTotalTime = leader.timing?.totalTime || 'N/A';
-
-        classDrivers.forEach((entry, index) => {
-            entry.classPosition = index + 1; // Position within class
-
-            const driverTotalTime = entry.timing?.totalTime || 0;
+        // Separate valid drivers from DNF
+        classDrivers.forEach((entry) => {
             const driverLapCount = entry.timing?.lapCount || 0;
             const driverBestLap = entry.timing?.bestLap || null;
+            const driverTotalTime = entry.timing?.totalTime || 0;
 
-            let leaderDelta = null;
-
-            if (driverLapCount === 0) {
-                leaderDelta = null; // No completed laps
-            } else if (sessionType === 'FP' || sessionType === 'Q') {
-                if (driverBestLap && leaderBestLap) {
-                    const timeDelta = driverBestLap - leaderBestLap;
-                    leaderDelta = `+${formatLapTime(timeDelta)}`;
-                } else {
-                    leaderDelta = null;
-                }
-            } else if (sessionType === 'R') {
-                if (driverLapCount < leaderLaps) {
-                    const lapDifference = leaderLaps - driverLapCount;
-                    leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
-                } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
-                    const timeDelta = driverTotalTime - leaderTotalTime;
-                    leaderDelta = `+${formatLapTime(timeDelta)}`;
-                } else {
-                    leaderDelta = null;
-                }
+            if (driverLapCount > 0 && driverBestLap && driverTotalTime > 0) {
+                validDrivers.push(entry);
+            } else {
+                entry.leaderDelta = 'DNF';
+                entry.classPosition = null; // Explicitly set to null
+                entry.overallPosition = null; // Explicitly set to null
+                dnfDrivers.push(entry);
             }
-
-            entry.leaderDelta = leaderDelta;
         });
+
+        // Step 3: Assign `classPosition` and `overallPosition` for valid drivers
+        if (validDrivers.length > 0) {
+            const leader = validDrivers[0];
+            const leaderLaps = leader.timing?.lapCount || 0;
+            const leaderBestLap = leader.timing?.bestLap || 'N/A';
+            const leaderTotalTime = leader.timing?.totalTime || 'N/A';
+
+            validDrivers.forEach((entry, index) => {
+                entry.classPosition = index + 1; // Sequential for valid drivers
+                entry.overallPosition = entry.originalOrder; // Retain race order
+
+                const driverTotalTime = entry.timing?.totalTime || 0;
+                const driverLapCount = entry.timing?.lapCount || 0;
+                const driverBestLap = entry.timing?.bestLap || null;
+
+                let leaderDelta = null;
+
+                if (sessionType === 'FP' || sessionType === 'Q') {
+                    if (driverBestLap && leaderBestLap) {
+                        const timeDelta = driverBestLap - leaderBestLap;
+                        leaderDelta = `+${formatLapTime(timeDelta)}`;
+                    } else {
+                        leaderDelta = 'N/A';
+                    }
+                } else if (sessionType === 'R') {
+                    if (driverLapCount < leaderLaps) {
+                        const lapDifference = leaderLaps - driverLapCount;
+                        leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
+                    } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
+                        const timeDelta = driverTotalTime - leaderTotalTime;
+                        leaderDelta = `+${formatLapTime(timeDelta)}`;
+                    } else {
+                        leaderDelta = 'N/A';
+                    }
+                }
+
+                entry.leaderDelta = leaderDelta;
+            });
+        }
+
+        // Step 4: Set `overallPosition` and `classPosition` for DNF drivers
+        dnfDrivers.forEach((entry) => {
+            entry.classPosition = null; // No class position
+            entry.overallPosition = null; // No overall position
+        });
+
+        // Step 5: Merge valid and DNF drivers
+        classLeaderboards[carClass] = [...validDrivers, ...dnfDrivers];
     });
 
     return classLeaderboards;
@@ -129,7 +155,7 @@ try {
 
     // Display leaderboards for each class
     Object.keys(classLeaderboards).forEach(carClass => {
-        console.log(`🏎️ ${carClass} Class Leaderboard with Leader Intervals:`);
+        console.log(`🏎️ ${carClass} Class Leaderboard with Null Positions for DNF:`);
         console.table(classLeaderboards[carClass].map(entry => ({
             driver: entry.car?.drivers?.[0]?.firstName + ' ' + entry.car?.drivers?.[0]?.lastName,
             carModel: entry.car?.carModel,
@@ -139,13 +165,13 @@ try {
         })));
     });
 } catch (error) {
-    console.error('❌ Error generating class leaderboards with leader intervals:', error.message);
+    console.error('❌ Error generating class leaderboards with DNF handling:', error.message);
 }
 
 
 
 // Example Usage
-const sessionResult = loadData('./results_cleaned/241216_224343_R(4).json').sessionResult;
+const sessionResult = loadData('./results_cleaned/241216_195850_R(1)_clean.json').sessionResult;
 const classLeaderboards = generateClassLeaderboards(sessionResult);
 
 // Display the GT3 class leaderboard

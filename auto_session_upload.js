@@ -742,8 +742,8 @@ async function processSessionFiles() {
             await ensureDriversExist(raceLeaderboard);
             await refreshDriverTrackInfo();
             await refreshDriverCarTrackInfo();
-            await refreshDriverInfo();
             await refreshCarInfo();
+            await refreshDriverInfo();
             // }
         }
     } catch (error) {
