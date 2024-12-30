@@ -1133,7 +1133,7 @@ async function processSessionFiles() {
             await refreshDriverCarTrackInfo();
             await refreshCarInfo();
             await refreshDriverInfo();
-            // }
+            
         }
     } catch (error) {
         console.error('❌ Failed to process session files:', error.message);
