@@ -1124,7 +1124,7 @@ async function processSessionFiles() {
                 }
             }
 
-            fs.renameSync(filePath, path.join(processedPath, file));
+            // fs.renameSync(filePath, path.join(processedPath, file));
             console.log(`✅ Session ${file} processed successfully.`);
 
             await markTeamEvent(sessionId);

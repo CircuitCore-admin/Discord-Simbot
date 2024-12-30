@@ -1,4 +1,4 @@
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, ActivityType } = require('discord.js');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -31,6 +31,21 @@ for (const file of eventFiles) {
     }
 }
 
+// Bot is Ready
+client.once('ready', () => {
+    console.log(`✅ Logged in as ${client.user.tag}`);
+
+    // Set Bot Presence
+    client.user.setPresence({
+        status: 'online', // online, idle, dnd, invisible
+        activities: [
+            {
+                name: 'over WGC', // Activity name
+                type: ActivityType.Watching, // Playing, Streaming, Listening, Watching, Competing
+            }
+        ],
+    });
+});
+
 // Log in to Discord
 client.login(process.env.DISCORD_TOKEN);
-// console.log(process.env.DISCORD_TOKEN);
