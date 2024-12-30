@@ -13,13 +13,25 @@ const teamSessionStatsQuery = loadSQL('teamSessionStats.sql');
 const driverCarInfoQuery = loadSQL('driverCarInfo.sql');
 
 // Paths
+
+const { cleanJsonFilesInDirectory } = require('./json_cleaner');
+
+const resultsRawPath = path.join(__dirname, 'results'); // Raw JSON files
+const resultsCleanedPath = path.join(__dirname, 'results_cleaned'); // Cleaned JSON files
 const resultsPath = path.join(__dirname, 'results_cleaned');
 const processedPath = path.join(__dirname, 'processed');
 const entrylistPath = path.join(__dirname, 'entrylists');
-
+// Directories
 // ✅ Import the car class helper
 const { getCarClass, getCarModel } = require('./helpers/carClassHelper');
 const { log } = require('console');
+
+// ✅ Clean JSON Files Before Processing
+function cleanJsonFiles() {
+    console.log('🧹 Cleaning JSON files...');
+    cleanJsonFilesInDirectory(resultsRawPath, resultsCleanedPath);
+    console.log('✅ JSON files cleaned successfully.');
+}
 
 // ✅ Helper function to sanitize SteamID
 function sanitizeSteamId(steamId) {
@@ -381,7 +393,6 @@ async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsDat
         return;
     }
 
-    // console.log(carEntry);
     const drivers = carEntry.car.drivers;
     const car_model_id = carEntry.car.carModel || 'Unknown Model'; // Extract carModel for the team
     const cupCategory = carEntry.car.cupCategory ?? 0; // Extract cupCategory explicitly, default to 0 if undefined
@@ -402,199 +413,11 @@ async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsDat
     const leaderBestLap = leaderEntry?.timing?.bestLap || 'N/A';
     const leaderTotalTime = leaderEntry?.timing?.totalTime || 'N/A';
 
-    // const leaderTotalTime = raceLeaderboard[0]?.timing?.totalTime || 0;
     const driverTotalTime = carEntry.timing?.totalTime || 0;
     const driverLapCount = carEntry.timing?.lapCount || 0;
     const hasCompletedLaps = driverLapCount > 0;
     const leaderLapCount = raceLeaderboard[0]?.timing?.lapCount || 0;
     const driverFastestLap = carEntry.timing?.bestLap || null;
-
-    if (!hasCompletedLaps) {
-        console.warn(`⚠️ Driver ${driverIndex} has not completed any laps. Skipping.`);
-        leaderDelta = null;
-    } else if (sessionType === 'FP' || sessionType === 'Q') {
-        if (driverFastestLap && leaderBestLap) {
-            const timeDelta = driverFastestLap - leaderBestLap;
-            leaderDelta = `+${formatLapTime(timeDelta)}`;
-        } else {
-            leaderDelta = null;
-        }
-    } else if (sessionType === 'R') {
-        if (driverLapCount < leaderLaps) {
-            const lapDifference = leaderLapCount - driverLapCount;
-            leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
-        } else if (driverLapCount === leaderLapCount && leaderTotalTime > 0 && driverTotalTime > 0) {
-            const timeDelta = driverTotalTime - leaderTotalTime;
-            leaderDelta = `+${formatLapTime(timeDelta)}`;
-        } else {
-            leaderDelta = null;
-        }
-    }
-
-    // console.log(leaderDelta)
-    const leaderInfo = {
-        leaderLaps,
-        leaderBestLap,
-        leaderTotalTime
-    };
-
-    // 🗂️ Extract totalTime from raceLeaderboard accurately
-    const totalTimeFromLeaderboard = raceLeaderboard.find(entry => entry.car?.carId === carId)?.timing?.totalTime || null;
-
-    // 🗂️ Group laps by driverIndex
-    const groupedLapsByDriverIndex = {};
-    lapsData
-        .filter(lap => lap.carId === carId)
-        .forEach(lap => {
-            if (!groupedLapsByDriverIndex[lap.driverIndex]) {
-                groupedLapsByDriverIndex[lap.driverIndex] = [];
-            }
-            groupedLapsByDriverIndex[lap.driverIndex].push(lap);
-        });
-
-    const driverStats = [];
-
-    // 🚦 Iterate through drivers and map them to grouped lap data
-    for (let driverIndex = 0; driverIndex < drivers.length; driverIndex++) {
-        const driver = drivers[driverIndex];
-        const driverLaps = groupedLapsByDriverIndex[driverIndex] || [];
-        const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
-        const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
-        // ✅ Sanitize SteamID
-        const steamIdRaw = driver?.playerId || `Unknown_ID_${driverIndex}`;
-        const steamId = sanitizeSteamId(steamIdRaw);
-
-        // ✅ Get carModel for the driver (fallback to team carModel)
-        // const driverCarModel = driver?.car?.carModel || carModel || 'Unknown Model';
-
-        const avgLapTime = driverLaps.length > 0
-            ? sanitizeNumeric(Math.round(driverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / driverLaps.length))
-            : null;
-
-        // ✅ Calculate Average Valid Lap Time
-        const avgValidLapTime = validDriverLaps.length > 0
-            ? sanitizeNumeric(Math.round(validDriverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / validDriverLaps.length))
-            : null;
-
-        // ✅ Calculate Fastest Valid Lap
-        const fastestValidLap = validDriverLaps.length > 0
-            ? sanitizeNumeric(Math.min(...validDriverLaps.map(lap => lap.laptime)))
-            : null;
-
-
-        const fastestPossibleTime = await calculateFastestPossibleTime(validDriverLaps);
-
-        const driverDriveTime = driverLaps.reduce((sum, lap) => sum + lap.laptime, 0);
-
-        // 🏁 Initialize static fastest splits
-        let fastest_s1 = null;
-        let fastest_s2 = null;
-        let fastest_s3 = null;
-
-        validDriverLaps.forEach(lap => {
-            if (lap.splits) {
-                lap.splits.forEach((splitTime, splitIndex) => {
-                    if (splitIndex === 0 && (fastest_s1 === null || splitTime < fastest_s1)) {
-                        fastest_s1 = splitTime;
-                    }
-                    if (splitIndex === 1 && (fastest_s2 === null || splitTime < fastest_s2)) {
-                        fastest_s2 = splitTime;
-                    }
-                    if (splitIndex === 2 && (fastest_s3 === null || splitTime < fastest_s3)) {
-                        fastest_s3 = splitTime;
-                    }
-                });
-            }
-        });
-
-        // Extract lap count for the current driver
-        const driverLapCount = raceLeaderboard.find(entry => entry.car?.carId === carId)?.timing?.lapCount || 0;
-
-        const carInfo = await fetchCarDetails(car_model_id);
-
-        const driverStat = {
-            steamId, // ✅ Sanitized SteamID
-            carId, // ✅ CarID for the driver
-            carModel: carInfo.carModel, // ✅ CarID for the driver
-            car_model_id,
-            name: `${driver?.firstName || 'Unknown'} ${driver?.lastName || 'Driver'}`, // ✅ Driver Name
-            cupCategory, // ✅ Cup Category for the driver
-            finishingPosition, // ✅ Finishing Position
-            leaderDelta, // ✅ Leader Delta
-            driverIndex, // ✅ Driver Index
-            totalLaps: driverLaps.length,
-            validLaps: validDriverLaps.length,
-            avgLapTime,
-            avgValidLapTime,
-            fastestValidLap,
-            fastestPossibleTime,
-            totalDriveTime: totalTimeFromLeaderboard,
-            fastest_s1,
-            fastest_s2,
-            fastest_s3,
-            carClass: carInfo.carClass, // ✅ CarClass for the driver
-            driverDriveTime
-        };
-
-        driverStats.push(driverStat);
-
-        // Insert driver stats into the database
-        await insertDriverStatsIntoDatabase(sessionId, driverStat);
-
-        // Aggregate team stats
-        teamTotalLaps += driverLaps.length;
-        teamValidLaps += validDriverLaps.length;
-        teamLapTimes.push(...driverLaps.map(lap => lap.laptime));
-        teamValidLapTimes.push(...validDriverLaps.map(lap => lap.laptime));
-        teamLapsForSplits.push(...validDriverLaps);
-        teamFastestValidLap = Math.min(teamFastestValidLap, fastestValidLap !== null ? fastestValidLap : Infinity);
-        teamDriveTime += driverDriveTime;
-    }
-
-    // await logDriverStats(driverStats, sessionId, totalTimeFromLeaderboard);
-
-    const avgTeamLapTime = teamLapTimes.length > 0
-        ? sanitizeNumeric(Math.round(teamLapTimes.reduce((sum, lap) => sum + lap, 0) / teamLapTimes.length))
-        : null;
-
-    const avgTeamValidLapTime = teamValidLapTimes.length > 0
-        ? sanitizeNumeric(Math.round(teamValidLapTimes.reduce((sum, lap) => sum + lap, 0) / teamValidLapTimes.length))
-        : null;
-
-    const fastestPossibleTeamTime = calculateFastestPossibleTime(teamLapsForSplits);
-
-    const teamStats = {
-        carId,
-        car_model_id,
-        cupCategory, // ✅ Added cupCategory to teamStats
-        finishingPosition,
-        leaderDelta, // Removed from here, handled per driver
-        teamTotalLaps,
-        teamFastestValidLap,
-        fastestPossibleTeamTime,
-        avgTeamLapTime,
-        avgTeamValidLapTime,
-        teamDriveTime,
-        totalTime: totalTimeFromLeaderboard, // ✅ Added totalTime from results
-        drivers: driverStats
-    };
-}
-
-async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard) {
-    if (!carId || !carEntry || !carEntry.car) {
-        console.warn(`⚠️ Invalid CarID or missing car data for team event. Skipping.`);
-        return;
-    }
-
-    if (!carEntry.car.drivers || carEntry.car.drivers.length === 0) {
-        console.warn(`⚠️ No drivers found for CarID: ${carId}. Skipping team event.`);
-        return;
-    }
-
-    // console.log(carEntry);
-    const drivers = carEntry.car.drivers;
-    const car_model_id = carEntry.car.carModel || 'Unknown Model'; // Extract carModel for the team
-    const cupCategory = carEntry.car.cupCategory ?? 0; // Extract cupCategory explicitly, default to 0 if undefined
 
     let classPosition = null;
     let classDelta = null;
@@ -639,6 +462,293 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
         cupDelta
     };
 
+    let leaderDelta = null;
+    if (!hasCompletedLaps) {
+        console.warn(`⚠️ Driver has not completed any laps. Skipping.`);
+        leaderDelta = null;
+    } else if (sessionType === 'FP' || sessionType === 'Q') {
+        if (driverFastestLap && leaderBestLap) {
+            const timeDelta = driverFastestLap - leaderBestLap;
+            leaderDelta = `${formatLapTime(timeDelta)}`;
+        } else {
+            leaderDelta = null;
+        }
+    } else if (sessionType === 'R') {
+        if (driverLapCount < leaderLaps) {
+            const lapDifference = leaderLaps - driverLapCount;
+            leaderDelta = `${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
+        } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
+            const timeDelta = driverTotalTime - leaderTotalTime;
+            leaderDelta = `${formatLapTime(timeDelta)}`;
+        } else {
+            leaderDelta = null;
+        }
+    }
+
+    const leaderInfo = {
+        leaderLaps,
+        leaderBestLap,
+        leaderTotalTime
+    };
+
+    const totalTimeFromLeaderboard = raceLeaderboard.find(entry => entry.car?.carId === carId)?.timing?.totalTime || null;
+    const raceNumber = carEntry.car.raceNumber || 'N/A';
+
+    const groupedLapsByDriverIndex = {};
+    lapsData
+        .filter(lap => lap.carId === carId)
+        .forEach(lap => {
+            if (!groupedLapsByDriverIndex[lap.driverIndex]) {
+                groupedLapsByDriverIndex[lap.driverIndex] = [];
+            }
+            groupedLapsByDriverIndex[lap.driverIndex].push(lap);
+        });
+
+    const driverStats = [];
+
+    for (let driverIndex = 0; driverIndex < drivers.length; driverIndex++) {
+        const driver = drivers[driverIndex];
+        const driverLaps = groupedLapsByDriverIndex[driverIndex] || [];
+        const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
+        const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
+
+        const steamIdRaw = driver?.playerId || `Unknown_ID_${driverIndex}`;
+        const steamId = sanitizeSteamId(steamIdRaw);
+
+        const avgLapTime = driverLaps.length > 0
+            ? sanitizeNumeric(Math.round(driverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / driverLaps.length))
+            : null;
+
+        const avgValidLapTime = validDriverLaps.length > 0
+            ? sanitizeNumeric(Math.round(validDriverLaps.reduce((sum, lap) => sum + lap.laptime, 0) / validDriverLaps.length))
+            : null;
+
+        const fastestValidLap = validDriverLaps.length > 0
+            ? sanitizeNumeric(Math.min(...validDriverLaps.map(lap => lap.laptime)))
+            : null;
+
+        const fastestPossibleTime = calculateFastestPossibleTime(validDriverLaps);
+
+        const driverDriveTime = driverLaps.reduce((sum, lap) => sum + lap.laptime, 0);
+
+        let fastest_s1 = null;
+        let fastest_s2 = null;
+        let fastest_s3 = null;
+
+        validDriverLaps.forEach(lap => {
+            if (lap.splits) {
+                lap.splits.forEach((splitTime, splitIndex) => {
+                    if (splitIndex === 0 && (fastest_s1 === null || splitTime < fastest_s1)) {
+                        fastest_s1 = splitTime;
+                    }
+                    if (splitIndex === 1 && (fastest_s2 === null || splitTime < fastest_s2)) {
+                        fastest_s2 = splitTime;
+                    }
+                    if (splitIndex === 2 && (fastest_s3 === null || splitTime < fastest_s3)) {
+                        fastest_s3 = splitTime;
+                    }
+                });
+            }
+        });
+
+        const driverLapCount = raceLeaderboard.find(entry => entry.car?.carId === carId)?.timing?.lapCount || 0;
+
+        const carInfo = await fetchCarDetails(car_model_id);
+
+        const driverStat = {
+            steamId,
+            carId,
+            carModel: carInfo.carModel,
+            car_model_id,
+            name: `${driver?.firstName || 'Unknown'} ${driver?.lastName || 'Driver'}`,
+            cupCategory,
+            finishingPosition,
+            leaderDelta,
+            driverIndex,
+            totalLaps: driverLaps.length,
+            validLaps: validDriverLaps.length,
+            avgLapTime,
+            avgValidLapTime,
+            fastestValidLap,
+            fastestPossibleTime,
+            totalDriveTime: totalTimeFromLeaderboard,
+            fastest_s1,
+            fastest_s2,
+            fastest_s3,
+            carClass: carInfo.carClass,
+            driverDriveTime,
+            classPosition: classInformation.classPosition,
+            classDelta: classInformation.classDelta,
+            cupPosition: cupInformation.cupPosition,
+            cupDelta: cupInformation.cupDelta,
+            raceNumber
+        };
+
+        driverStats.push(driverStat);
+
+        await insertDriverStatsIntoDatabase(sessionId, driverStat);
+
+        // Aggregate team stats
+        teamTotalLaps += driverLaps.length;
+        teamValidLaps += validDriverLaps.length;
+        teamLapTimes.push(...driverLaps.map(lap => lap.laptime));
+        teamValidLapTimes.push(...validDriverLaps.map(lap => lap.laptime));
+        teamLapsForSplits.push(...validDriverLaps);
+        teamFastestValidLap = Math.min(teamFastestValidLap, fastestValidLap !== null ? fastestValidLap : Infinity);
+        teamDriveTime += driverDriveTime;
+    }
+
+    const avgTeamLapTime = teamLapTimes.length > 0
+        ? sanitizeNumeric(Math.round(teamLapTimes.reduce((sum, lap) => sum + lap, 0) / teamLapTimes.length))
+        : null;
+
+    const avgTeamValidLapTime = teamValidLapTimes.length > 0
+        ? sanitizeNumeric(Math.round(teamValidLapTimes.reduce((sum, lap) => sum + lap, 0) / teamValidLapTimes.length))
+        : null;
+
+    const fastestPossibleTeamTime = calculateFastestPossibleTime(teamLapsForSplits);
+    const car_class = findCarClassByModel(car_model_id);
+    const teamStats = {
+        carId,
+        car_model_id,
+        car_class,
+        cupCategory,
+        finishingPosition,
+        leaderDelta,
+        classPosition: classInformation.classPosition,
+        classDelta: classInformation.classDelta,
+        cupPosition: cupInformation.cupPosition,
+        cupDelta: cupInformation.cupDelta,
+        teamTotalLaps,
+        teamValidLaps,
+        teamFastestValidLap,
+        fastestPossibleTeamTime,
+        avgTeamLapTime,
+        avgTeamValidLapTime,
+        teamDriveTime,
+        totalTime: totalTimeFromLeaderboard,
+        driverCount: driverStats.length,
+        raceNumber,
+        drivers: driverStats
+    };
+
+    await insertTeamStatsIntoDatabase(sessionId, teamStats, driverStats);
+}
+
+// ✅ Insert Team Stats into the Database
+async function insertTeamStatsIntoDatabase(sessionId, teamStats, driverStats) {
+    try {
+        for (const driverStat of driverStats) {
+            // Check if steam_id is valid
+            if (!driverStat.steamId) {
+                console.warn(`⚠️ Invalid SteamID for driver: ${driverStat.name}. Skipping insertion.`);
+                continue;
+            }
+
+            // ✅ Add Driver to driver_info
+            await db.query(
+                `INSERT INTO driver_info (steam_id, real_name) 
+         VALUES ($1, $2) ON CONFLICT (steam_id) DO NOTHING`,
+                [driverStat.steamId, driverStat.name]
+            );
+        }
+
+        // ✅ Insert team stats
+        await db.query(
+            `INSERT INTO team_session_stats (
+                session_id,
+                car_id,
+                car_model_id,
+                car_class,
+                cup_category,
+                finishing_position,
+                leader_delta,
+                class_position,
+                class_delta,
+                category_position,
+                category_delta,
+                total_laps,
+                total_valid_laps,
+                fastest_valid_lap,
+                fastest_possible_team_time,
+                avg_lap_time,
+                avg_valid_lap_time,
+                drive_time,
+                total_time,
+                drivers_count,
+                race_number,
+                drivers
+            )
+            VALUES (
+                $1, -- session_id
+                $2, -- car_id
+                $3, -- car_model_id
+                $4, -- car_class
+                $5, -- cup_category
+                $6, -- finishing_position
+                $7, -- leader_delta
+                $8, -- class_position
+                $9, -- class_delta
+                $10, -- category_position
+                $11, -- category_delta
+                $12, -- total_laps
+                $13, -- total_valid_laps
+                $14, -- fastest_valid_lap
+                $15, -- fastest_possible_team_time
+                $16, -- avg_lap_time
+                $17, -- avg_valid_lap_time
+                $18, -- drive_time
+                $19, -- total_time
+                $20, -- drivers count
+                $21, -- race number
+                $22::JSONB -- drivers (JSONB format)
+            )`,
+            [
+                sessionId,
+                teamStats.carId,
+                teamStats.car_model_id,
+                teamStats.car_class,
+                teamStats.cupCategory,
+                teamStats.finishingPosition,
+                teamStats.leaderDelta,
+                teamStats.classPosition,
+                teamStats.classDelta,
+                teamStats.cupPosition,
+                teamStats.cupDelta,
+                teamStats.teamTotalLaps,
+                teamStats.teamValidLaps,
+                teamStats.teamFastestValidLap,
+                teamStats.fastestPossibleTeamTime,
+                teamStats.avgTeamLapTime,
+                teamStats.avgTeamValidLapTime,
+                teamStats.teamDriveTime,
+                teamStats.totalTime,
+                teamStats.drivers.length,
+                teamStats.raceNumber,
+                JSON.stringify(teamStats.drivers)
+            ]
+        );
+        console.log(`🆕 Team stats inserted into database for car ${teamStats.carId}`);
+    } catch (error) {
+        console.error(`❌ Failed to insert team stats into database:`, error.message);
+    }
+}
+
+async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard) {
+    if (!carId || !carEntry || !carEntry.car) {
+        console.warn(`⚠️ Invalid CarID or missing car data for team event. Skipping.`);
+        return;
+    }
+
+    if (!carEntry.car.drivers || carEntry.car.drivers.length === 0) {
+        console.warn(`⚠️ No drivers found for CarID: ${carId}. Skipping team event.`);
+        return;
+    }
+
+    // console.log(carEntry);
+    const drivers = carEntry.car.drivers;
+    const car_model_id = carEntry.car.carModel || 'Unknown Model'; // Extract carModel for the team
+    const cupCategory = carEntry.car.cupCategory ?? 0; // Extract cupCategory explicitly, default to 0 if undefined
     // 🏁 Extract finishing position and leader information
     const finishingPosition = raceLeaderboard.findIndex(entry => entry.car?.carId === carId) + 1;
 
@@ -653,6 +763,49 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
     const hasCompletedLaps = driverLapCount > 0;
     const leaderLapCount = raceLeaderboard[0]?.timing?.lapCount || 0;
     const driverFastestLap = carEntry.timing?.bestLap || null;
+
+    let classPosition = null;
+    let classDelta = null;
+
+    // Step 1: Generate Class Leaderboards
+    const classLeaderboards = generateClassLeaderboards({ leaderBoardLines: raceLeaderboard }, sessionType);
+
+    // Step 2: Find the class position and delta for the current car
+    Object.keys(classLeaderboards).forEach(carClass => {
+        classLeaderboards[carClass].forEach(entry => {
+            if (entry.car?.carId === carId) {
+                classPosition = entry.classPosition;
+                classDelta = entry.leaderDelta;
+            }
+        });
+    });
+    const classInformation = {
+        carId,
+        classPosition,
+        classDelta
+    }
+
+    let cupPosition = null;
+    let cupDelta = null;
+
+    // Step 1: Generate Cup Category Leaderboards
+    const cupLeaderboards = generateCupCategoryLeaderboards({ leaderBoardLines: raceLeaderboard }, sessionType);
+
+    // Step 2: Find the cup position and delta for the current car
+    Object.keys(cupLeaderboards).forEach(cupCategory => {
+        cupLeaderboards[cupCategory].forEach(entry => {
+            if (entry.car?.carId === carId) {
+                cupPosition = entry.cupPosition;
+                cupDelta = entry.leaderDelta;
+            }
+        });
+    });
+
+    const cupInformation = {
+        carId,
+        cupPosition,
+        cupDelta
+    };
 
     if (!hasCompletedLaps) {
         console.warn(`⚠️ Driver ${driverIndex} has not completed any laps. Skipping.`);
@@ -754,7 +907,7 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
 
         // Extract lap count for the current driver
         const driverLapCount = raceLeaderboard.find(entry => entry.car?.carId === carId)?.timing?.lapCount || 0;
-
+        const raceNumber = carEntry.car.raceNumber || 'N/A';
         const carInfo = await fetchCarDetails(car_model_id);
 
         const driverStat = {
@@ -782,7 +935,8 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
             classPosition: classInformation.classPosition,
             classDelta: classInformation.classDelta,
             cupPosition: cupInformation.cupPosition,
-            cupDelta: cupInformation.cupDelta
+            cupDelta: cupInformation.cupDelta,
+            raceNumber
         };
 
         driverStats.push(driverStat);
@@ -810,8 +964,8 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
 
         await db.query(
             `INSERT INTO driver_session_stats 
-             (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time, class_position, class_delta, category_position, category_delta)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+             (session_id, steam_id, car_model_id, car_model, finishing_position, leader_delta, fastest_lap, average_lap, average_valid_lap, fastest_possible_lap, cup_category, total_race_time, total_off_tracks, fastest_possible_s1, fastest_possible_s2, fastest_possible_s3, car_class, car_id, total_laps, total_valid_laps, drive_time, class_position, class_delta, category_position, category_delta, race_number)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
             [
                 sessionId,
                 driverStat.steamId,
@@ -837,7 +991,8 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
                 driverStat.classPosition,
                 driverStat.classDelta,
                 driverStat.cupPosition,
-                driverStat.cupDelta
+                driverStat.cupDelta,
+                driverStat.raceNumber
             ]
         );
         // console.log(`🆕 Driver stats inserted into database: ${driverStat.steamId}`);
@@ -897,7 +1052,8 @@ async function processSessionFiles() {
     console.log('🚀 Starting session file processing...');
 
     try {
-        const files = fs.readdirSync(resultsPath).filter(file => file.endsWith('.json'));
+        cleanJsonFiles();
+        const files = fs.readdirSync(resultsCleanedPath).filter(file => file.endsWith('.json'));
 
         if (files.length === 0) {
             console.log('📂 No new session files found. Waiting for next run...');
@@ -905,7 +1061,7 @@ async function processSessionFiles() {
         }
 
         for (const file of files) {
-            const filePath = path.join(resultsPath, file);
+            const filePath = path.join(resultsCleanedPath, file);
             console.log(`📄 Processing file: ${file}`);
 
             const fileContent = loadData(filePath);
