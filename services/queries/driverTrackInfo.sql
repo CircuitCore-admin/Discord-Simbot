@@ -20,7 +20,10 @@ INSERT INTO driver_track_info (
     fastest_possible_overall,
     total_off_tracks,
     total_laps,
-    created_at
+    best_class_q_position,
+    best_class_r_position,
+    best_category_q_position,
+    best_category_r_position
 )
 SELECT 
     dss.steam_id,
@@ -59,11 +62,14 @@ SELECT
      )) AS fastest_possible_overall,
     SUM(dss.total_off_tracks) AS total_off_tracks,
     SUM(dss.total_laps) AS total_laps,
-    NOW()
+    MIN(CASE WHEN si.session_type = 'Q' THEN dss.class_position END) AS best_class_q_position,
+    MIN(CASE WHEN si.session_type = 'R' THEN dss.class_position END) AS best_class_r_position,
+    MIN(CASE WHEN si.session_type = 'Q' THEN dss.category_position END) AS best_category_q_position,
+    MIN(CASE WHEN si.session_type = 'R' THEN dss.category_position END) AS best_category_r_position
 FROM driver_session_stats dss
 JOIN session_info si ON dss.session_id = si.id
 JOIN track_info t ON si.track_id = t.track_id
-LEFT JOIN car_info ci ON dss.car_model_id = ci.car_id -- Changed to car_model_id
+LEFT JOIN car_info ci ON dss.car_model_id = ci.car_id
 GROUP BY dss.steam_id, si.track_id
 ON CONFLICT (steam_id, track_id, car_model_id)
 DO UPDATE SET
@@ -72,6 +78,10 @@ DO UPDATE SET
     total_sessions = COALESCE(EXCLUDED.total_sessions, driver_track_info.total_sessions),
     best_q_position = COALESCE(LEAST(driver_track_info.best_q_position, EXCLUDED.best_q_position), driver_track_info.best_q_position),
     best_r_position = COALESCE(LEAST(driver_track_info.best_r_position, EXCLUDED.best_r_position), driver_track_info.best_r_position),
+    best_class_q_position = COALESCE(LEAST(driver_track_info.best_class_q_position, EXCLUDED.best_class_q_position), driver_track_info.best_class_q_position),
+    best_class_r_position = COALESCE(LEAST(driver_track_info.best_class_r_position, EXCLUDED.best_class_r_position), driver_track_info.best_class_r_position),
+    best_category_q_position = COALESCE(LEAST(driver_track_info.best_category_q_position, EXCLUDED.best_category_q_position), driver_track_info.best_category_q_position),
+    best_category_r_position = COALESCE(LEAST(driver_track_info.best_category_r_position, EXCLUDED.best_category_r_position), driver_track_info.best_category_r_position),
     average_valid_fp = COALESCE(EXCLUDED.average_valid_fp, driver_track_info.average_valid_fp),
     average_valid_q = COALESCE(EXCLUDED.average_valid_q, driver_track_info.average_valid_q),
     average_valid_r = COALESCE(EXCLUDED.average_valid_r, driver_track_info.average_valid_r),
@@ -84,5 +94,4 @@ DO UPDATE SET
     fastest_possible_r = COALESCE(EXCLUDED.fastest_possible_r, driver_track_info.fastest_possible_r),
     fastest_possible_overall = COALESCE(EXCLUDED.fastest_possible_overall, driver_track_info.fastest_possible_overall),
     total_off_tracks = COALESCE(EXCLUDED.total_off_tracks, driver_track_info.total_off_tracks),
-    total_laps = COALESCE(EXCLUDED.total_laps, driver_track_info.total_laps),
-    created_at = NOW();
+    total_laps = COALESCE(EXCLUDED.total_laps, driver_track_info.total_laps)
