@@ -18,7 +18,6 @@ const { cleanJsonFilesInDirectory } = require('./json_cleaner');
 
 const resultsRawPath = path.join(__dirname, 'results'); // Raw JSON files
 const resultsCleanedPath = path.join(__dirname, 'results_cleaned'); // Cleaned JSON files
-const resultsPath = path.join(__dirname, 'results_cleaned');
 const processedPath = path.join(__dirname, 'processed');
 const entrylistPath = path.join(__dirname, 'entrylists');
 // Directories
@@ -30,7 +29,7 @@ const { log } = require('console');
 function cleanJsonFiles() {
     console.log('🧹 Cleaning JSON files...');
     cleanJsonFilesInDirectory(resultsRawPath, resultsCleanedPath);
-    console.log('✅ JSON files cleaned successfully.');
+    console.log('✅ JSON files cleaned and copied successfully.');
 }
 
 // ✅ Helper function to sanitize SteamID
@@ -1053,7 +1052,7 @@ async function processSessionFiles() {
 
     try {
         cleanJsonFiles();
-        const files = fs.readdirSync(resultsCleanedPath).filter(file => file.endsWith('.json'));
+        const files = fs.readdirSync(resultsCleanedPath).filter(file => file.endsWith('-c.json'));
 
         if (files.length === 0) {
             console.log('📂 No new session files found. Waiting for next run...');

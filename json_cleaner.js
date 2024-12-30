@@ -36,15 +36,22 @@ function cleanJsonFilesInDirectory(inputDir, outputDir) {
     const files = fs.readdirSync(inputDir);
 
     files.forEach(file => {
+        if (file.endsWith('-c.json')) {
+            return; // Skip already cleaned files
+        }
+
         const inputPath = path.join(inputDir, file);
-        const outputPath = path.join(outputDir, file.replace('.json', '_clean.json'));
+        const outputFileName = file.replace('.json', '-c.json');
+        const outputPath = path.join(inputDir, outputFileName);
+        const outputCopyPath = path.join(outputDir, outputFileName);
 
         if (fs.statSync(inputPath).isFile() && path.extname(file) === '.json') {
             cleanJsonFile(inputPath, outputPath);
+            fs.copyFileSync(outputPath, outputCopyPath);
         }
     });
 
-    console.log('🎯 All files have been cleaned and saved in:', outputDir);
+    console.log('🎯 All files have been cleaned and copied to:', outputDir);
 }
 
 // ✅ Export the functions for use in other scripts
