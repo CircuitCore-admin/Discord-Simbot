@@ -25,5 +25,12 @@ function renameJsonFileToC(inputPath) {
 }
 
 // Example Usage
-const filePath = path.join(__dirname, 'F:/Event Management/Online/Server 3 WGC-3 250 connections/server/results/241216_200002_FP.json'); // Replace with your file path
-renameJsonFileToC(filePath);
+const filePath = path.join(
+    'F:',
+    'Event Management',
+    'Online',
+    'Server 3 WGC-3 250 connections',
+    'server',
+    'results',
+    '241216_200002_FP.json'
+);renameJsonFileToC(filePath);
