@@ -1,0 +1,317 @@
+Here are all my tables:
+discord_bot=# \dt
+                 List of relations
+ Schema |         Name          | Type  |  Owner
+--------+-----------------------+-------+----------
+ public | car_info              | table | postgres
+ public | driver_car_stats      | table | postgres
+ public | driver_car_track_info | table | postgres
+ public | driver_info           | table | postgres
+ public | driver_session_stats  | table | postgres
+ public | driver_track_info     | table | postgres
+ public | session_info          | table | postgres
+ public | team_session_stats    | table | postgres
+ public | track_info            | table | postgres
+(9 rows)
+
+
+discord_bot=# \d car_info
+               Table "public.car_info"
+  Column   |  Type   | Collation | Nullable | Default
+-----------+---------+-----------+----------+---------
+ car_id    | integer |           | not null |
+ car_model | text    |           | not null |
+ car_class | text    |           | not null |
+Indexes:
+    "car_info_pkey" PRIMARY KEY, btree (car_id)
+
+
+discord_bot=# \d driver_car_stats
+                                               Table "public.driver_car_stats"
+          Column          |            Type             | Collation | Nullable |                   Default
+--------------------------+-----------------------------+-----------+----------+----------------------------------------------
+ id                       | integer                     |           | not null | nextval('driver_car_stats_id_seq'::regclass)
+ steam_id                 | text                        |           | not null |
+ car_model_id             | integer                     |           | not null |
+ car_class                | character varying(50)       |           | not null |
+ total_sessions           | integer                     |           |          | 0
+ total_laps               | integer                     |           |          | 0
+ distance_covered         | double precision            |           |          | 0.0
+ total_off_tracks         | integer                     |           |          | 0
+ best_r_position          | integer                     |           |          |
+ best_q_position          | integer                     |           |          |
+ fastest_r_lap            | double precision            |           |          |
+ fastest_q_lap            | double precision            |           |          |
+ fastest_possible_r       | double precision            |           |          |
+ fastest_possible_q       | double precision            |           |          |
+ fastest_possible_overall | double precision            |           |          |
+ average_valid_r          | double precision            |           |          |
+ average_valid_q          | double precision            |           |          |
+ average_r                | double precision            |           |          |
+ average_q                | double precision            |           |          |
+ created_at               | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "driver_car_stats_pkey" PRIMARY KEY, btree (id)
+    "driver_car_stats_steam_id_car_model_id_key" UNIQUE CONSTRAINT, btree (steam_id, car_model_id)
+    "idx_driver_car_stats_car_class" btree (car_class)
+    "idx_driver_car_stats_car_model_id" btree (car_model_id)
+    "idx_driver_car_stats_steam_id" btree (steam_id)
+Foreign-key constraints:
+    "driver_car_stats_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+
+
+discord_bot=# \d driver_car_track_stats
+Did not find any relation named "driver_car_track_stats".
+discord_bot=# \d driver_car_track_info
+                           Table "public.driver_car_track_info"
+      Column      |            Type             | Collation | Nullable |      Default
+------------------+-----------------------------+-----------+----------+-------------------
+ steam_id         | text                        |           | not null |
+ track_id         | text                        |           | not null |
+ car_model        | text                        |           | not null |
+ car_class        | character varying(50)       |           | not null |
+ distance_covered | double precision            |           |          | 0.0
+ total_sessions   | integer                     |           |          | 0
+ best_q_position  | integer                     |           |          |
+ best_r_position  | integer                     |           |          |
+ total_laps       | integer                     |           |          | 0
+ created_at       | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "driver_car_track_info_pkey" PRIMARY KEY, btree (steam_id, track_id, car_model)
+Foreign-key constraints:
+    "driver_car_track_info_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+    "driver_car_track_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+
+
+discord_bot=# \d driver_info
+                             Table "public.driver_info"
+          Column           |          Type          | Collation | Nullable | Default
+---------------------------+------------------------+-----------+----------+---------
+ steam_id                  | text                   |           | not null |
+ discord_id                | bigint                 |           |          |
+ username                  | character varying(255) |           |          |
+ real_name                 | character varying(255) |           |          |
+ podiums                   | integer                |           |          | 0
+ distance_covered          | double precision       |           |          | 0.0
+ best_position             | integer                |           |          |
+ total_wins                | integer                |           |          | 0
+ total_poles               | integer                |           |          | 0
+ total_sessions            | integer                |           |          | 0
+ average_finish_position   | double precision       |           |          |
+ total_off_tracks          | integer                |           |          | 0
+ total_races               | integer                |           |          | 0
+ total_qualifying_sessions | integer                |           |          | 0
+ total_practice_sessions   | integer                |           |          | 0
+ best_qualifying_position  | integer                |           |          |
+ total_laps_driven         | integer                |           |          | 0
+Indexes:
+    "driver_info_pkey" PRIMARY KEY, btree (steam_id)
+    "driver_info_discord_id_key" UNIQUE CONSTRAINT, btree (discord_id)
+    "idx_real_name_trgm" gin (real_name gin_trgm_ops)
+Referenced by:
+    TABLE "driver_car_stats" CONSTRAINT "driver_car_stats_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+    TABLE "driver_car_track_info" CONSTRAINT "driver_car_track_info_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+    TABLE "driver_session_stats" CONSTRAINT "driver_session_stats_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+    TABLE "driver_track_info" CONSTRAINT "driver_track_info_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+
+
+discord_bot=#
+discord_bot=# \d driver_track_info
+                                               Table "public.driver_track_info"
+          Column          |            Type             | Collation | Nullable |                    Default
+--------------------------+-----------------------------+-----------+----------+-----------------------------------------------
+ id                       | integer                     |           | not null | nextval('driver_track_info_id_seq'::regclass)
+ steam_id                 | text                        |           | not null |
+ track_id                 | character varying(50)       |           | not null |
+ distance_covered         | double precision            |           |          | 0.0
+ total_sessions           | integer                     |           |          | 0
+ best_q_position          | integer                     |           |          |
+ best_r_position          | integer                     |           |          |
+ fastest_q_lap            | double precision            |           |          |
+ fastest_r_lap            | double precision            |           |          |
+ fastest_possible_q       | double precision            |           |          |
+ fastest_possible_r       | double precision            |           |          |
+ fastest_possible_overall | double precision            |           |          |
+ total_off_tracks         | integer                     |           |          | 0
+ total_laps               | integer                     |           |          | 0
+ average_valid_fp         | double precision            |           |          |
+ average_valid_q          | double precision            |           |          |
+ average_valid_r          | double precision            |           |          |
+ average_fp               | double precision            |           |          |
+ average_q                | double precision            |           |          |
+ average_r                | double precision            |           |          |
+ car_class                | character varying(50)       |           | not null |
+ car_model_id             | integer                     |           | not null |
+ created_at               | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "driver_track_info_pkey" PRIMARY KEY, btree (steam_id, track_id, car_model_id)
+    "unique_driver_track" UNIQUE CONSTRAINT, btree (steam_id, track_id, car_model_id)
+Foreign-key constraints:
+    "driver_track_info_steam_id_fkey" FOREIGN KEY (steam_id) REFERENCES driver_info(steam_id) ON DELETE CASCADE
+    "driver_track_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+
+
+discord_bot=#
+discord_bot=# \d session_info
+                                          Table "public.session_info"
+    Column     |            Type             | Collation | Nullable |                 Default
+---------------+-----------------------------+-----------+----------+------------------------------------------
+ id            | integer                     |           | not null | nextval('session_info_id_seq'::regclass)
+ track_id      | character varying(50)       |           |          |
+ session_type  | character varying(2)        |           |          |
+ session_name  | character varying(255)      |           | not null |
+ results_name  | character varying(255)      |           | not null |
+ date          | timestamp without time zone |           | not null |
+ is_team_event | boolean                     |           |          | false
+ uploaded_at   | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "session_info_pkey" PRIMARY KEY, btree (id)
+Check constraints:
+    "session_info_session_type_check" CHECK (session_type::text = ANY (ARRAY['FP'::character varying, 'Q'::character varying, 'R'::character varying]::text[]))
+Foreign-key constraints:
+    "session_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+Referenced by:
+    TABLE "team_session_stats" CONSTRAINT "fk_team_session_stats_session_id" FOREIGN KEY (session_id) REFERENCES session_info(id) ON DELETE CASCADE
+
+
+discord_bot=#
+discord_bot=#
+discord_bot=#
+discord_bot=# \d team_session_stats
+                                                Table "public.team_session_stats"
+           Column           |            Type             | Collation | Nullable |                    Default
+----------------------------+-----------------------------+-----------+----------+------------------------------------------------
+ id                         | integer                     |           | not null | nextval('team_session_stats_id_seq'::regclass)
+ session_id                 | integer                     |           | not null |
+ car_id                     | integer                     |           | not null |
+ car_model_id               | integer                     |           |          |
+ car_class                  | character varying(50)       |           |          |
+ cup_category               | character varying(50)       |           |          | 'N/A'::character varying
+ finishing_position         | integer                     |           |          |
+ leader_delta               | character varying(50)       |           |          |
+ class_position             | integer                     |           |          |
+ class_delta                | character varying(50)       |           |          |
+ category_position          | integer                     |           |          |
+ category_delta             | character varying(50)       |           |          |
+ total_laps                 | integer                     |           |          | 0
+ total_valid_laps           | integer                     |           |          | 0
+ fastest_valid_lap          | double precision            |           |          |
+ fastest_possible_team_time | double precision            |           |          |
+ avg_lap_time               | double precision            |           |          |
+ avg_valid_lap_time         | double precision            |           |          |
+ drive_time                 | double precision            |           |          | 0
+ total_time                 | double precision            |           |          | 0
+ drivers_count              | integer                     |           |          | 0
+ race_number                | integer                     |           |          |
+ drivers                    | jsonb                       |           |          |
+ updated_at                 | timestamp without time zone |           |          | now()
+ created_at                 | timestamp without time zone |           |          | now()
+Indexes:
+    "team_session_stats_pkey" PRIMARY KEY, btree (id)
+    "team_session_stats_session_id_car_id_key" UNIQUE CONSTRAINT, btree (session_id, car_id)
+Foreign-key constraints:
+    "fk_team_session_stats_session_id" FOREIGN KEY (session_id) REFERENCES session_info(id) ON DELETE CASCADE
+
+
+discord_bot=#
+discord_bot=# \d track_info
+                               Table "public.track_info"
+    Column    |            Type             | Collation | Nullable |      Default
+--------------+-----------------------------+-----------+----------+-------------------
+ track_id     | character varying(50)       |           | not null |
+ track_name   | character varying(255)      |           | not null |
+ location     | character varying(255)      |           |          |
+ track_length | double precision            |           | not null |
+ created_at   | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+Indexes:
+    "track_info_pkey" PRIMARY KEY, btree (track_id)
+Referenced by:
+    TABLE "driver_car_track_info" CONSTRAINT "driver_car_track_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+    TABLE "driver_track_info" CONSTRAINT "driver_track_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+    TABLE "session_info" CONSTRAINT "session_info_track_id_fkey" FOREIGN KEY (track_id) REFERENCES track_info(track_id) ON DELETE CASCADE
+
+
+This command isnt't updating the `driver_car_stats` table properly...
+INSERT INTO driver_car_stats (
+    steam_id,
+    car_model_id,
+    car_class,
+    total_sessions,
+    total_laps,
+    distance_covered,
+    total_off_tracks,
+    best_r_position,
+    best_q_position,
+    fastest_r_lap,
+    fastest_q_lap,
+    fastest_possible_r,
+    fastest_possible_q,
+    fastest_possible_overall,
+    average_valid_r,
+    average_valid_q,
+    average_r,
+    average_q,
+    created_at
+)
+SELECT
+    steam_id,
+    car_model_id,
+    car_class,
+    COALESCE(SUM(total_sessions), 0) AS total_sessions,
+    COALESCE(SUM(total_laps), 0) AS total_laps,
+    COALESCE(SUM(distance_covered), 0.0) AS distance_covered,
+    COALESCE(SUM(total_off_tracks), 0) AS total_off_tracks,
+    MIN(best_r_position) AS best_r_position,
+    MIN(best_q_position) AS best_q_position,
+    MIN(fastest_r_lap) AS fastest_r_lap,
+    MIN(fastest_q_lap) AS fastest_q_lap,
+    MIN(fastest_possible_r) AS fastest_possible_r,
+    MIN(fastest_possible_q) AS fastest_possible_q,
+    MIN(fastest_possible_overall) AS fastest_possible_overall,
+    AVG(average_valid_r) AS average_valid_r,
+    AVG(average_valid_q) AS average_valid_q,
+    AVG(average_r) AS average_r,
+    AVG(average_q) AS average_q,
+    CURRENT_TIMESTAMP AS created_at
+FROM (
+    SELECT DISTINCT ON (steam_id, car_model_id)
+        steam_id,
+        car_model_id,
+        car_class,
+        total_sessions,
+        total_laps,
+        distance_covered,
+        total_off_tracks,
+        best_r_position,
+        best_q_position,
+        fastest_r_lap,
+        fastest_q_lap,
+        fastest_possible_r,
+        fastest_possible_q,
+        fastest_possible_overall,
+        average_valid_r,
+        average_valid_q,
+        average_r,
+        average_q
+    FROM driver_track_info
+    ORDER BY steam_id, car_model_id, created_at DESC
+) AS unique_driver_data
+GROUP BY steam_id, car_model_id, car_class
+ON CONFLICT (steam_id, car_model_id)
+DO UPDATE SET
+    total_sessions = EXCLUDED.total_sessions,
+    total_laps = EXCLUDED.total_laps,
+    distance_covered = EXCLUDED.distance_covered,
+    total_off_tracks = EXCLUDED.total_off_tracks,
+    best_r_position = LEAST(driver_car_stats.best_r_position, EXCLUDED.best_r_position),
+    best_q_position = LEAST(driver_car_stats.best_q_position, EXCLUDED.best_q_position),
+    fastest_r_lap = LEAST(driver_car_stats.fastest_r_lap, EXCLUDED.fastest_r_lap),
+    fastest_q_lap = LEAST(driver_car_stats.fastest_q_lap, EXCLUDED.fastest_q_lap),
+    fastest_possible_r = LEAST(driver_car_stats.fastest_possible_r, EXCLUDED.fastest_possible_r),
+    fastest_possible_q = LEAST(driver_car_stats.fastest_possible_q, EXCLUDED.fastest_possible_q),
+    fastest_possible_overall = LEAST(driver_car_stats.fastest_possible_overall, EXCLUDED.fastest_possible_overall),
+    average_valid_r = (driver_car_stats.average_valid_r + EXCLUDED.average_valid_r) / 2,
+    average_valid_q = (driver_car_stats.average_valid_q + EXCLUDED.average_valid_q) / 2,
+    average_r = (driver_car_stats.average_r + EXCLUDED.average_r) / 2,
+    average_q = (driver_car_stats.average_q + EXCLUDED.average_q) / 2,
+    created_at = CURRENT_TIMESTAMP;

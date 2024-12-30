@@ -1179,7 +1179,7 @@ const directories = [
     'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-enduro'
 ];
 
-setInterval(() => processSessionFilesFromDirectories(directories), 0.5 * 60 * 1000);
+setInterval(() => processSessionFilesFromDirectories(directories), 5 * 60 * 1000);
 
 // Initial run
 processSessionFilesFromDirectories(directories);
