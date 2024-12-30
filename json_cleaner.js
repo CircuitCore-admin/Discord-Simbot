@@ -12,12 +12,6 @@ function renameJsonFileToC(inputPath) {
     const ext = path.extname(inputPath);
     const baseName = path.basename(inputPath, ext);
 
-    if (ext !== '.json') {
-        console.error('❌ The file is not a .json file:', inputPath);
-        return null;
-    }
-
-
     if (ext !== '.json' || ext.endsWith('-c.json')) {
         console.log(`⏩ Skipping already cleaned or invalid file ${baseName}`);
         return; // Skip non-JSON files and already cleaned files
@@ -82,7 +76,7 @@ function cleanJsonFilesInDirectory(inputDir, outputDir) {
         const ext = path.extname(file);
 
         if (ext !== '.json' || file.endsWith('-c.json')) {
-            console.log(`⏩ Skipping already cleaned or invalid file: ${file}`);
+            // console.log(`⏩ Skipping already cleaned or invalid file: ${file}`);
             return; // Skip non-JSON files and already cleaned files
         }
 
@@ -95,7 +89,7 @@ function cleanJsonFilesInDirectory(inputDir, outputDir) {
         }
     });
 
-    // console.log('🎯 All files have been cleaned, renamed, and copied to:', outputDir);
+    console.log('🎯 All files have been cleaned, renamed, and copied to:', outputDir);
 }
 
 // ✅ Export the functions for use in other scripts

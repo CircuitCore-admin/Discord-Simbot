@@ -16,10 +16,25 @@ const driverCarInfoQuery = loadSQL('driverCarInfo.sql');
 
 const { cleanJsonFilesInDirectory } = require('./json_cleaner');
 
-const resultsRawPath = path.join(__dirname, 'results'); // Raw JSON files
+// const resultsRawPath = path.join(__dirname, 'results'); // Raw JSON files
 const resultsCleanedPath = path.join(__dirname, 'results_cleaned'); // Cleaned JSON files
-const processedPath = path.join(__dirname, 'processed');
+// const processedPath = path.join(__dirname, 'processed');
 const entrylistPath = path.join(__dirname, 'entrylists');
+
+// ✅ Check if file has already been processed
+async function isFileProcessed(fileName) {
+    try {
+        const result = await db.query(
+            `SELECT COUNT(*) FROM session_info WHERE results_name = $1`,
+            [fileName]
+        );
+        return result.rows[0].count > 0;
+    } catch (error) {
+        console.error(`❌ Error checking if file is processed: ${error.message}`);
+        return false;
+    }
+}
+
 // Directories
 // ✅ Import the car class helper
 const { getCarClass, getCarModel } = require('./helpers/carClassHelper');
@@ -1047,93 +1062,107 @@ function calculateFastestPossibleTime(laps) {
 }
 
 // ✅ Main Session Processing Function
-async function processSessionFiles() {
+async function processSessionFilesFromDirectories(directories) {
     console.log('🚀 Starting session file processing...');
 
     try {
-        cleanJsonFiles();
-        const files = fs.readdirSync(resultsCleanedPath).filter(file => file.endsWith('-c.json'));
-
-        if (files.length === 0) {
-            console.log('📂 No new session files found. Waiting for next run...');
-            return;
-        }
-
-        for (const file of files) {
-            const filePath = path.join(resultsCleanedPath, file);
-            console.log(`📄 Processing file: ${file}`);
-
-            const fileContent = loadData(filePath);
-            const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
-            const lapsData = fileContent.laps || [];
-            const carIds = new Set(lapsData.map(lap => lap.carId));
-
-            // ✅ Extract Metadata
-            const sessionType = detectSessionType(file);
-            const trackId = fileContent.trackName?.toLowerCase().replace(/\s+/g, '_').trim();
-            const serverName = fileContent.serverName || 'Unknown Server';
-            const resultsName = file;
-            const sessionDate = fileContent.Date || new Date().toISOString();
-
-            if (!sessionType || !trackId && sessionType === 'entrylist') {
-                fs.renameSync(filePath, path.join(entrylistPath, file));
-                console.log(`✅ Moved entry list successfully.`);
-                // console.warn(`❌ SessionType or TrackID missing. Skipping session.`);
+        for (const dir of directories) {
+            // Ensure the directory exists before processing
+            if (!fs.existsSync(dir)) {
+                console.error(`❌ Directory does not exist: ${dir}`);
                 continue;
             }
 
-            const trackResult = await db.query(`SELECT track_id FROM track_info WHERE track_id = $1`, [trackId]);
-            if (trackResult.rows.length === 0) {
-                console.warn(`❌ Track not found in database: ${trackId}. Skipping session.`);
-                continue;
+            console.log(`📂 Processing directory: ${dir}`);
+            cleanJsonFilesInDirectory(dir, resultsCleanedPath);
+
+            const files = fs.readdirSync(resultsCleanedPath).filter(file => file.endsWith('-c.json') && !file.endsWith('-c-p.json'));
+
+            if (files.length === 0) {
+                console.log('📂 No new session files found. Waiting for next run...');
+                return;
             }
 
-            const sessionResult = await db.query(
-                `INSERT INTO session_info (track_id, session_type, session_name, results_name, date, uploaded_at) 
-          VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
-                [trackId, sessionType, serverName, resultsName, sessionDate]
-            );
-
-            const sessionId = sessionResult.rows[0].id;
-
-            await ensureDriversExist(raceLeaderboard);
-
-            // Check for multiple drivers per carId before continuing
-            let isDriverSwapRace = false;
-            for (const carEntry of raceLeaderboard) {
-                if (carEntry.car?.drivers && carEntry.car.drivers.length > 1) {
-                    isDriverSwapRace = true;
-                    console.log(`🔄 Driver swap race detected.Processing driver swap logic...`);
-                    break;
-                }
-            }
-            for (const carId of carIds) {
-                const carEntry = raceLeaderboard.find(entry => entry.car?.carId === carId);
-                if (!carEntry || !carEntry.car) {
-                    console.warn(`⚠️ Invalid or missing car entry for CarID: ${carId}.Skipping.`);
+            for (const file of files) {
+                // Check if the file has already been processed
+                if (await isFileProcessed(file)) {
+                    // console.log(`⏩ Skipping already processed file: ${file}`);
                     continue;
                 }
 
-                if (isDriverSwapRace) {
-                    // console.log(`🔄 Processing team event for CarID: ${carId}`);
-                    await processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
-                } else {
-                    // console.log(`🚗 Processing solo event for CarID: ${carId}`);
-                    await processSoloEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
+                const filePath = path.join(resultsCleanedPath, file);
+                console.log(`📄 Processing file: ${file}`);
 
+                const fileContent = loadData(filePath);
+                const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
+                const lapsData = fileContent.laps || [];
+                const carIds = new Set(lapsData.map(lap => lap.carId));
+
+                // ✅ Extract Metadata
+                const sessionType = detectSessionType(file);
+                const trackId = fileContent.trackName?.toLowerCase().replace(/\s+/g, '_').trim();
+                const serverName = fileContent.serverName || 'Unknown Server';
+                const resultsName = file;
+                const sessionDate = fileContent.Date || new Date().toISOString();
+
+                if (!sessionType || !trackId && sessionType === 'entrylist') {
+                    fs.renameSync(filePath, path.join(entrylistPath, file));
+                    console.log(`✅ Moved entry list successfully.`);
+                    continue;
                 }
+
+                const trackResult = await db.query(`SELECT track_id FROM track_info WHERE track_id = $1`, [trackId]);
+                if (trackResult.rows.length === 0) {
+                    console.warn(`❌ Track not found in database: ${trackId}. Skipping session.`);
+                    continue;
+                }
+
+                const sessionResult = await db.query(
+                    `INSERT INTO session_info (track_id, session_type, session_name, results_name, date, uploaded_at) 
+                    VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id`,
+                    [trackId, sessionType, serverName, resultsName, sessionDate]
+                );
+
+                const sessionId = sessionResult.rows[0].id;
+
+                await ensureDriversExist(raceLeaderboard);
+
+                // Check for multiple drivers per carId before continuing
+                let isDriverSwapRace = false;
+                for (const carEntry of raceLeaderboard) {
+                    if (carEntry.car?.drivers && carEntry.car.drivers.length > 1) {
+                        isDriverSwapRace = true;
+                        console.log(`🔄 Driver swap race detected. Processing driver swap logic...`);
+                        break;
+                    }
+                }
+                for (const carId of carIds) {
+                    const carEntry = raceLeaderboard.find(entry => entry.car?.carId === carId);
+                    if (!carEntry || !carEntry.car) {
+                        console.warn(`⚠️ Invalid or missing car entry for CarID: ${carId}. Skipping.`);
+                        continue;
+                    }
+
+                    if (isDriverSwapRace) {
+                        console.log(`🔄 Processing team event for CarID: ${carId}`);
+                        await processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
+                    } else {
+                        console.log(`🚗 Processing solo event for CarID: ${carId}`);
+                        await processSoloEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
+                    }
+                }
+
+                console.log(`✅ Session ${file} processed successfully.`);
+                const newFilePath = path.join(resultsCleanedPath, file.replace('-c.json', '-c-p.json'));
+                fs.renameSync(filePath, newFilePath);
+
+                await markTeamEvent(sessionId);
+                await ensureDriversExist(raceLeaderboard);
+                await refreshDriverTrackInfo();
+                await refreshDriverCarTrackInfo();
+                await refreshCarInfo();
+                await refreshDriverInfo();
             }
-
-            // fs.renameSync(filePath, path.join(processedPath, file));
-            console.log(`✅ Session ${file} processed successfully.`);
-
-            await markTeamEvent(sessionId);
-            await ensureDriversExist(raceLeaderboard);
-            await refreshDriverTrackInfo();
-            await refreshDriverCarTrackInfo();
-            await refreshCarInfo();
-            await refreshDriverInfo();
-            
         }
     } catch (error) {
         console.error('❌ Failed to process session files:', error.message);
@@ -1141,7 +1170,26 @@ async function processSessionFiles() {
 }
 
 // Periodic check for new files
-setInterval(processSessionFiles, 0.5 * 60 * 1000);
+const directories = [
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results',
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-2',
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-3',
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-solo',
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-practice',
+    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-enduro'
+];
+
+setInterval(() => processSessionFilesFromDirectories(directories), 0.5 * 60 * 1000);
 
 // Initial run
-processSessionFiles();
+processSessionFilesFromDirectories(directories);
+
+// const directories = [
+//     'F:/Event Management/Online/Server 1 WGC-1 250 connections/server/results',
+//     'F:/Event Management/Online/Server 2 WGC-2 250 connections/server/results',
+//     'F:/Event Management/Online/Server 3 WGC-3 250 connections/server/results',
+//     'F:/Event Management/Online/Server 4 WGC-solo 250 connections/server/results',
+//     'F:/Event Management/Online/Server 9 WGC-enduro 250 connections/server/results',
+//     'F:/Event Management/Online/Server 10 WGC-practice 55 105 connections/server/results'
+//     // Add more directories as needed
+// ];
