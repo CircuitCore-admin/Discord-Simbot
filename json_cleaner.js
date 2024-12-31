@@ -44,12 +44,8 @@ function cleanJsonFile(inputPath, outputPath) {
         const utf8Content = Buffer.from(utf16Content, 'utf8');
 
         // Write the converted content to the new output file with '-c.json' suffix
-        const outputDir = path.dirname(outputPath);
-        const baseName = path.basename(outputPath, '.json');
-        const newOutputPath = path.join(outputDir, `${baseName}-c.json`);
-
-        fs.writeFileSync(newOutputPath, utf8Content);
-        console.log(`✅ Converted and saved: ${inputPath} → ${newOutputPath}`);
+        fs.writeFileSync(outputPath, utf8Content);
+        console.log(`✅ Converted and saved: ${inputPath} → ${outputPath}`);
     } catch (err) {
         console.error(`❌ Failed to convert file: ${inputPath}`, err.message);
     }
@@ -68,20 +64,29 @@ function cleanJsonFilesInDirectory(inputDir, outputDir) {
 
     files.forEach(file => {
         const inputPath = path.join(inputDir, file);
-        const outputPath = path.join(outputDir, file);
 
-        if (path.extname(file) !== '.json') {
-            console.log(`⏩ Skipping non-JSON file: ${file}`);
+        if (path.extname(file) !== '.json' || file.endsWith('-c.json')) {
+            console.log(`⏩ Skipping invalid file: ${file}`);
             return;
         }
 
+        // Rename the original file in the input directory
         const renamedInputPath = renameJsonFileToC(inputPath);
         if (renamedInputPath) {
-            cleanJsonFile(renamedInputPath, outputPath);
+            // Create the output path with '-c.json' suffix
+            const outputFileName = path.basename(renamedInputPath);
+            const outputPath = path.join(outputDir, outputFileName);
+
+            // Copy the renamed file to the output directory
+            fs.copyFileSync(renamedInputPath, outputPath);
+            console.log(`📄 Copied: ${renamedInputPath} → ${outputPath}`);
+
+            // Convert the copied file to UTF-8 encoding
+            cleanJsonFile(outputPath, outputPath);
         }
     });
 
-    console.log('🎯 All files have been converted from UTF-16 LE to UTF-8 and renamed.');
+    console.log('🎯 All files have been renamed, copied, and converted from UTF-16 LE to UTF-8.');
 }
 
 // ✅ Export
