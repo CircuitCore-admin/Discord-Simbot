@@ -76,10 +76,10 @@ SELECT
     null) AS fastest_possible_overall,
     COALESCE(SUM(dss.total_off_tracks), 0) AS total_off_tracks,
     COALESCE(SUM(dss.total_laps), 0) AS total_laps,
-    COALESCE(MIN(CASE WHEN si.session_type = 'Q' THEN dss.class_position END), 999) AS best_class_q_position,
-    COALESCE(MIN(CASE WHEN si.session_type = 'R' THEN dss.class_position END), 999) AS best_class_r_position,
-    COALESCE(MIN(CASE WHEN si.session_type = 'Q' THEN dss.category_position END), 999) AS best_category_q_position,
-    COALESCE(MIN(CASE WHEN si.session_type = 'R' THEN dss.category_position END), 999) AS best_category_r_position
+    COALESCE(MIN(CASE WHEN si.session_type = 'Q' THEN dss.class_position END), null) AS best_class_q_position,
+    COALESCE(MIN(CASE WHEN si.session_type = 'R' THEN dss.class_position END), null) AS best_class_r_position,
+    COALESCE(MIN(CASE WHEN si.session_type = 'Q' THEN dss.category_position END), null) AS best_category_q_position,
+    COALESCE(MIN(CASE WHEN si.session_type = 'R' THEN dss.category_position END), null) AS best_category_r_position
 FROM driver_session_stats dss
 JOIN session_info si ON dss.session_id = si.id
 JOIN track_info t ON si.track_id = t.track_id

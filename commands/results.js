@@ -19,21 +19,22 @@ module.exports = {
         ),
 
     // Autocomplete Handler
+    // Autocomplete Handler
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused();
 
         try {
             const result = await db.query(`
-                SELECT session_type, session_name, session_date 
-                FROM session_info
-                WHERE CONCAT(session_type, ' | ', session_name, ' | ', TO_CHAR(session_date, 'DD/MM/YY HH24:MI')) ILIKE $1
-                ORDER BY session_date DESC
-                LIMIT 25;
-            `, [`%${focusedValue}%`]);
+            SELECT session_type, session_name, date 
+            FROM session_info
+            WHERE CONCAT(session_type, ' | ', session_name, ' | ', TO_CHAR(date, 'DD/MM/YY HH24:MI')) ILIKE $1
+            ORDER BY date DESC
+            LIMIT 25;
+        `, [`%${focusedValue}%`]);
 
             const choices = result.rows.map(row => ({
-                name: `${row.session_type} | ${row.session_name} | ${formatShortDate(row.session_date)}`,
-                value: `${row.session_type}|${row.session_name}|${row.session_date}`
+                name: `${row.session_type} | ${row.session_name} | ${formatShortDate(row.date)}`,
+                value: `${row.session_type}|${row.session_name}|${row.date.toISOString()}`
             }));
 
             await interaction.respond(choices);
@@ -69,7 +70,7 @@ module.exports = {
                 .setTitle(`${sessionType.trim()} | ${sessionName.trim()} | ${formatShortDate(sessionDate.trim())}`)
                 .setColor(0x00FF00)
                 .setDescription(
-                    results.rows.map((row, index) => 
+                    results.rows.map((row, index) =>
                         `**#${row.position}** - **${row.real_name}** | Lap Time: ${row.lap_time || 'N/A'} | Total Time: ${row.total_time || 'N/A'}`
                     ).join('\n')
                 )

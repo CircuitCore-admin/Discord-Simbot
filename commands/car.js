@@ -41,13 +41,12 @@ module.exports = {
             // Fetch car-specific data
             const carStatsQuery = `
                 SELECT 
-                    total_sessions, total_laps, distance_covered, total_off_tracks, 
-                    best_r_position, best_q_position, fastest_r_lap, fastest_q_lap,
-                    average_valid_r, average_valid_q
+                    total_laps, total_valid_laps, total_sessions, fp_sessions, q_sessions, r_sessions, 
+                    distance_covered, best_class_q, best_class_r
                 FROM driver_car_stats 
                 WHERE steam_id = $1 AND car_model_id = (
                     SELECT car_id FROM car_info WHERE car_model = $2
-                )`;
+            )`;
             const carStatsResult = await db.query(carStatsQuery, [steamId, carModel]);
 
             if (carStatsResult.rows.length === 0) {
@@ -62,15 +61,24 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle(`Car Stats: ${carModel} - ${user.username}`)
                 .addFields(
-                    { name: 'Total Sessions', value: carStats.total_sessions.toString(), inline: true },
-                    { name: 'Total Laps', value: carStats.total_laps.toString(), inline: true },
-                    { name: 'Distance Covered', value: carStats.distance_covered.toString(), inline: true },
-                    { name: 'Best Race Position', value: carStats.best_r_position?.toString() || 'N/A', inline: true },
-                    { name: 'Best Qualifying Position', value: carStats.best_q_position?.toString() || 'N/A', inline: true }
+                    { name: 'Total Sessions', value: carStats.total_sessions?.toString() || 'N/A', inline: true },
+                    { name: 'Free Practice Sessions', value: carStats.fp_sessions?.toString() || 'N/A', inline: true },
+                    { name: 'Qualifying Sessions', value: carStats.q_sessions?.toString() || 'N/A', inline: true },
+                    { name: 'Race Sessions', value: carStats.r_sessions?.toString() || 'N/A', inline: true },
+                    { name: 'Total Laps', value: carStats.total_laps?.toString() || 'N/A', inline: true },
+                    { name: 'Valid Laps', value: carStats.total_valid_laps?.toString() || 'N/A', inline: true },
+                    { name: 'Distance Covered', value: carStats.distance_covered?.toString() || 'N/A', inline: true },
+                    { name: 'Best Class Qualifying', value: carStats.best_class_q?.toString() || 'N/A', inline: true },
+                    { name: 'Best Class Race', value: carStats.best_class_r?.toString() || 'N/A', inline: true },
+                    // { name: 'Podiums', value: carStats.podiums?.toString() || 'N/A', inline: true },
+                    // { name: 'Wins', value: carStats.wins?.toString() || 'N/A', inline: true }
                 )
-                .setColor('#0099ff');
+                .setColor('#0099ff')
+                .setFooter({ text: 'Powered by CircuitCore' })
+                .setTimestamp();
 
-            return interaction.reply({ embeds: [embed] });
+            await interaction.reply({ embeds: [embed] });
+
 
         } catch (error) {
             console.error('❌ Error fetching car stats:', error);
