@@ -107,7 +107,7 @@ async function ensureDriversExist(driverStats) {
                 );
                 console.log(`🆕 Added new driver: ${steamId} (${realName})`);
             } else {
-                console.log(`🔗 Found driver: ${steamId}`);
+                // console.log(`🔗 Found driver: ${steamId}`);
             }
         } catch (err) {
             console.error(`❌ Failed to ensure driver exists for ${realName}:`, err.message);
@@ -797,7 +797,7 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
     const cupCategory = carEntry.car.cupCategory ?? 0; // Extract cupCategory explicitly, default to 0 if undefined
     // 🏁 Extract finishing position and leader information
     const finishingPosition = raceLeaderboard.findIndex(entry => entry.car?.carId === carId) + 1;
-
+    // console.log(fileContent.sessionResult.leaderBoardLines[0].car.drivers.map(driver => driver.lastName));
     const leaderEntry = raceLeaderboard[0] || {};
     const leaderLaps = leaderEntry?.timing?.lapCount || 0;
     const leaderBestLap = leaderEntry?.timing?.bestLap || 'N/A';
@@ -1136,6 +1136,11 @@ async function processSessionFilesFromDirectories(directories) {
                 console.log(`📄 Processing file: ${file}`);
 
                 const fileContent = loadData(filePath);
+                // fileContent.forEach(sessionResults.leaderBoardLines.car => {
+                //     console.log(car.drivers.map(driver => driver.lastName));
+                    
+                // });
+                
                 const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
                 const lapsData = fileContent.laps || [];
                 const carIds = new Set(lapsData.map(lap => lap.carId));
@@ -1189,7 +1194,7 @@ async function processSessionFilesFromDirectories(directories) {
                         console.log(`🔄 Processing team event for CarID: ${carId}`);
                         await processTeamEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
                     } else {
-                        console.log(`🚗 Processing solo event for CarID: ${carId}`);
+                        // console.log(`🚗 Processing solo event for CarID: ${carId}`);
                         await processSoloEvent(carId, carEntry, sessionId, sessionType, lapsData, raceLeaderboard);
                     }
                 }

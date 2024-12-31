@@ -9,30 +9,6 @@ function ensureFolderExists(directory) {
     }
 }
 
-// ✅ Rename JSON File to Include '-c.json'
-function renameJsonFileToC(inputPath) {
-    if (!fs.existsSync(inputPath)) {
-        console.error('❌ File does not exist:', inputPath);
-        return null;
-    }
-
-    const dir = path.dirname(inputPath);
-    const ext = path.extname(inputPath);
-    const baseName = path.basename(inputPath, ext);
-
-    if (ext !== '.json' || baseName.endsWith('-c')) {
-        console.log(`⏩ Skipping already cleaned or invalid file ${baseName}`);
-        return null;
-    }
-
-    const newFileName = `${baseName}-c${ext}`;
-    const newPath = path.join(dir, newFileName);
-
-    fs.renameSync(inputPath, newPath);
-    console.log(`✅ Renamed: ${inputPath} → ${newPath}`);
-    return newPath;
-}
-
 // ✅ Convert UTF-16 LE to UTF-8
 function cleanJsonFile(inputPath, outputPath) {
     try {
@@ -43,13 +19,9 @@ function cleanJsonFile(inputPath, outputPath) {
         // Convert the content to UTF-8 encoding
         const utf8Content = Buffer.from(utf16Content, 'utf8');
 
-        // Write the converted content to the new output file with '-c.json' suffix
-        const outputDir = path.dirname(outputPath);
-        const baseName = path.basename(outputPath, '.json');
-        const newOutputPath = path.join(outputDir, `${baseName}-c.json`);
-
-        fs.writeFileSync(newOutputPath, utf8Content);
-        console.log(`✅ Converted and saved: ${inputPath} → ${newOutputPath}`);
+        // Write the converted content to the new output file
+        fs.writeFileSync(outputPath, utf8Content);
+        console.log(`✅ Converted and saved: ${inputPath} → ${outputPath}`);
     } catch (err) {
         console.error(`❌ Failed to convert file: ${inputPath}`, err.message);
     }
@@ -75,13 +47,10 @@ function cleanJsonFilesInDirectory(inputDir, outputDir) {
             return;
         }
 
-        const renamedInputPath = renameJsonFileToC(inputPath);
-        if (renamedInputPath) {
-            cleanJsonFile(renamedInputPath, outputPath);
-        }
+        cleanJsonFile(inputPath, outputPath);
     });
 
-    console.log('🎯 All files have been converted from UTF-16 LE to UTF-8 and renamed.');
+    console.log('🎯 All files have been converted from UTF-16 LE to UTF-8.');
 }
 
 // ✅ Export
