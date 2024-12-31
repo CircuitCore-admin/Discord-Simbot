@@ -54,7 +54,7 @@ function sanitizeSteamId(steamId) {
 
 // ✅ Helper function to format lap time
 const formatLapTime = ms => {
-    if (ms === 'N/A' || ms == null) return null;
+    if (ms === 'N/A' || ms == null || ms === 2147483647) return null; // Handle edge case
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const milliseconds = Math.round(ms % 1000);
@@ -103,17 +103,18 @@ async function ensureDriversExist(driverStats) {
                 await db.query(
                     `INSERT INTO driver_info (steam_id, real_name) 
                      VALUES ($1, $2)`,
-                    [steamId, realName]
+                    [steamId, Buffer.from(realName, 'utf8').toString('utf8')]
                 );
-                // console.log(`🆕 Added new driver: ${steamId}`);
+                console.log(`🆕 Added new driver: ${steamId} (${realName})`);
             } else {
-                // console.log(`🔗 Found driver: ${steamId}`);
+                console.log(`🔗 Found driver: ${steamId}`);
             }
         } catch (err) {
             console.error(`❌ Failed to ensure driver exists for ${realName}:`, err.message);
         }
     }
 }
+
 
 // ✅ Refresh Driver Info
 async function refreshDriverInfo() {
@@ -259,6 +260,23 @@ function generateCupCategoryLeaderboards(sessionResult, sessionType) {
             const driverLapCount = entry.timing?.lapCount || 0;
             const driverBestLap = entry.timing?.bestLap || null;
 
+            // Check for invalid bestLap during FP and Q sessions
+            if (sessionType === 'FP' || sessionType === 'Q') {
+                if (driverBestLap === 2147483647) {
+                    entry.timing.bestLap = null;
+                }
+            }
+            const validDrivers = [];
+            const dnfDrivers = [];
+            if (driverLapCount > 0 && driverBestLap && driverTotalTime > 0) {
+                validDrivers.push(entry);
+            } else {
+                entry.leaderDelta = 'DNF';
+                entry.cupPosition = null; // Explicitly set to null
+                entry.overallPosition = null; // Explicitly set to null
+                dnfDrivers.push(entry);
+            }
+
             let leaderDelta = null;
 
             if (driverLapCount === 0) {
@@ -332,6 +350,13 @@ function generateClassLeaderboards(sessionResult, sessionType) {
             const driverLapCount = entry.timing?.lapCount || 0;
             const driverBestLap = entry.timing?.bestLap || null;
             const driverTotalTime = entry.timing?.totalTime || 0;
+
+            // Check for invalid bestLap during FP and Q sessions
+            if (sessionType === 'FP' || sessionType === 'Q') {
+                if (driverBestLap === 2147483647) {
+                    entry.timing.bestLap = null;
+                }
+            }
 
             if (driverLapCount > 0 && driverBestLap && driverTotalTime > 0) {
                 validDrivers.push(entry);
@@ -478,22 +503,21 @@ async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsDat
 
     let leaderDelta = null;
     if (!hasCompletedLaps) {
-        console.warn(`⚠️ Driver has not completed any laps. Skipping.`);
         leaderDelta = null;
     } else if (sessionType === 'FP' || sessionType === 'Q') {
         if (driverFastestLap && leaderBestLap) {
             const timeDelta = driverFastestLap - leaderBestLap;
-            leaderDelta = `${formatLapTime(timeDelta)}`;
+            leaderDelta = `+${formatLapTime(timeDelta)}`;
         } else {
             leaderDelta = null;
         }
     } else if (sessionType === 'R') {
         if (driverLapCount < leaderLaps) {
             const lapDifference = leaderLaps - driverLapCount;
-            leaderDelta = `${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
+            leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
         } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
             const timeDelta = driverTotalTime - leaderTotalTime;
-            leaderDelta = `${formatLapTime(timeDelta)}`;
+            leaderDelta = `+${formatLapTime(timeDelta)}`;
         } else {
             leaderDelta = null;
         }
@@ -525,6 +549,14 @@ async function processTeamEvent(carId, carEntry, sessionId, sessionType, lapsDat
         const driverLaps = groupedLapsByDriverIndex[driverIndex] || [];
         const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
         const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
+
+        // Check for invalid bestLap during FP and Q sessions
+        const driverBestLap = carEntry.timing?.bestLap || null;
+        if (sessionType === 'FP' || sessionType === 'Q') {
+            if (driverBestLap === 2147483647) {
+                carEntry.timing.bestLap = null;
+            }
+        }
 
         const steamIdRaw = driver?.playerId || `Unknown_ID_${driverIndex}`;
         const steamId = sanitizeSteamId(steamIdRaw);
@@ -663,7 +695,7 @@ async function insertTeamStatsIntoDatabase(sessionId, teamStats, driverStats) {
             await db.query(
                 `INSERT INTO driver_info (steam_id, real_name) 
          VALUES ($1, $2) ON CONFLICT (steam_id) DO NOTHING`,
-                [driverStat.steamId, driverStat.name]
+                [driverStat.steamId, Buffer.from(driverStat.name, 'utf8').toString('utf8')]
             );
         }
 
@@ -822,7 +854,6 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
     };
 
     if (!hasCompletedLaps) {
-        console.warn(`⚠️ Driver ${driverIndex} has not completed any laps. Skipping.`);
         leaderDelta = null;
     } else if (sessionType === 'FP' || sessionType === 'Q') {
         if (driverFastestLap && leaderBestLap) {
@@ -833,9 +864,9 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
         }
     } else if (sessionType === 'R') {
         if (driverLapCount < leaderLaps) {
-            const lapDifference = leaderLapCount - driverLapCount;
+            const lapDifference = leaderLaps - driverLapCount;
             leaderDelta = `+${lapDifference} lap${lapDifference > 1 ? 's' : ''}`;
-        } else if (driverLapCount === leaderLapCount && leaderTotalTime > 0 && driverTotalTime > 0) {
+        } else if (driverLapCount === leaderLaps && leaderTotalTime > 0 && driverTotalTime > 0) {
             const timeDelta = driverTotalTime - leaderTotalTime;
             leaderDelta = `+${formatLapTime(timeDelta)}`;
         } else {
@@ -872,6 +903,15 @@ async function processSoloEvent(carId, carEntry, sessionId, sessionType, lapsDat
         const driverLaps = groupedLapsByDriverIndex[driverIndex] || [];
         const validDriverLaps = driverLaps.filter(lap => lap.isValidForBest);
         const validLaps = driverLaps.filter(lap => lap.isValidForBest).map(lap => lap.laptime);
+
+        // Check for invalid bestLap during FP and Q sessions
+        const driverBestLap = carEntry.timing?.bestLap || null;
+        if (sessionType === 'FP' || sessionType === 'Q') {
+            if (driverBestLap === 2147483647) {
+                carEntry.timing.bestLap = null;
+            }
+        }
+
         // ✅ Sanitize SteamID
         const steamIdRaw = driver?.playerId || `Unknown_ID_${driverIndex}`;
         const steamId = sanitizeSteamId(steamIdRaw);
@@ -967,7 +1007,7 @@ async function insertDriverStatsIntoDatabase(sessionId, driverStat) {
         await db.query(
             `INSERT INTO driver_info (steam_id, real_name) 
      VALUES ($1, $2) ON CONFLICT (steam_id) DO NOTHING`,
-            [driverStat.steamId, driverStat.name]
+            [driverStat.steamId, Buffer.from(driverStat.name, 'utf8').toString('utf8')]
         );
 
         // ✅ Skip if no laps completed
@@ -1084,9 +1124,11 @@ async function processSessionFilesFromDirectories(directories) {
             }
 
             for (const file of files) {
+                await new Promise(resolve => setTimeout(resolve, 70));
+
                 // Check if the file has already been processed
                 if (await isFileProcessed(file)) {
-                    // console.log(`⏩ Skipping already processed file: ${file}`);
+                    console.log(`⏩ Skipping already processed file: ${file}`);
                     continue;
                 }
 
@@ -1157,10 +1199,14 @@ async function processSessionFilesFromDirectories(directories) {
                 fs.renameSync(filePath, newFilePath);
 
                 await markTeamEvent(sessionId);
+                
                 await ensureDriversExist(raceLeaderboard);
+                await new Promise(resolve => setTimeout(resolve, 70));
                 await refreshDriverTrackInfo();
+                await new Promise(resolve => setTimeout(resolve, 70));
                 // await refreshDriverCarTrackInfo();
                 await refreshCarInfo();
+                await new Promise(resolve => setTimeout(resolve, 70));
                 await refreshDriverInfo();
             }
         }
@@ -1179,7 +1225,7 @@ const directories = [
     'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-enduro'
 ];
 
-setInterval(() => processSessionFilesFromDirectories(directories), 5 * 60 * 1000);
+// setInterval(() => processSessionFilesFromDirectories(directories), 5 * 60 * 1000);
 
 // Initial run
 processSessionFilesFromDirectories(directories);

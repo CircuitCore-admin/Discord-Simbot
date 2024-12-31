@@ -12,9 +12,31 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
         const commands = [
             {
-                name: 'test',
-                description: 'Test command to check bot response',
+                name: 'leaderboard',
+                description: 'Get the fastest lap times for a specific track',
+                options: [
+                    {
+                        name: 'track',
+                        type: 3, // STRING
+                        description: 'Select a track to view the leaderboard',
+                        required: true,
+                        autocomplete: true,
+                    }
+                ],
             },
+            {
+                name: 'results',
+                description: 'View results from a specific session',
+                options: [
+                    {
+                        name: 'session',
+                        type: 3, // STRING
+                        description: 'Select a session',
+                        required: true,
+                        autocomplete: true
+                    }
+                ]
+            },            
             {
                 name: 'car',
                 description: 'Get driver-specific stats for a selected car model',
