@@ -1080,7 +1080,7 @@ async function processSessionFilesFromDirectories(directories) {
 
             if (files.length === 0) {
                 console.log('📂 No new session files found. Waiting for next run...');
-                return;
+                continue;
             }
 
             for (const file of files) {
@@ -1159,7 +1159,7 @@ async function processSessionFilesFromDirectories(directories) {
                 await markTeamEvent(sessionId);
                 await ensureDriversExist(raceLeaderboard);
                 await refreshDriverTrackInfo();
-                await refreshDriverCarTrackInfo();
+                // await refreshDriverCarTrackInfo();
                 await refreshCarInfo();
                 await refreshDriverInfo();
             }
