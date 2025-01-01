@@ -1,0 +1,62 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.2
+-- Dumped by pg_dump version 17.2
+
+-- Started on 2025-01-01 18:34:52
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 4917 (class 0 OID 19271)
+-- Dependencies: 231
+-- Data for Name: track_info; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.track_info (track_id, track_name, location, track_length, created_at) FROM stdin;
+monza	Monza	Italy	5.793	2024-12-25 01:26:19.076461
+cota	Circuit of the Americas	Texas, USA	5.514	2024-12-25 02:13:40.737512
+barcelona	Circuit de Barcelona-Catalunya	Spain	4.657	2024-12-25 14:20:42.721555
+brands_hatch	Brands Hatch	United Kingdom	3.916	2024-12-25 14:21:24.094696
+donington	Donington Park GP	United Kingdom	4.02	2024-12-25 14:27:18.119727
+hungaroring	Hungaroring	Hungary	4.381	2024-12-25 14:27:45.567754
+imola	Imola	Italy	4.909	2024-12-25 14:28:34.783971
+red_bull_ring	Red Bull Ring	Austria	4.318	2024-12-25 01:16:11.455778
+indianapolis	Indianapolis	USA	3.925	2024-12-25 14:30:10.576509
+kyalami	Kyalami	South Africa	4.529	2024-12-25 14:30:37.407923
+laguna_seca	Laguna Seca	USA	3.602	2024-12-25 14:31:14.330387
+misano	Misano	Italy	4.226	2024-12-25 14:37:03.432424
+mount_panorama	Mount Panorama	Australia	6.213	2024-12-25 14:37:03.432424
+nurburgring	Nürburgring	Germany	5.148	2024-12-25 14:37:03.432424
+nurburgring_24h	Nürburgring 24h	Germany	25.378	2024-12-25 14:37:03.432424
+oulton_park	Oulton Park	United Kingdom	4.307	2024-12-25 14:37:03.432424
+paul_ricard	Paul Ricard	France	5.842	2024-12-25 14:37:03.432424
+silverstone	Silverstone	United Kingdom	5.891	2024-12-25 14:37:03.432424
+spa	Spa-Francorchamps	Belgium	7.004	2024-12-25 14:37:03.432424
+suzuka	Suzuka	Japan	5.807	2024-12-25 14:37:03.432424
+valencia	Valencia	Spain	4.005	2024-12-27 03:43:50.509886
+watkins_glen	Watkins Glen	USA	5.43	2024-12-28 20:11:30.155288
+zandvoort	Zandvoort	Netherlands	4.259	2024-12-28 21:06:00
+zolder	Zolder	Belgium	4.011	2024-12-28 21:06:00
+snetterton	Snetterton	United Kingdom	4.779	2024-12-28 21:06:00
+\.
+
+
+-- Completed on 2025-01-01 18:34:52
+
+--
+-- PostgreSQL database dump complete
+--
+
