@@ -31,13 +31,22 @@ module.exports = {
         console.log(`🚀 Adding Track: ID: ${trackId} | Name: ${trackName} | Location: ${location} | Length: ${trackLength} km`);
 
         try {
+            // Validate inputs (optional but recommended)
+            if (!/^[a-zA-Z0-9-_]+$/.test(trackId)) {
+                throw new Error('Invalid track_id format. Only alphanumeric, dashes, and underscores are allowed.');
+            }
+
+            if (trackLength <= 0) {
+                throw new Error('Track length must be a positive number.');
+            }
+
             // Check if the track already exists by track_id
-            const existingTrack = await db.query(
+            const { rows: existingTrack } = await db.query(
                 `SELECT * FROM track_info WHERE track_id = $1`,
                 [trackId]
             );
 
-            if (existingTrack.rows.length > 0) {
+            if (existingTrack.length > 0) {
                 console.warn(`⚠️ Track already exists: ${trackId}`);
                 return interaction.reply(`⚠️ Track with ID **${trackId}** already exists in the database.`);
             }
@@ -53,7 +62,7 @@ module.exports = {
             await interaction.reply(`✅ Track **${trackName}** added successfully!`);
         } catch (error) {
             console.error('❌ Database Error:', error.message);
-            await interaction.reply('❌ Failed to add track. Please try again later.');
+            await interaction.reply(`❌ Failed to add track: ${error.message}`);
         }
     },
 };

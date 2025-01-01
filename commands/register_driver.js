@@ -5,7 +5,7 @@ const db = require('../services/database');
 // Steam API Key (ensure it's in your .env file)
 const STEAM_API_KEY = process.env.STEAM_API_KEY;
 
-// Function to get SteamID from a vanity URL or profile link
+// 🚦 **Function to Get SteamID Securely**
 async function getSteamID(steamInput) {
     try {
         let steamID = null;
@@ -62,19 +62,24 @@ module.exports = {
     async execute(interaction) {
         const discordId = interaction.user.id;
         const discordUsername = interaction.user.username;
-        const steamInput = interaction.options.getString('steam_input');
+        const steamInput = interaction.options.getString('steam_input').trim();
 
         console.log(`🚀 Received Steam Input: ${steamInput}`);
 
         try {
-            // Fetch SteamID
+            // 🚦 Validate steamInput
+            if (!steamInput || steamInput.length > 200) {
+                throw new Error('Invalid Steam input provided.');
+            }
+
+            // 🔍 Fetch SteamID
             const steamID = await getSteamID(steamInput);
 
             if (!steamID) {
-                throw new Error('Failed to resolve SteamID.');
+                throw new Error('Failed to resolve SteamID. Please ensure the input is correct.');
             }
 
-            // Insert or Update Driver Information
+            // 📊 Insert or Update Driver Information
             await db.query(
                 `INSERT INTO driver_info (discord_id, username, steam_id)
                  VALUES ($1, $2, $3)
@@ -87,8 +92,8 @@ module.exports = {
             console.log(`✅ Driver successfully registered or updated: ${discordUsername} (${steamID})`);
             await interaction.reply(`✅ Driver **${discordUsername}** registered/updated successfully with SteamID: **${steamID}**.`);
         } catch (error) {
-            console.error('❌ Database or API error:', error.message);
-            await interaction.reply(`❌ Database or API error: ${error.message}`);
+            console.error('❌ Database or API Error:', error.message || error);
+            await interaction.reply(`❌ Error: ${error.message || 'Failed to register driver. Please try again later.'}`);
         }
     },
 };

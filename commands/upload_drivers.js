@@ -24,11 +24,13 @@ module.exports = {
 
         console.log(`🚀 File Received: ${file.name}`);
 
-        const filePath = path.join(__dirname, '..', 'uploads', file.name);
+        const filePath = path.join(__dirname, '..', 'uploads', path.basename(file.name));
 
         try {
-            // Download and save the CSV file
+            // 🚦 **Download and Save CSV Securely**
             const response = await fetch(file.url);
+            if (!response.ok) throw new Error('Failed to download file.');
+
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             fs.writeFileSync(filePath, buffer);
@@ -51,7 +53,7 @@ module.exports = {
 
             const rows = []; // Store rows for batch processing
 
-            // Parse the CSV
+            // 🚦 **Parse CSV and Validate Headers**
             await new Promise((resolve, reject) => {
                 fs.createReadStream(filePath)
                     .pipe(csvParser())
@@ -68,25 +70,27 @@ module.exports = {
 
             console.log(`🔄 Processing ${rows.length} rows...`);
 
-            // Process rows sequentially
+            // 🚦 **Process Rows with SQL Protection**
             for (const row of rows) {
                 const username = row['username']?.trim() || null;
                 const real_name = row['real name']?.trim() || null;
                 const steam64_id = row['steam64_id']?.trim() || null;
 
                 if (!steam64_id) {
+                    console.warn(`⏭️ Skipping row due to missing steam64_id.`);
                     skippedCount++;
                     continue;
                 }
 
                 try {
-                    const result = await db.query(
-                        `SELECT * FROM driver_info WHERE steam_id = $1`,
+                    // 🚦 Check if Driver Exists
+                    const { rows: existingDrivers } = await db.query(
+                        `SELECT username, real_name FROM driver_info WHERE steam_id = $1`,
                         [steam64_id]
                     );
 
-                    if (result.rows.length > 0) {
-                        const driver = result.rows[0];
+                    if (existingDrivers.length > 0) {
+                        const driver = existingDrivers[0];
                         const updates = [];
                         const updateValues = [];
                         let paramIndex = 1;
@@ -111,6 +115,7 @@ module.exports = {
                             await db.query(query, updateValues);
                             updatedCount++;
                         } else {
+                            // console.log(`⏭️ No changes needed for SteamID: ${steam64_id}`);
                             skippedCount++;
                         }
                     } else {
@@ -136,16 +141,16 @@ module.exports = {
                 `✅ CSV Processing Complete:\n🆕 Added: ${addedCount}\n🔄 Updated: ${updatedCount}\n⏭️ Skipped: ${skippedCount}`
             );
 
-            // Delete the file *after* parsing is done
+            // 🧹 **Cleanup Temporary Files**
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
                 console.log('🧹 Temporary file deleted.');
             }
         } catch (error) {
-            console.error('❌ Error handling the CSV upload:', error.message);
-            interaction.reply('❌ An error occurred while uploading and processing the CSV file.');
+            console.error('❌ Error handling the CSV upload:', error.message || error);
+            await interaction.reply('❌ An error occurred while uploading and processing the CSV file.');
 
-            // Ensure cleanup happens in case of an exception
+            // 🧹 Ensure Cleanup on Exception
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
                 console.log('🧹 Temporary file deleted.');

@@ -17,7 +17,7 @@ module.exports = {
                 .setRequired(false)),
 
     async execute(interaction) {
-        const carModel = interaction.options.getString('car_model');
+        const carModel = interaction.options.getString('car_model').trim();
         const user = interaction.options.getUser('user') || interaction.user;
 
         console.log(`🛠️ Fetching car stats for: ${user.username}, Car Model: ${carModel}`);
@@ -25,53 +25,56 @@ module.exports = {
         try {
             const discordId = user.id;
 
-            // Fetch steam_id
-            const driverQuery = `SELECT steam_id FROM driver_info WHERE discord_id = $1`;
-            const driverResult = await db.query(driverQuery, [discordId]);
+            // 🚦 Validate carModel (Basic sanitation, prevent malformed strings)
+            if (!carModel || typeof carModel !== 'string' || carModel.length > 100) {
+                throw new Error('Invalid car model provided.');
+            }
 
-            if (driverResult.rows.length === 0) {
+            // 📊 Fetch steam_id
+            const driverQuery = `SELECT steam_id FROM driver_info WHERE discord_id = $1`;
+            const { rows: driverRows } = await db.query(driverQuery, [discordId]);
+
+            if (driverRows.length === 0) {
                 return interaction.reply({
-                    content: `No Steam ID found for **${user.username}**. Please ensure they're registered.`,
+                    content: `❌ No Steam ID found for **${user.username}**. Please ensure they're registered.`,
                     ephemeral: true,
                 });
             }
 
-            const steamId = driverResult.rows[0].steam_id;
+            const steamId = driverRows[0].steam_id;
 
-            // Fetch car-specific data
+            // 🚦 Fetch car-specific data
             const carStatsQuery = `
                 SELECT 
                     total_laps, total_valid_laps, total_sessions, fp_sessions, q_sessions, r_sessions, 
                     distance_covered, best_class_q, best_class_r
                 FROM driver_car_stats 
-                WHERE steam_id = $1 AND car_model_id = (
-                    SELECT car_id FROM car_info WHERE car_model = $2
-            )`;
-            const carStatsResult = await db.query(carStatsQuery, [steamId, carModel]);
+                WHERE steam_id = $1 
+                AND car_model_id = (SELECT car_id FROM car_info WHERE car_model = $2)
+            `;
+            const { rows: carStatsRows } = await db.query(carStatsQuery, [steamId, carModel]);
 
-            if (carStatsResult.rows.length === 0) {
+            if (carStatsRows.length === 0) {
                 return interaction.reply({
-                    content: `No data found for **${user.username}** with car model **${carModel}**.`,
+                    content: `❌ No data found for **${user.username}** with car model **${carModel}**.`,
                     ephemeral: true,
                 });
             }
 
-            const carStats = carStatsResult.rows[0];
+            const carStats = carStatsRows[0];
 
             const embed = new EmbedBuilder()
-                .setTitle(`Car Stats: ${carModel} - ${user.username}`)
+                .setTitle(`🏎️ Car Stats: ${carModel} - ${user.username}`)
                 .addFields(
-                    { name: 'Total Sessions', value: carStats.total_sessions?.toString() || 'N/A', inline: true },
-                    { name: 'Free Practice Sessions', value: carStats.fp_sessions?.toString() || 'N/A', inline: true },
-                    { name: 'Qualifying Sessions', value: carStats.q_sessions?.toString() || 'N/A', inline: true },
-                    { name: 'Race Sessions', value: carStats.r_sessions?.toString() || 'N/A', inline: true },
-                    { name: 'Total Laps', value: carStats.total_laps?.toString() || 'N/A', inline: true },
-                    { name: 'Valid Laps', value: carStats.total_valid_laps?.toString() || 'N/A', inline: true },
-                    { name: 'Distance Covered', value: carStats.distance_covered?.toString() || 'N/A', inline: true },
-                    { name: 'Best Class Qualifying', value: carStats.best_class_q?.toString() || 'N/A', inline: true },
-                    { name: 'Best Class Race', value: carStats.best_class_r?.toString() || 'N/A', inline: true },
-                    // { name: 'Podiums', value: carStats.podiums?.toString() || 'N/A', inline: true },
-                    // { name: 'Wins', value: carStats.wins?.toString() || 'N/A', inline: true }
+                    { name: '📊 Total Sessions', value: carStats.total_sessions?.toString() || 'N/A', inline: true },
+                    { name: '🏁 Free Practice Sessions', value: carStats.fp_sessions?.toString() || 'N/A', inline: true },
+                    { name: '⏱️ Qualifying Sessions', value: carStats.q_sessions?.toString() || 'N/A', inline: true },
+                    { name: '🏆 Race Sessions', value: carStats.r_sessions?.toString() || 'N/A', inline: true },
+                    { name: '🔄 Total Laps', value: carStats.total_laps?.toString() || 'N/A', inline: true },
+                    { name: '✅ Valid Laps', value: carStats.total_valid_laps?.toString() || 'N/A', inline: true },
+                    { name: '📏 Distance Covered', value: carStats.distance_covered?.toString() || 'N/A', inline: true },
+                    { name: '🥇 Best Class Qualifying', value: carStats.best_class_q?.toString() || 'N/A', inline: true },
+                    { name: '🏅 Best Class Race', value: carStats.best_class_r?.toString() || 'N/A', inline: true }
                 )
                 .setColor('#0099ff')
                 .setFooter({ text: 'Powered by CircuitCore' })
@@ -79,11 +82,10 @@ module.exports = {
 
             await interaction.reply({ embeds: [embed] });
 
-
         } catch (error) {
-            console.error('❌ Error fetching car stats:', error);
-            return interaction.reply({
-                content: 'An error occurred while fetching car stats.',
+            console.error('❌ Database Error:', error.message || error);
+            await interaction.reply({
+                content: '❌ An error occurred while fetching car stats. Please try again later.',
                 ephemeral: true,
             });
         }
@@ -94,21 +96,29 @@ module.exports = {
 
         if (focusedOption.name === 'car_model') {
             try {
+                const userInput = focusedOption.value.trim();
+
+                // 🚦 Validate user input for autocomplete
+                if (!userInput || userInput.length > 100) {
+                    return interaction.respond([]);
+                }
+
                 const carQuery = `
                     SELECT car_model
                     FROM car_info 
                     WHERE car_model ILIKE $1 
-                    LIMIT 25`;
-                const carResults = await db.query(carQuery, [`%${focusedOption.value}%`]);
+                    LIMIT 25
+                `;
+                const { rows: carResults } = await db.query(carQuery, [`%${userInput}%`]);
 
                 await interaction.respond(
-                    carResults.rows.map(row => ({
+                    carResults.map(row => ({
                         name: row.car_model,
                         value: row.car_model
                     }))
                 );
             } catch (error) {
-                console.error('❌ Autocomplete Error:', error);
+                console.error('❌ Autocomplete Error:', error.message || error);
                 await interaction.respond([]);
             }
         }
