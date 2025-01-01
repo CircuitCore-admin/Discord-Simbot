@@ -1,0 +1,23 @@
+CREATE TABLE driver_car_stats (
+    id INTEGER NOT NULL DEFAULT nextval('driver_car_stats_id_seq'::regclass),
+    steam_id TEXT NOT NULL,
+    car_model_id INTEGER NOT NULL,
+    car_model TEXT NOT NULL,
+    car_class TEXT NOT NULL,
+    total_laps INTEGER DEFAULT 0,
+    total_valid_laps INTEGER DEFAULT 0,
+    total_sessions INTEGER DEFAULT 0,
+    fp_sessions INTEGER DEFAULT 0,
+    q_sessions INTEGER DEFAULT 0,
+    r_sessions INTEGER DEFAULT 0,
+    distance_covered DOUBLE PRECISION DEFAULT 0.0,
+    best_q_position INTEGER,
+    best_r_position INTEGER,
+    best_class_q INTEGER,
+    best_class_r INTEGER,
+    best_category_q INTEGER,
+    best_category_r INTEGER,
+    total_off_tracks INTEGER DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT driver_car_stats_steam_id_car_model_id_key UNIQUE (steam_id, car_model_id)
+);
