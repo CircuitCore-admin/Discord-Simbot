@@ -33,7 +33,7 @@ for (const file of eventFiles) {
 
 // Bot is Ready
 client.once('ready', () => {
-    console.log(`✅ Logged in as ${client.user.tag}`);
+    // console.log(`✅ Logged in as ${client.user.tag}`);
 
     // Set Bot Presence
     client.user.setPresence({
