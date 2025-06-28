@@ -1138,9 +1138,9 @@ async function processSessionFilesFromDirectories(directories) {
                 const fileContent = loadData(filePath);
                 // fileContent.forEach(sessionResults.leaderBoardLines.car => {
                 //     console.log(car.drivers.map(driver => driver.lastName));
-                    
+
                 // });
-                
+
                 const raceLeaderboard = fileContent.sessionResult?.leaderBoardLines || [];
                 const lapsData = fileContent.laps || [];
                 const carIds = new Set(lapsData.map(lap => lap.carId));
@@ -1204,7 +1204,7 @@ async function processSessionFilesFromDirectories(directories) {
                 fs.renameSync(filePath, newFilePath);
 
                 await markTeamEvent(sessionId);
-                
+
                 await ensureDriversExist(raceLeaderboard);
                 await new Promise(resolve => setTimeout(resolve, 70));
                 await refreshDriverTrackInfo();
@@ -1220,14 +1220,14 @@ async function processSessionFilesFromDirectories(directories) {
     }
 }
 
-// Periodic check for new files
 const directories = [
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results',
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-2',
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-3',
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-solo',
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-practice',
-    'C:/Users/otten/Downloads/wetransfer_results-rar_2024-12-28_1942/results-enduro'
+    'F:/Event Management/Online/Server 1 WGC-1 250 connections/server/results',
+    'F:/Event Management/Online/Server 2 WGC-2 250 connections/server/results',
+    'F:/Event Management/Online/Server 3 WGC-3 250 connections/server/results',
+    'F:/Event Management/Online/Server 4 WGC-solo 250 connections/server/results',
+    'F:/Event Management/Online/Server 9 WGC-enduro 250 connections/server/results',
+    'F:/Event Management/Online/Server 10 WGC-practice 55 105 connections/server/results'
+    // Add more directories as needed
 ];
 
 // setInterval(() => processSessionFilesFromDirectories(directories), 5 * 60 * 1000);

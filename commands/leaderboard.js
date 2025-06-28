@@ -162,11 +162,11 @@ module.exports = {
                 const totalPages = Math.ceil(total / pageSize);
 
                 let leaderboardText = leaderboard.map((entry, index) =>
-                    `**#${(page - 1) * pageSize + index + 1}** - **${normalizeText(entry.real_name)}**: ${this.formatTime(entry.best_lap)}s`
+                    `**#${(page - 1) * pageSize + index + 1}** - **${normalizeText(entry.real_name)}**: ${this.formatTime(entry.best_lap)}`
                 ).join('\n');
 
                 if (userData) {
-                    leaderboardText += `\n\n**#${userData.position || '??'}** - **${normalizeText(userData.real_name)}**: ${this.formatTime(userData.best_lap)}s *(Your Time)*`;
+                    leaderboardText += `\n\n**#${userData.position || '??'}** - **${normalizeText(userData.real_name)}**: ${this.formatTime(userData.best_lap)} *(Your Time)*`;
                 }
 
                 return new EmbedBuilder()
