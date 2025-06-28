@@ -11,13 +11,16 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.7.9",
+    "@google-cloud/vision": "^5.2.0",
+    "axios": "^1.10.0",
     "csv-parser": "^3.1.0",
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.7",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1",
     "fs": "^0.0.1-security",
     "node-fetch": "^3.3.2",
-    "pg": "^8.13.1"
+    "openai": "^5.8.2",
+    "pg": "^8.13.1",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

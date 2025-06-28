@@ -12,6 +12,18 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
         const commands = [
             {
+                name: 'analyze_hotlap',
+                description: 'Analyze an F1 hotlap screenshot using OCR and GPT-4',
+                options: [
+                    {
+                        name: 'image',
+                        type: 11, // Attachment
+                        description: 'Upload the screenshot of the hotlap',
+                        required: true,
+                    },
+                ],
+            },
+            {
                 name: 'leaderboard',
                 description: 'Get the fastest lap times for a specific track',
                 options: [
@@ -36,7 +48,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         autocomplete: true
                     }
                 ]
-            },            
+            },
             {
                 name: 'car',
                 description: 'Get driver-specific stats for a selected car model',
