@@ -23,6 +23,21 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                     },
                 ],
             },
+            // NEW COMMAND:
+            {
+                name: 'set_hotlap_channel',
+                description: 'Sets the channel where hotlap screenshots will be automatically analyzed.',
+                options: [
+                    {
+                        name: 'channel',
+                        type: 7, // CHANNEL type
+                        description: 'The channel to designate for hotlap submissions.',
+                        required: true,
+                        channel_types: [0], // 0 is GuildText
+                    },
+                ],
+                default_member_permissions: String(PermissionFlagsBits.ManageGuild), // Use String for bitfield
+            },
             {
                 name: 'leaderboard',
                 description: 'Get the fastest lap times for a specific track',
