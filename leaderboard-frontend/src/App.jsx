@@ -24,7 +24,7 @@ const XIcon = () => (
 
 const DownloadIcon = () => (
      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
     </svg>
 );
@@ -317,8 +317,59 @@ function App() {
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     const handleDiscordLogin = () => { window.location.href = `https://bottesting.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`; };
-    const handleDiscordLogout = async () => { /* Logic would go here */ };
-    const handleDownloadCSV = async () => { /* Logic would go here */ };
+    
+    const handleDiscordLogout = async () => {
+        try {
+            const response = await fetch('https://bottesting.circuitcore.net/auth/logout', {
+                method: 'POST',
+            });
+            if (response.ok) {
+                setIsAuthenticated(false);
+                setDiscordUser(null);
+                setUserGuilds([]);
+                setSelectedGuildId('');
+                setSelectedTrack('');
+                setLeaderboardData([]);
+                setExpandedDriverId(null);
+                setExpandedDriverLaps(null);
+                setCurrentPage(1);
+                setError(null);
+            } else {
+                console.error('Logout failed:', response.statusText);
+                setError('Failed to log out.');
+            }
+        } catch (e) {
+            console.error('Error during logout:', e);
+            setError('Failed to connect to logout server.');
+        }
+    };
+
+    const handleDownloadCSV = async () => {
+        setDownloadingCSV(true);
+        setError(null);
+        try {
+            const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to download CSV: ${errorText}`);
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${selectedTrack.replace(/[^a-zA-Z0-9]/g, '_')}_leaderboard.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Error downloading CSV:', e);
+            setError(e.message);
+        } finally {
+            setDownloadingCSV(false);
+        }
+    };
+
     const toggleDarkMode = () => setIsDarkMode(p => !p);
     
     return (

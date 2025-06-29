@@ -33,8 +33,9 @@
 }
 
 .light-mode {
-    --color-primary-text: #333333;
-    --color-secondary-text: #555555;
+    --color-primary-text: #1A1A1A;
+    --color-secondary-text: #333333;
+    /* Set to a very dark grey for strong contrast */
     --bg-color-body: #F5F5F5;
     --bg-color-app-container: #FFFFFF;
     --bg-color-surface: #E8E8E8;
@@ -46,6 +47,7 @@
     --border-color-strong: #999999;
     --shadow-color-dark: rgba(0, 0, 0, 0.15);
     --shadow-color-subtle: rgba(0, 0, 0, 0.08);
+    color: var(--color-primary-text);
 }
 
 /* --- BASE & GLOBAL STYLES --- */
@@ -418,6 +420,7 @@ body {
 }
 
 .leaderboard-table td {
+    color: var(--color-primary-text);
     box-shadow: inset 0 -1px 0 var(--border-color-subtle);
 }
 
@@ -460,9 +463,10 @@ body {
 
 .leaderboard-table .driver-name-link {
     cursor: pointer;
-    color: var(--color-discord-blue);
+    color: var(--color-primary-text);
     display: inline-flex;
-    align-items: center; /* This ensures consistent vertical alignment */
+    align-items: center;
+    /* This ensures consistent vertical alignment */
     gap: 5px;
 }
 

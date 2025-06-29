@@ -334,7 +334,7 @@ app.post('/auth/logout', (req, res) => {
             console.error('Error destroying session:', err);
             return res.status(500).json({ error: 'Failed to log out.' });
         }
-        res.clearCookie('connect.sid');
+        res.clearCookie('connect.sid'); // Clear the session cookie
         res.json({ message: 'Logged out successfully.' });
     });
 });
@@ -504,6 +504,9 @@ app.get('/api/leaderboard/csv', async (req, res) => {
     const trackName = req.query.track;
     const guildId = req.query.guildId;
 
+    if (!trackName) {
+        return res.status(400).send('Track name is required.');
+    }
     if (!guildId) {
         return res.status(400).send('Guild ID is required.');
     }
