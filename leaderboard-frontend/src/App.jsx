@@ -13,7 +13,8 @@ function App() {
     const [sortColumn, setSortColumn] = useState('lap_time');
     const [sortOrder, setSortOrder] = useState('asc');
 
-    const [excludeInvalidLaps, setExcludeInvalidLaps] = useState(false); // New state for the toggle
+    // Completely REMOVED: excludeInvalidLaps state as it is no longer used
+    // const [excludeInvalidLaps, setExcludeInvalidLaps] = useState(false);
 
     // State for driver details expansion
     const [expandedDriverId, setExpandedDriverId] = useState(null); // Stores user_id of the expanded driver
@@ -26,14 +27,10 @@ function App() {
         'S1': 's1_time',
         'S2': 's2_time',
         'S3': 's3_time',
-        // 'Driver' will now sort by discord_tag as that's what's displayed in the clickable column.
-        // The backend query in index.js can still sort by 'driver_name' or 'discord_tag'
-        // based on how you configure the API request. For now, we'll keep 'driver_name' as a
-        // mapping, but understand the displayed value is discord_tag.
-        'Driver': 'discord_tag', // Changed to sort by discord_tag for consistency with display
+        'Driver': 'discord_tag', // Sort by discord_tag for consistency with display
         'Team': 'team_name',
         'Date': 'submission_date',
-        'Valid': 'is_valid',
+        // Completely REMOVED: 'Valid' from sortableColumnsMap
         'Custom Setup': 'custom_setup'
     };
 
@@ -78,9 +75,9 @@ function App() {
             setLoading(true);
             setError(null);
             try {
-                // Ensure the backend can handle sorting by 'discord_tag'
+                // IMPORTANT: Removed excludeInvalid parameter from fetch call as backend no longer expects it for the main leaderboard
                 const response = await fetch(
-                    `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&excludeInvalid=${excludeInvalidLaps}`
+                    `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}`
                 );
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -94,16 +91,15 @@ function App() {
                 setLoading(false);
             }
         };
+        // IMPORTANT: Removed excludeInvalidLaps from dependency array as it's no longer a filter
         fetchLeaderboard();
-    }, [selectedTrack, sortColumn, sortOrder, excludeInvalidLaps]); // Add excludeInvalidLaps to dependency array
+    }, [selectedTrack, sortColumn, sortOrder]);
 
     const handleTrackChange = (event) => {
         setSelectedTrack(event.target.value);
     };
 
-    const handleExcludeInvalidToggle = () => {
-        setExcludeInvalidLaps(prev => !prev);
-    };
+    // Completely REMOVED: handleExcludeInvalidToggle function
 
     const getSortIcon = (columnDbName) => {
         if (sortColumn === columnDbName) {
@@ -127,6 +123,7 @@ function App() {
         setExpandedDriverLaps(null); // Clear previous laps
 
         try {
+            // This fetch still correctly includes `is_valid` in the backend query results
             const response = await fetch(
                 `http://localhost:3000/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}`
             );
@@ -143,6 +140,32 @@ function App() {
         }
     };
 
+    // ADDED: Function to handle CSV download
+    const handleDownloadCSV = async () => {
+        if (!selectedTrack) {
+            alert('Please select a track first.');
+            return;
+        }
+        try {
+            // Fetch CSV directly from the backend endpoint, no excludeInvalid param
+            const response = await fetch(`http://localhost:3000/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const blob = await response.blob(); // Get the response as a Blob
+            const url = window.URL.createObjectURL(blob); // Create a temporary URL for the blob
+            const a = document.createElement('a'); // Create a temporary anchor element
+            a.href = url;
+            a.download = `${selectedTrack.replace(/[^a-zA-Z0-9]/g, '_')}_leaderboard.csv`; // Set the download filename
+            document.body.appendChild(a); // Append to body (necessary for Firefox)
+            a.click(); // Programmatically click the link to trigger download
+            a.remove(); // Clean up the element
+            window.URL.revokeObjectURL(url); // Release the object URL
+        } catch (err) {
+            alert('Failed to download CSV: ' + (err.message || 'Unknown error'));
+            console.error('Error downloading CSV:', err);
+        }
+    };
 
     return (
         <div className="app-container">
@@ -164,15 +187,12 @@ function App() {
                     )}
                 </select>
 
-                <div className="toggle-container">
-                    <input
-                        type="checkbox"
-                        id="excludeInvalid"
-                        checked={excludeInvalidLaps}
-                        onChange={handleExcludeInvalidToggle}
-                    />
-                    <label htmlFor="excludeInvalid">Exclude Invalid Laps</label>
-                </div>
+                {/* COMPLETELY REMOVED: The entire toggle-container div for "Exclude Invalid Laps" */}
+
+                {/* ADDED: CSV Download Button */}
+                <button onClick={handleDownloadCSV} disabled={!selectedTrack || loading} style={{ marginLeft: '15px', padding: '8px 12px', cursor: 'pointer', borderRadius: '5px', border: '1px solid #ccc' }}>
+                    Download CSV
+                </button>
             </div>
 
             <div className="leaderboard-section">
@@ -188,9 +208,8 @@ function App() {
                                 <th>Rank</th>
                                 <th>Track</th>
                                 <th className="sortable" onClick={() => handleSort('Driver')}>
-                                    Driver {getSortIcon('discord_tag')} {/* Sort by discord_tag */}
+                                    Driver {getSortIcon('discord_tag')}
                                 </th>
-                                {/* REMOVED: Discord Tag column */}
                                 <th className="sortable" onClick={() => handleSort('Team')}>
                                     Team {getSortIcon('team_name')}
                                 </th>
@@ -206,9 +225,7 @@ function App() {
                                 <th className="sortable" onClick={() => handleSort('S3')}>
                                     S3 {getSortIcon('s3_time')}
                                 </th>
-                                <th className="sortable" onClick={() => handleSort('Valid')}>
-                                    Valid {getSortIcon('is_valid')}
-                                </th>
+                                {/* COMPLETELY REMOVED: 'Valid' column header from the main table */}
                                 <th className="sortable" onClick={() => handleSort('Custom Setup')}>
                                     Custom Setup {getSortIcon('custom_setup')}
                                 </th>
@@ -228,22 +245,28 @@ function App() {
                                             onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
                                             title="Click to see all laps for this driver on this track"
                                         >
-                                            {/* Display discord_tag in the primary Driver column */}
                                             {entry.discord_tag || entry.driver_name} {expandedDriverId === entry.user_id ? '▲' : '▼'}
                                         </td>
-                                        {/* REMOVED: The extra td for discord_tag */}
                                         <td>{entry.team_name}</td>
                                         <td>{entry.lap_time}</td>
                                         <td>{entry.s1_time}</td>
                                         <td>{entry.s2_time}</td>
                                         <td>{entry.s3_time}</td>
-                                        <td>{entry.is_valid ? '✅ Yes' : '❌ No'}</td>
+                                        {/* COMPLETELY REMOVED: 'Valid' cell from the main leaderboard table */}
                                         <td>{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                        <td>{new Date(entry.submission_date).toLocaleDateString()}</td>
+                                        {/* Updated to show full date, time, and timezone on hover (via title attribute) and a more readable format for display */}
+                                        <td title={new Date(entry.submission_date).toLocaleString()}>
+                                            {new Date(entry.submission_date).toLocaleDateString()}
+                                        </td>
                                     </tr>
                                     {expandedDriverId === entry.user_id && (
                                         <tr>
-                                            <td colSpan="11"> {/* UPDATED COLSPAN back to 11 */}
+                                            {/* colSpan is 9: Rank, Track, Driver, Team, Lap Time, S1, S2, S3, Custom Setup, Date (10 columns total)
+                                                The nested table expands across all columns of the parent table,
+                                                so the colSpan should match the number of columns in the parent table.
+                                                Rank (1) + Track (1) + Driver (1) + Team (1) + Lap Time (1) + S1 (1) + S2 (1) + S3 (1) + Custom Setup (1) + Date (1) = 10 columns.
+                                            */}
+                                            <td colSpan="10">
                                                 {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
                                                 {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
                                                 {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
@@ -254,7 +277,7 @@ function App() {
                                                                 <th>S1</th>
                                                                 <th>S2</th>
                                                                 <th>S3</th>
-                                                                <th>Valid</th>
+                                                                {/* REMOVED: 'Valid' column header from nested table */}
                                                                 <th>Custom Setup</th>
                                                                 <th>Date</th>
                                                             </tr>
@@ -266,9 +289,11 @@ function App() {
                                                                     <td>{lap.s1_time}</td>
                                                                     <td>{lap.s2_time}</td>
                                                                     <td>{lap.s3_time}</td>
-                                                                    <td>{lap.is_valid ? '✅ Yes' : '❌ No'}</td>
+                                                                    {/* REMOVED: 'Valid' cell from nested table */}
                                                                     <td>{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                                    <td>{new Date(lap.submission_date).toLocaleString()}</td>
+                                                                    <td title={new Date(lap.submission_date).toLocaleString()}>
+                                                                        {new Date(lap.submission_date).toLocaleDateString()}
+                                                                    </td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>

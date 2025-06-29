@@ -152,10 +152,12 @@ body {
   background-color: #353535; /* Stronger hover effect */
 }
 
-/* Specific styling for valid/invalid */
-.leaderboard-table td:nth-child(8) { /* Assuming 'Valid' is the 8th column */
+/* Removed the specific styling for the 8th column that was making S3 bold */
+/*
+.leaderboard-table td:nth-child(8) { 
     font-weight: bold;
 }
+*/
 
 /* Optional: F1 specific font */
 /* @font-face {
