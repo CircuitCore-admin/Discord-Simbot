@@ -6,9 +6,12 @@ const axios = require('axios'); // For making HTTP requests to Discord API
 
 const express = require('express');
 const cors = require('cors');
+const session = require('express-session'); // Import express-session
+// Removed: const pgSession = require('connect-pg-simple')(session); // No longer needed
+// Removed: const { Pool } = require('pg'); // No longer needed
 
 const analyzeImage = require('./services/analyzeImage');
-const db = require('./services/database');
+const db = require('./services/database'); // Your existing database connection
 
 // --- Discord Bot Setup ---
 const client = new Client({
@@ -168,6 +171,21 @@ const webPort = process.env.WEB_PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Configure express-session middleware (using default in-memory store)
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'a_strong_secret_key_for_dev', // Use an environment variable for production!
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something is stored
+    cookie: {
+        // maxAge will be set dynamically in the OAuth callback
+        // For production, consider a much longer default like 24 * 60 * 60 * 1000 (1 day)
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (requires HTTPS)
+        httpOnly: true, // Prevents client-side JS from reading the cookie
+        sameSite: 'Lax', // Protects against CSRF attacks
+    },
+}));
+
+
 // Helper function to convert lap time string (e.g., "1:23.456") to milliseconds
 function lapTimeToMs(lapTimeString) {
     if (!lapTimeString || lapTimeString === 'N/A') return null;
@@ -197,25 +215,24 @@ const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `http://localhost:${webPort}/`;
 
-// Add console logs to verify environment variables are loaded
-console.log('DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID);
-console.log('DISCORD_REDIRECT_URI:', DISCORD_REDIRECT_URI);
-
-
 // Route to initiate Discord OAuth2 login
 app.get('/auth/discord', (req, res) => {
-    // Define the scopes you need.
-    // 'identify' for user info, 'guilds' for user's guilds.
-    // 'guilds' scope requires your bot to be in the guild to see it.
     const scopes = ['identify', 'guilds'].join(' ');
-    // Ensure DISCORD_CLIENT_ID is not undefined here
     if (!DISCORD_CLIENT_ID) {
-        // More descriptive error for debugging
         console.error("Error: DISCORD_CLIENT_ID is undefined. Check your .env file and ensure it's loaded correctly.");
         return res.status(500).send('Discord Client ID is not configured on the server. Please check server logs for details.');
     }
+
+    // Store 'stayLoggedIn' preference in session before redirecting to Discord
+    // The frontend will pass this as a query parameter
+    const { stayLoggedIn } = req.query;
+    if (stayLoggedIn === 'true') {
+        req.session.stayLoggedIn = true;
+    } else {
+        req.session.stayLoggedIn = false;
+    }
+
     const authorizeUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}`;
-    // NEW: Log the exact URL being sent to Discord for debugging
     console.log('Attempting Discord OAuth redirect with URI:', authorizeUrl);
     res.redirect(authorizeUrl);
 });
@@ -229,7 +246,6 @@ app.post('/auth/discord/callback', async (req, res) => {
     }
 
     try {
-        // Create URLSearchParams object directly
         const params = new URLSearchParams({
             client_id: DISCORD_CLIENT_ID,
             client_secret: DISCORD_CLIENT_SECRET,
@@ -239,16 +255,14 @@ app.post('/auth/discord/callback', async (req, res) => {
             scope: 'identify guilds'
         });
 
-        // Exchange authorization code for access token
-        const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, { // Pass params object directly
+        const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded', // Crucial header for Discord API
+                'Content-Type': 'application/x-www-form-urlencoded',
             }
         });
 
         const { access_token, token_type } = tokenResponse.data;
 
-        // Fetch user information
         const userResponse = await axios.get('https://discord.com/api/users/@me', {
             headers: {
                 authorization: `${token_type} ${access_token}`,
@@ -256,7 +270,6 @@ app.post('/auth/discord/callback', async (req, res) => {
         });
         const discordUser = userResponse.data;
 
-        // Fetch user's guilds
         const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
             headers: {
                 authorization: `${token_type} ${access_token}`,
@@ -264,44 +277,85 @@ app.post('/auth/discord/callback', async (req, res) => {
         });
         const userGuilds = guildsResponse.data;
 
-        // Fetch all guild IDs from your database that have a hotlap channel configured
         const dbGuildsResult = await db.query('SELECT DISTINCT guild_id FROM guild_settings WHERE hotlap_channel_id IS NOT NULL;');
         const configuredGuildIds = new Set(dbGuildsResult.rows.map(row => row.guild_id));
 
-        // Filter user's guilds to only include those that have a leaderboard configured
         const filteredGuilds = userGuilds
             .filter(guild => configuredGuildIds.has(guild.id))
             .map(guild => ({
                 id: guild.id,
                 name: guild.name,
-                icon: guild.icon // Include icon hash
+                icon: guild.icon
             }));
 
-        // Respond with user info and filtered guilds
+        // Dynamically set session maxAge based on 'stayLoggedIn' preference
+        if (req.session.stayLoggedIn) {
+            req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 1 day
+        } else {
+            req.session.cookie.maxAge = 5 * 60 * 1000; // 5 minutes
+        }
+
+        req.session.discordUser = {
+            id: discordUser.id,
+            username: discordUser.username,
+            discriminator: discordUser.discriminator,
+            avatar: discordUser.avatar,
+            global_name: discordUser.global_name,
+        };
+        req.session.userGuilds = filteredGuilds;
+        req.session.isAuthenticated = true;
+
         res.json({
-            user: {
-                id: discordUser.id,
-                username: discordUser.username,
-                discriminator: discordUser.discriminator,
-                avatar: discordUser.avatar,
-            },
-            guilds: filteredGuilds,
+            user: req.session.discordUser,
+            guilds: req.session.userGuilds,
         });
 
     } catch (error) {
-        // Log the full error response from Axios for better debugging
         console.error('Error during Discord OAuth callback:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Failed to authenticate with Discord.' });
     }
 });
 
+app.get('/auth/me', (req, res) => {
+    if (req.session.isAuthenticated && req.session.discordUser) {
+        res.json({
+            isAuthenticated: true,
+            user: req.session.discordUser,
+            guilds: req.session.userGuilds,
+        });
+    } else {
+        res.json({ isAuthenticated: false });
+    }
+});
 
-// API Endpoint to get unique track locations
+app.post('/auth/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            return res.status(500).json({ error: 'Failed to log out.' });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ message: 'Logged out successfully.' });
+    });
+});
+
+
 app.get('/api/tracks', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).json({ error: 'Unauthorized: Not logged in.' });
+    }
+
     const guildId = req.query.guildId;
     if (!guildId) {
         return res.status(400).json({ error: 'Guild ID is required.' });
     }
+
+    const userGuilds = req.session.userGuilds || [];
+    const isMemberOfGuild = userGuilds.some(guild => guild.id === guildId);
+    if (!isMemberOfGuild) {
+        return res.status(403).json({ error: 'Forbidden: You are not a member of this guild or it has no leaderboards.' });
+    }
+
     try {
         const result = await db.query('SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 ORDER BY track_location_name;', [guildId]);
         res.json(result.rows.map(row => row.track_location_name));
@@ -311,8 +365,11 @@ app.get('/api/tracks', async (req, res) => {
     }
 });
 
-// API Endpoint to get leaderboard data (fastest lap per driver per track)
 app.get('/api/leaderboard', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).json({ error: 'Unauthorized: Not logged in.' });
+    }
+
     const trackName = req.query.track;
     const sortColumn = req.query.sortColumn || 'lap_time';
     const sortOrder = req.query.sortOrder || 'asc';
@@ -321,6 +378,13 @@ app.get('/api/leaderboard', async (req, res) => {
     if (!guildId) {
         return res.status(400).json({ error: 'Guild ID is required.' });
     }
+
+    const userGuilds = req.session.userGuilds || [];
+    const isMemberOfGuild = userGuilds.some(guild => guild.id === guildId);
+    if (!isMemberOfGuild) {
+        return res.status(403).json({ error: 'Forbidden: You are not a member of this guild or it has no leaderboards.' });
+    }
+
 
     const allowedSortColumns = new Set([
         'driver_name', 'team_name', 'lap_time', 's1_time', 's2_time',
@@ -430,13 +494,22 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
-// API Endpoint to download leaderboard as CSV
 app.get('/api/leaderboard/csv', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).send('Unauthorized: Not logged in.');
+    }
+
     const trackName = req.query.track;
     const guildId = req.query.guildId;
 
     if (!guildId) {
         return res.status(400).send('Guild ID is required.');
+    }
+
+    const userGuilds = req.session.userGuilds || [];
+    const isMemberOfGuild = userGuilds.some(guild => guild.id === guildId);
+    if (!isMemberOfGuild) {
+        return res.status(403).send('Forbidden: You are not a member of this guild or it has no leaderboards.');
     }
 
     let query = `
@@ -530,14 +603,23 @@ app.get('/api/leaderboard/csv', async (req, res) => {
     }
 });
 
-// API Endpoint to get a specific driver's laps for a given track
 app.get('/api/driverLaps', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).json({ error: 'Unauthorized: Not logged in.' });
+    }
+
     const userId = req.query.userId;
     const trackName = req.query.track;
     const guildId = req.query.guildId;
 
     if (!userId || !trackName || !guildId) {
         return res.status(400).json({ error: 'User ID, track name, and Guild ID are required.' });
+    }
+
+    const userGuilds = req.session.userGuilds || [];
+    const isMemberOfGuild = userGuilds.some(guild => guild.id === guildId);
+    if (!isMemberOfGuild) {
+        return res.status(403).json({ error: 'Forbidden: You are not a member of this guild or it has no leaderboards.' });
     }
 
     try {
@@ -579,7 +661,6 @@ app.get('/api/driverLaps', async (req, res) => {
 });
 
 // --- Static File Serving for React Frontend ---
-// This middleware MUST come AFTER all your /api routes
 const reactAppBuildPath = path.join(__dirname, 'leaderboard-frontend', 'dist');
 
 app.use(express.static(reactAppBuildPath));

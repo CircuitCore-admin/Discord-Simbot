@@ -1,6 +1,6 @@
 // leaderboard-frontend/src/App.jsx
 
-import React, { useState, useEffect, useRef } from 'react'; // Added useRef for custom dropdown
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 // Helper function to get Discord CDN URL for guild icons
@@ -44,15 +44,18 @@ function App() {
     const [loadingExpandedLaps, setLoadingExpandedLaps] = useState(false);
     const [expandedLapsError, setExpandedLapsError] = useState(null);
 
-    // NEW: State for custom guild dropdown visibility
+    // State for custom guild dropdown visibility
     const [showGuildDropdown, setShowGuildDropdown] = useState(false);
     const dropdownRef = useRef(null); // Ref for custom dropdown to handle clicks outside
 
-    // NEW: State for CSV download loading
+    // State for CSV download loading
     const [downloadingCSV, setDownloadingCSV] = useState(false);
 
-    // NEW: State for Dark Mode
+    // State for Dark Mode
     const [isDarkMode, setIsDarkMode] = useState(true); // Default to dark mode
+
+    // New state for "Stay Logged In" checkbox
+    const [stayLoggedIn, setStayLoggedIn] = useState(true); // Default to true
 
 
     const sortableColumnsMap = {
@@ -77,51 +80,71 @@ function App() {
         }
     };
 
-    // --- Discord OAuth Handling ---
+    // --- Discord OAuth Handling & Session Check ---
     useEffect(() => {
-        const handleDiscordCallback = async () => {
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
+        const checkAuthStatus = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await fetch('http://localhost:3000/auth/me');
+                const data = await response.json();
 
-            if (code) {
-                window.history.pushState({}, document.title, window.location.pathname);
-
-                try {
-                    setLoading(true);
-                    setError(null);
-                    const response = await fetch('http://localhost:3000/auth/discord/callback', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ code }),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Discord OAuth failed: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
+                if (data.isAuthenticated) {
                     setIsAuthenticated(true);
                     setDiscordUser(data.user);
-                    setUserGuilds(data.guilds); // Set filtered guilds
+                    setUserGuilds(data.guilds);
                     if (data.guilds.length > 0) {
                         setSelectedGuildId(data.guilds[0].id);
                     }
-                } catch (e) {
-                    console.error("Error during Discord authentication:", e);
-                    setError("Failed to authenticate with Discord. Please try again.");
-                    setIsAuthenticated(false);
-                } finally {
-                    setLoading(false);
+                } else {
+                    // If not authenticated via session, check for OAuth callback code
+                    const params = new URLSearchParams(window.location.search);
+                    const code = params.get('code');
+
+                    if (code) {
+                        // Clear the code from the URL immediately after processing
+                        window.history.pushState({}, document.title, window.location.pathname);
+
+                        try {
+                            const callbackResponse = await fetch('http://localhost:3000/auth/discord/callback', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ code }),
+                            });
+
+                            if (!callbackResponse.ok) {
+                                throw new Error(`Discord OAuth callback failed: ${callbackResponse.statusText}`);
+                            }
+
+                            const callbackData = await callbackResponse.json();
+                            setIsAuthenticated(true);
+                            setDiscordUser(callbackData.user);
+                            setUserGuilds(callbackData.guilds);
+                            if (callbackData.guilds.length > 0) {
+                                setSelectedGuildId(callbackData.guilds[0].id);
+                            }
+                        } catch (e) {
+                            console.error("Error during Discord authentication callback:", e);
+                            setError("Failed to authenticate with Discord. Please try again.");
+                            setIsAuthenticated(false);
+                        }
+                    }
                 }
+            } catch (e) {
+                console.error("Error checking auth status or during initial Discord authentication:", e);
+                setError("Failed to connect to authentication server. Please try again later.");
+                setIsAuthenticated(false);
+            } finally {
+                setLoading(false);
             }
         };
 
-        handleDiscordCallback();
-    }, []);
+        checkAuthStatus();
+    }, []); // Empty dependency array means this runs once on mount
 
-    // NEW: Effect to handle clicks outside the custom guild dropdown
+    // Effect to handle clicks outside the custom guild dropdown
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -137,13 +160,59 @@ function App() {
 
 
     const handleDiscordLogin = () => {
-        window.location.href = 'http://localhost:3000/auth/discord';
+        // Append stayLoggedIn preference to the redirect URL
+        window.location.href = `http://localhost:3000/auth/discord?stayLoggedIn=${stayLoggedIn}`;
     };
+
+    const handleDiscordLogout = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/auth/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                console.error("Backend logout failed:", response.statusText);
+            }
+
+            // Clear all relevant client-side states
+            setIsAuthenticated(false);
+            setDiscordUser(null);
+            setUserGuilds([]);
+            setSelectedGuildId('');
+            setSelectedTrack('');
+            setLeaderboardData([]);
+            setExpandedDriverId(null);
+            setExpandedDriverLaps(null);
+            setExpandedLapsError(null);
+
+            // Optional: Redirect to homepage or refresh after logout
+            // window.location.href = '/';
+            // window.location.reload();
+
+        } catch (e) {
+            console.error("Error during Discord logout:", e);
+            // Even if logout fails on the backend, clear client-side state for responsiveness
+            setIsAuthenticated(false);
+            setDiscordUser(null);
+            setUserGuilds([]);
+            setSelectedGuildId('');
+            setSelectedTrack('');
+            setLeaderboardData([]);
+            setExpandedDriverId(null);
+            setExpandedDriverLaps(null);
+            setExpandedLapsError(null);
+        }
+    };
+
 
     // Fetch tracks
     useEffect(() => {
         const fetchTracks = async () => {
-            if (!selectedGuildId) {
+            // Only fetch if authenticated and a guild is selected
+            if (!isAuthenticated || !selectedGuildId) {
                 setTracks([]);
                 return;
             }
@@ -153,6 +222,15 @@ function App() {
                 setError(null);
                 const response = await fetch(`http://localhost:3000/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
                 if (!response.ok) {
+                    // Check for unauthorized status explicitly
+                    if (response.status === 401 || response.status === 403) {
+                        setIsAuthenticated(false); // Session might have expired or user is not allowed
+                        setDiscordUser(null);
+                        setUserGuilds([]);
+                        setSelectedGuildId('');
+                        setError("Your session expired or you don't have access. Please log in again.");
+                        return;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
@@ -170,13 +248,14 @@ function App() {
             }
         };
         fetchTracks();
-    }, [selectedGuildId, selectedTrack]);
+    }, [isAuthenticated, selectedGuildId, selectedTrack]);
 
 
     // Fetch leaderboard data
     useEffect(() => {
         const fetchLeaderboard = async () => {
-            if (!selectedTrack || !selectedGuildId) {
+            // Only fetch if authenticated and track/guild are selected
+            if (!isAuthenticated || !selectedTrack || !selectedGuildId) {
                 setLeaderboardData([]);
                 setLoading(false);
                 return;
@@ -189,6 +268,15 @@ function App() {
                     `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`
                 );
                 if (!response.ok) {
+                    // Check for unauthorized status explicitly
+                    if (response.status === 401 || response.status === 403) {
+                        setIsAuthenticated(false); // Session might have expired or user is not allowed
+                        setDiscordUser(null);
+                        setUserGuilds([]);
+                        setSelectedGuildId('');
+                        setError("Your session expired or you don't have access. Please log in again.");
+                        return;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
@@ -201,18 +289,24 @@ function App() {
             }
         };
         fetchLeaderboard();
-    }, [selectedTrack, sortColumn, sortOrder, selectedGuildId]);
+    }, [isAuthenticated, selectedTrack, sortColumn, sortOrder, selectedGuildId]);
 
     const handleTrackChange = (event) => {
         setSelectedTrack(event.target.value);
+        // Collapse expanded driver details when track changes
+        setExpandedDriverId(null);
+        setExpandedDriverLaps(null);
+        setExpandedLapsError(null);
     };
 
-    // NEW: Handle selection from custom guild dropdown
+    // Handle selection from custom guild dropdown
     const handleCustomGuildSelect = (guildId) => {
         setSelectedGuildId(guildId);
         setSelectedTrack('');
         setLeaderboardData([]);
-        setExpandedDriverId(null);
+        setExpandedDriverId(null); // Also collapse on guild change
+        setExpandedDriverLaps(null); // Also collapse on guild change
+        setExpandedLapsError(null); // Also collapse on guild change
         setShowGuildDropdown(false); // Close dropdown after selection
     };
 
@@ -247,6 +341,15 @@ function App() {
                 `http://localhost:3000/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`
             );
             if (!response.ok) {
+                // Check for unauthorized status explicitly
+                if (response.status === 401 || response.status === 403) {
+                    setIsAuthenticated(false); // Session might have expired or user is not allowed
+                    setDiscordUser(null);
+                    setUserGuilds([]);
+                    setSelectedGuildId('');
+                    setError("Your session expired or you don't have access. Please log in again.");
+                    return;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
@@ -262,13 +365,22 @@ function App() {
     // Function to handle CSV download
     const handleDownloadCSV = async () => {
         if (!selectedTrack || !selectedGuildId) {
-            alert('Please select a track and a Discord server.');
+            console.warn('Please select a track and a Discord server before downloading CSV.');
             return;
         }
         setDownloadingCSV(true); // Set loading state for CSV
         try {
             const response = await fetch(`http://localhost:3000/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) {
+                // Check for unauthorized status explicitly
+                if (response.status === 401 || response.status === 403) {
+                    setIsAuthenticated(false); // Session might have expired or user is not allowed
+                    setDiscordUser(null);
+                    setUserGuilds([]);
+                    setSelectedGuildId('');
+                    setError("Your session expired or you don't have access. Please log in again.");
+                    return;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const blob = await response.blob();
@@ -281,21 +393,21 @@ function App() {
             a.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            alert('Failed to download CSV: ' + (err.message || 'Unknown error'));
-            console.error('Error downloading CSV:', err);
+            console.error('Failed to download CSV: ' + (err.message || 'Unknown error'));
         } finally {
             setDownloadingCSV(false); // Reset loading state for CSV
         }
     };
 
-    // NEW: Toggle Dark Mode
+    // Toggle Dark Mode
     const toggleDarkMode = () => {
         setIsDarkMode(prevMode => !prevMode);
     };
 
-    // Determine current selected guild name for display
-    const currentSelectedGuildName = userGuilds.find(g => g.id === selectedGuildId)?.name;
-    const currentSelectedGuildIcon = userGuilds.find(g => g.id === selectedGuildId)?.icon;
+    // Determine current selected guild name and icon for display
+    const currentSelectedGuild = userGuilds.find(g => g.id === selectedGuildId);
+    const currentSelectedGuildName = currentSelectedGuild?.name || (selectedGuildId ? 'Unknown Server' : 'Select a server');
+    const currentSelectedGuildIcon = currentSelectedGuild?.icon;
 
 
     return (
@@ -304,26 +416,36 @@ function App() {
                 <h1>F1 Hotlap Leaderboard</h1>
                 {isAuthenticated && discordUser && (
                     <p className="user-info">
-                        <img src={getUserAvatarUrl(discordUser.id, discordUser.avatar)} alt="User Avatar" className="user-avatar" />
-                        Logged in as: <strong>{discordUser.username}{discordUser.discriminator !== "0" ? '' : `#${discordUser.global_name || ''}`}</strong> {/* Updated discriminator logic */}
+                        <img src={getUserAvatarUrl(discordUser.id, discordUser.avatar)} alt="User Avatar" className="user-avatar" onError={(e) => e.target.src = 'https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png'} />
+                        Logged in as: <strong>{discordUser.global_name || discordUser.username}{discordUser.discriminator && discordUser.discriminator !== "0" ? `#${discordUser.discriminator}` : ''}</strong>
+                        <button onClick={handleDiscordLogout} className="discord-logout-button">Logout</button>
                     </p>
                 )}
                 {selectedGuildId && (
                     <p className="guild-display-message">
-                        {currentSelectedGuildIcon && <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Guild Icon" className="guild-icon-display" />}
-                        Displaying Leaderboard for Guild: <strong>{currentSelectedGuildName || selectedGuildId}</strong>
+                        {currentSelectedGuildIcon && <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Guild Icon" className="guild-icon-display" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />}
+                        Displaying Leaderboard for Guild: <strong>{currentSelectedGuildName}</strong>
                     </p>
                 )}
             </header>
 
             <div className="filter-section">
                 {!isAuthenticated ? (
-                    <button onClick={handleDiscordLogin} className="discord-login-button">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19.73 3.99C18.57 3.32 17.21 2.87 15.77 2.65C13.88 2.37 11.96 2.37 10.07 2.65C8.63 2.87 7.27 3.32 6.11 3.99C1.94 6.36 -0.11 11.08 0.00 15.64C0.29 17.58 1.48 19.34 3.06 20.37C4.65 21.40 6.55 21.84 8.44 21.99C9.72 22.09 11.00 22.09 12.28 21.99C14.17 21.84 16.07 21.40 17.66 20.37C19.24 19.34 20.43 17.58 20.72 15.64C20.83 11.08 18.78 6.36 14.61 3.99L19.73 3.99ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58L37.36 24.65L37.63 24.72L37.90 24.79L38.17 24.86L38.44 24.93L38.71 25.00L38.98 25.07L39.25 25.14L39.52 25.21L39.79 25.28L40.06 25.35L40.33 25.42L40.60 25.49L40.87 25.56L41.14 25.63L41.41 25.70L41.68 25.77L41.95 25.84L42.22 25.91L42.49 25.98L42.76 26.05L43.03 26.12L43.30 26.19L43.57 26.26L43.84 26.33L44.11 26.40L44.38 26.47L44.65 26.54L44.92 26.61L45.19 26.68L45.46 26.75L45.73 26.82L46.00 26.89L46.27 26.96L46.54 27.03L46.81 27.10L47.08 27.17L47.35 27.24L47.62 27.31L47.89 27.38L48.16 27.45L48.43 27.52L48.70 27.59L48.97 27.66L49.24 27.73L49.51 27.80L49.78 27.87L50.05 27.94L50.32 28.01L50.59 28.08L50.86 28.15L51.13 28.22L51.40 28.29L51.67 28.36L51.94 28.43L52.21 28.50L52.48 28.57L52.75 28.64L53.02 28.71L53.29 28.78L53.56 28.85L53.83 28.92L54.10 28.99L54.37 29.06L54.64 29.13L54.91 29.20L55.18 29.27L55.45 29.34L55.72 29.41L55.99 29.48L56.26 29.55L56.53 29.62L56.80 29.69L57.07 29.76L57.34 29.83L57.61 29.90L57.88 29.97L58.15 30.04L58.42 30.11L58.69 30.18L58.96 30.25L59.23 30.32L59.50 30.39L59.77 30.46L60.04 30.53L60.31 30.60L60.58 30.67L60.85 30.74L61.12 30.81L61.39 30.88L61.66 30.95L61.93 31.02L62.20 31.09L62.47 31.16L62.74 31.23L63.01 31.30L63.28 31.37L63.55 31.44L63.82 31.51L64.09 31.58L64.36 31.65L64.63 31.72L64.90 31.79L65.17 31.86L65.44 31.93L65.71 32.00L65.98 32.07L66.25 32.14L66.52 32.21L66.79 32.28L67.06 32.35L67.33 32.42L67.60 32.49L67.87 32.56L68.14 32.63L68.41 32.70L68.68 32.77L68.95 32.84L69.22 32.91L69.49 32.98L69.76 33.05L70.03 33.12L70.30 33.19L70.57 33.26L70.84 33.33L71.11 33.40L71.38 33.47L71.65 33.54L71.92 33.61L72.19 33.68L72.46 33.75L72.73 33.82L73.00 33.89L73.27 33.96L73.54 34.03L73.81 34.10L74.08 34.17L74.35 34.24L74.62 34.31L74.89 34.38L75.16 34.45L75.43 34.52L75.70 34.59L75.97 34.66L76.24 34.73L76.51 34.80L76.78 34.87L77.05 34.94L77.32 35.01L77.59 35.08L77.86 35.15L78.13 35.22L78.40 35.29L78.67 35.36L78.94 35.43L79.21 35.50L79.48 35.57L79.75 35.64L80.02 35.71L80.29 35.78L80.56 35.85L80.83 35.92L81.10 35.99L81.37 36.06L81.64 36.13L81.91 36.20L82.18 36.27L82.45 36.34L82.72 36.41L82.99 36.48L83.26 36.55L83.53 36.62L83.80 36.69L84.07 36.76L84.34 36.83L84.61 36.90L84.88 36.97L85.15 37.04L85.42 37.11L85.69 37.18L85.96 37.25L86.23 37.32L86.50 37.39L86.77 37.46L87.04 37.53L87.31 37.60L87.58 37.67L87.85 37.74L88.12 37.81L88.39 37.88L88.66 37.95L88.93 38.02L89.20 38.09L89.47 38.16L89.74 38.23L90.01 38.30L90.28 38.37L90.55 38.44L90.82 38.51L91.09 38.58L91.36 38.65L91.63 38.72L91.90 38.79L92.17 38.86L92.44 38.93L92.71 39.00L92.98 39.07L93.25 39.14L93.52 39.21L93.79 39.28L94.06 39.35L94.33 39.42L94.60 39.49L94.87 39.56L95.14 39.63L95.41 39.70L95.68 39.77L95.95 39.84L96.22 39.91L96.49 39.98L96.76 40.05L97.03 40.12L97.30 40.19L97.57 40.26L97.84 40.33L98.11 40.40L98.38 40.47L98.65 40.54L98.92 40.61L99.19 40.68L99.46 40.75L99.73 40.82L100.00 40.89L100.27 40.96L100.54 41.03L100.81 41.10L101.08 41.17L101.35 41.24L101.62 41.31L101.89 41.38L102.16 41.45L102.43 41.52L102.70 41.59L102.97 41.66L103.24 41.73L103.51 41.80L103.78 41.87L104.05 41.94L104.32 42.01L104.59 42.08L104.86 42.15L105.13 42.22L105.40 42.29L105.67 42.36L105.94 42.43L106.21 42.50L106.48 42.57L106.75 42.64L107.02 42.71L107.29 42.78L107.56 42.85L107.83 42.92L108.10 42.99L108.37 43.06L108.64 43.13L108.91 43.20L109.18 43.27L109.45 43.34L109.72 43.41L109.99 43.48L110.26 43.55L110.53 43.62L110.80 43.69L111.07 43.76L111.34 43.83L111.61 43.90L111.88 43.97L112.15 44.04L112.42 44.11L112.69 44.18L112.96 44.25L113.23 44.32L113.50 44.39L113.77 44.46L114.04 44.53L114.31 44.60L114.58 44.67L114.85 44.74L115.12 44.81L115.39 44.88L115.66 44.95L115.93 45.02L116.20 45.09L116.47 45.16L116.74 45.23L117.01 45.30L117.28 45.37L117.55 45.44L117.82 45.51L118.09 45.58L118.36 45.65L118.63 45.72L118.90 45.79L119.17 45.86L119.44 45.93L119.71 46.00L119.98 46.07L120.25 46.14L120.52 46.21L120.79 46.28L121.06 46.35L121.33 46.42L121.60 46.49L121.87 46.56L122.14 46.63L122.41 46.70L122.68 46.77L122.95 46.84L123.22 46.91L123.49 46.98L123.76 47.05L124.03 47.12L124.30 47.19L124.57 47.26L124.84 47.33L125.11 47.40L125.38 47.47L125.65 47.54L125.92 47.61L126.19 47.68L126.46 47.75L126.73 47.82L127.00 47.89L127.27 47.96L127.54 48.03L127.81 48.10L128.08 48.17L128.35 48.24L128.62 48.31L128.89 48.38L129.16 48.45L129.43 48.52L129.70 48.59L129.97 48.66L130.24 48.73L130.51 48.80L130.78 48.87L131.05 48.94L131.32 49.01L131.59 49.08L131.86 49.15L132.13 49.22L132.40 49.29L132.67 49.36L132.94 49.43L133.21 49.50L133.48 49.57L133.75 49.64L134.02 49.71L134.29 49.78L134.56 49.85L134.83 49.92L135.10 49.99L135.37 50.06L135.64 50.13L135.91 50.20L136.18 50.27L136.45 50.34L136.72 50.41L136.99 50.48L137.26 50.55L137.53 50.62L137.80 50.69L138.07 50.76L138.34 50.83L138.61 50.90L138.88 50.97L139.15 51.04L139.42 51.11L139.69 51.18L139.96 51.25L140.23 51.32L140.50 51.39L140.77 51.46L141.04 51.53L141.31 51.60L141.58 51.67L141.85 51.74L142.12 51.81L142.39 51.88L142.66 51.95L142.93 52.02L143.20 52.09L143.47 52.16L143.74 52.23L144.01 52.30L144.28 52.37L144.55 52.44L144.82 52.51L145.09 52.58L145.36 52.65L145.63 52.72L145.90 52.79L146.17 52.86L146.44 52.93L146.71 53.00L146.98 53.07L147.25 53.14L147.52 53.21L147.79 53.28L148.06 53.35L148.33 53.42L148.60 53.49L148.87 53.56L149.14 53.63L149.41 53.70L149.68 53.77L149.95 53.84L150.22 53.91L150.49 53.98L150.76 54.05L151.03 54.12L151.30 54.19L151.57 54.26L151.84 54.33L152.11 54.40L152.38 54.47L152.65 54.54L152.92 54.61L153.19 54.68L153.46 54.75L153.73 54.82L154.00 54.89L154.27 54.96L154.54 55.03L154.81 55.10L155.08 55.17L155.35 55.24L155.62 55.31L155.89 55.38L156.16 55.45L156.43 55.52L156.70 55.59L156.97 55.66L157.24 55.73L157.51 55.80L157.78 55.87L158.05 55.94L158.32 56.01L158.59 56.08L158.86 56.15L159.13 56.22L159.40 56.29L159.67 56.36L159.94 56.43L160.21 56.50L160.48 56.57L160.75 56.64L161.02 56.71L161.29 56.78L161.56 56.85L161.83 56.92L162.10 56.99L162.37 57.06L162.64 57.13L162.91 57.20L163.18 57.27L163.45 57.34L163.72 57.41L163.99 57.48L164.26 57.55L164.53 57.62L164.80 57.69L165.07 57.76L165.34 57.83L165.61 57.90L165.88 57.97L166.15 58.04L166.42 58.11L166.69 58.18L166.96 58.25L167.23 58.32L167.50 58.39L167.77 58.46L168.04 58.53L168.31 58.60L168.58 58.67L168.85 58.74L169.12 58.81L169.39 58.88L169.66 58.95L169.93 59.02L170.20 59.09L170.47 59.16L170.74 59.23L171.01 59.30L171.28 59.37L171.55 59.44L171.82 59.51L172.09 59.58L172.36 59.65L172.63 59.72L172.90 59.79L173.17 59.86L173.44 59.93L173.71 60.00L173.98 60.07L174.25 60.14L174.52 60.21L174.79 60.28L175.06 60.35L175.33 60.42L175.60 60.49L175.87 60.56L176.14 60.63L176.41 60.70L176.68 60.77L176.95 60.84L177.22 60.91L177.49 60.98L177.76 61.05L178.03 61.12L178.30 61.19L178.57 61.26L178.84 61.33L179.11 61.40L179.38 61.47L179.65 61.54L179.92 61.61L180.19 61.68L180.46 61.75L180.73 61.82L181.00 61.89L181.27 61.96L181.54 62.03L181.81 62.10L182.08 62.17L182.35 62.24L182.62 62.31L182.89 62.38L183.16 62.45L183.43 62.52L183.70 62.59L183.97 62.66L184.24 62.73L184.51 62.80L184.78 62.87L185.05 62.94L185.32 63.01L185.59 63.08L185.86 63.15L186.13 63.22L186.40 63.29L186.67 63.36L186.94 63.43L187.21 63.50L187.48 63.57L187.75 63.64L188.02 63.71L188.29 63.78L188.56 63.85L188.83 63.92L189.10 63.99L189.37 64.06L189.64 64.13L189.91 64.20L190.18 64.27L190.45 64.34L190.72 64.41L190.99 64.48L191.26 64.55L191.53 64.62L191.80 64.69L192.07 64.76L192.34 64.83L192.61 64.90L192.88 64.97L193.15 65.04L193.42 65.11L193.69 65.18L193.96 65.25L194.23 65.32L194.50 65.39L194.77 65.46L195.04 65.53L195.31 65.60L195.58 65.67L195.85 65.74L196.12 65.81L196.39 65.88L196.66 65.95L196.93 66.02L197.20 66.09L197.47 66.16L197.74 66.23L198.01 66.30L198.28 66.37L198.55 66.44L198.82 66.51L199.09 66.58L199.36 66.65L199.63 66.72L199.90 66.79L200.17 66.86L200.44 66.93L200.71 67.00L200.98 67.07L201.25 67.14L201.52 67.21L201.79 67.28L202.06 67.35L202.33 67.42L202.60 67.49L202.87 67.56L203.14 67.63L203.41 67.70L203.68 67.77L203.95 67.84L204.22 67.91L204.49 67.98L204.76 68.05L205.03 68.12L205.30 68.19L205.57 68.26L205.84 68.33L206.11 68.40L206.38 68.47L206.65 68.54L206.92 68.61L207.19 68.68L207.46 68.75L207.73 68.82L208.00 68.89L208.27 68.96L208.54 69.03L208.81 69.10L209.08 69.17L209.35 69.24L209.62 69.31L209.89 69.38L210.16 69.45L210.43 69.52L210.70 69.59L210.97 69.66L211.24 69.73L211.51 69.80L211.78 69.87L212.05 69.94L212.32 70.01L212.59 70.08L212.86 70.15L213.13 70.22L213.40 70.29L213.67 70.36L213.94 70.43L214.21 70.50L214.48 70.57L214.75 70.64L215.02 70.71L215.29 70.78L215.56 70.85L215.83 70.92L216.10 70.99L216.37 71.06L216.64 71.13L216.91 71.20L217.18 71.27L217.45 71.34L217.72 71.41L217.99 71.48L218.26 71.55L218.53 71.62L218.80 71.69L219.07 71.76L219.34 71.83L219.61 71.90L219.88 71.97L220.15 72.04L220.42 72.11L220.69 72.18L220.96 72.25L221.23 72.32L221.50 72.39L221.77 72.46L222.04 72.53L222.31 72.60L222.58 72.67L222.85 72.74L223.12 72.81L223.39 72.88L223.66 72.95L223.93 73.02L224.20 73.09L224.47 73.16L224.74 73.23L225.01 73.30L225.28 73.37L225.55 73.44L225.82 73.51L226.09 73.58L226.36 73.65L226.63 73.72L226.90 73.79L227.17 73.86L227.44 73.93L227.71 74.00L227.98 74.07L228.25 74.14L228.52 74.21L228.79 74.28L229.06 74.35L229.33 74.42L229.60 74.49L229.87 74.56L230.14 74.63L230.41 74.70L230.68 74.77L230.95 74.84L231.22 74.91L231.49 74.98L231.76 75.05L232.03 75.12L232.30 75.19L232.57 75.26L232.84 75.33L233.11 75.40L233.38 75.47L233.65 75.54L233.92 75.61L234.19 75.68L234.46 75.75L234.73 75.82L235.00 75.89L235.27 75.96L235.54 76.03L235.81 76.10L236.08 76.17L236.35 76.24L236.62 76.31L236.89 76.38L237.16 76.45L237.43 76.52L237.70 76.59L237.97 76.66L238.24 76.73L238.51 76.80L238.78 76.87L239.05 76.94L239.32 77.01L239.59 77.08L239.86 77.15L240.13 77.22L240.40 77.29L240.67 77.36L240.94 77.43L241.21 77.50L241.48 77.57L241.75 77.64L242.02 77.71L242.29 77.78L242.56 77.85L242.83 77.92L243.10 77.99L243.37 78.06L243.64 78.13L243.91 78.20L244.18 78.27L244.45 78.34L244.72 78.41L244.99 78.48L245.26 78.55L245.53 78.62L245.80 78.69L246.07 78.76L246.34 78.83L246.61 78.90L246.88 78.97L247.15 79.04L247.42 79.11L247.69 79.18L247.96 79.25L248.23 79.32L248.50 79.39L248.77 79.46L249.04 79.53L249.31 79.60L249.58 79.67L249.85 79.74L250.12 79.81L250.39 79.88L250.66 79.95L250.93 80.02L251.20 80.09L251.47 80.16L251.74 80.23L252.01 80.30L252.28 80.37L252.55 80.44L252.82 80.51L253.09 80.58L253.36 80.65L253.63 80.72L253.90 80.79L254.17 80.86L254.44 80.93L254.71 81.00L254.98 81.07L255.25 81.14L255.52 81.21L255.79 81.28L256.06 81.35L256.33 81.42L256.60 81.49L256.87 81.56L257.14 81.63L257.41 81.70L257.68 81.77L257.95 81.84L258.22 81.91L258.49 81.98L258.76 82.05L259.03 82.12L259.30 82.19L259.57 82.26L259.84 82.33L260.11 82.40L260.38 82.47L260.65 82.54L260.92 82.61L261.19 82.68L261.46 82.75L261.73 82.82L262.00 82.89L262.27 82.96L262.54 83.03L262.81 83.10L263.08 83.17L263.35 83.24L263.62 83.31L263.89 83.38L264.16 83.45L264.43 83.52L264.70 83.59L264.97 83.66L265.24 83.73L265.51 83.80L265.78 83.87L266.05 83.94L266.32 84.01L266.59 84.08L266.86 84.15L267.13 84.22L267.40 84.29L267.67 84.36L267.94 84.43L268.21 84.50L268.48 84.57L268.75 84.64L269.02 84.71L269.29 84.78L269.56 84.85L269.83 84.92L270.10 84.99L270.37 85.06L270.64 85.13L270.91 85.20L271.18 85.27L271.45 85.34L271.72 85.41L271.99 85.48L272.26 85.55L272.53 85.62L272.80 85.69L273.07 85.76L273.34 85.83L273.61 85.90L273.88 85.97L274.15 86.04L274.42 86.11L274.69 86.18L274.96 86.25L275.23 86.32L275.50 86.39L275.77 86.46L276.04 86.53L276.31 86.60L276.58 86.67L276.85 86.74L277.12 86.81L277.39 86.88L277.66 86.95L277.93 87.02L278.20 87.09L278.47 87.16L278.74 87.23L279.01 87.30L279.28 87.37L279.55 87.44L279.82 87.51L280.09 87.58L280.36 87.65L280.63 87.72L280.90 87.79L281.17 87.86L281.44 87.93L281.71 88.00L281.98 88.07L282.25 88.14L282.52 88.21L282.79 88.28L283.06 88.35L283.33 88.42L283.60 88.49L283.87 88.56L284.14 88.63L284.41 88.70L284.68 88.77L284.95 88.84L285.22 88.91L285.49 88.98L285.76 89.05L286.03 89.12L286.30 89.19L286.57 89.26L286.84 89.33L287.11 89.40L287.38 89.47L287.65 89.54L287.92 89.61L288.19 89.68L288.46 89.75L288.73 89.82L289.00 89.89L289.27 89.96L289.54 90.03L289.81 90.10L290.08 90.17L290.35 90.24L290.62 90.31L290.89 90.38L291.16 90.45L291.43 90.52L291.70 90.59L291.97 90.66L292.24 90.73L292.51 90.80L292.78 90.87L293.05 90.94L293.32 91.01L293.59 91.08L293.86 91.15L294.13 91.22L294.40 91.29L294.67 91.36L294.94 91.43L295.21 91.50L295.48 91.57L295.75 91.64L296.02 91.71L296.29 91.78L296.56 91.85L296.83 91.92L297.10 91.99L297.37 92.06L297.64 92.13L297.91 92.20L298.18 92.27L298.45 92.34L298.72 92.41L298.99 92.48L299.26 92.55L299.53 92.62L299.80 92.69L300.07 92.76L300.34 92.83L300.61 92.90L300.88 92.97L301.15 93.04L301.42 93.11L301.69 93.18L301.96 93.25L302.23 93.32L302.50 93.39L302.77 93.46L303.04 93.53L303.31 93.60L303.58 93.67L303.85 93.74L304.12 93.81L304.39 93.88L304.66 93.95L304.93 94.02L305.20 94.09L305.47 94.16L305.74 94.23L306.01 94.30L306.28 94.37L306.55 94.44L306.82 94.51L307.09 94.58L37.09 24.58Z" fill="currentColor"/><path d="M20.25 10.66C18.66 9.87 16.94 9.42 15.15 9.28C13.87 9.17 12.59 9.17 11.31 9.28C9.52 9.42 7.80 9.87 6.21 10.66L6.59 11.04C7.03 11.36 7.50 11.66 7.97 11.97L8.25 12.18C8.36 12.28 8.48 12.38 8.60 12.48L8.88 12.69C9.00 12.79 9.12 12.89 9.24 12.99L9.52 13.20C9.64 13.30 9.76 13.40 9.88 13.50L10.16 13.71C10.28 13.81 10.40 13.91 10.52 14.01L10.80 14.22C10.92 14.32 11.04 14.42 11.16 14.52L11.44 14.73C11.56 14.83 11.68 14.93 11.80 15.03L12.08 15.24C12.20 15.34 12.32 15.44 12.44 15.54L12.72 15.75C12.84 15.85 12.96 15.95 13.08 16.05L13.36 16.26C13.48 16.36 13.60 16.46 13.72 16.56L14.00 16.77C14.12 16.87 14.24 16.97 14.36 17.07L14.64 17.28C14.76 17.38 14.88 17.48 15.00 17.58L15.28 17.79C15.40 17.89 15.52 17.99 15.64 18.09L15.92 18.30C16.04 18.40 16.16 18.50 16.28 18.60L16.56 18.81C16.68 18.91 16.80 19.01 16.92 19.11L17.20 19.32C17.32 19.42 17.44 19.52 17.56 19.62L17.84 19.83C17.96 19.93 18.08 20.03 18.20 20.13L18.48 20.34C18.60 20.44 18.72 20.54 18.84 20.64L19.12 20.85C19.24 20.95 19.36 21.05 19.48 21.15L19.76 21.36C19.88 21.46 20.00 21.56 20.12 21.66L20.40 21.87C20.52 21.97 20.64 22.07 20.76 22.17L21.04 22.38C21.16 22.48 21.28 22.58 21.40 22.68L21.68 22.89C21.80 22.99 21.92 23.09 22.04 23.19L22.32 23.40C22.44 23.50 22.56 23.60 22.68 23.70L22.96 23.91C23.08 24.01 23.20 24.11 23.32 24.21L23.60 24.42C23.72 24.52 23.84 24.62 23.96 24.72L24.24 24.93C24.36 25.03 24.48 25.13 24.60 25.23L24.88 25.44C25.00 25.54 25.12 25.64 25.24 25.74L25.52 25.95C25.64 26.05 25.76 26.15 25.88 26.25L26.16 26.46C26.28 26.56 26.40 26.66 26.52 26.76L26.80 26.97C26.92 27.07 27.04 27.17 27.16 27.27L27.44 27.48C27.56 27.58 27.68 27.68 27.80 27.78L28.08 27.99C28.20 28.09 28.32 28.19 28.44 28.29L28.72 28.50C28.84 28.60 28.96 28.70 29.08 28.80L29.36 28.91C29.48 29.01 29.60 29.11 29.72 29.21L30.00 29.42C30.12 29.52 30.24 29.62 30.36 29.72L30.64 29.83C30.76 29.93 30.88 30.03 31.00 30.13L31.28 30.24C31.40 30.34 31.52 30.44 31.64 30.54L31.92 30.65C32.04 30.75 32.16 30.85 32.28 30.95L32.56 31.06C32.68 31.16 32.80 31.26 32.92 31.36L33.20 31.47C33.32 31.57 33.44 31.67 33.56 31.77L33.84 31.88C33.96 31.98 34.08 32.08 34.20 32.18L34.48 32.29C34.60 32.39 34.72 32.49 34.84 32.59L35.12 32.70C35.24 32.80 35.36 32.90 35.48 33.00L35.76 33.11C35.88 33.21 36.00 33.31 36.12 33.41L36.40 33.52C36.52 33.62 36.64 33.72 36.76 33.82L37.04 33.93C37.16 34.03 37.28 34.13 37.40 34.23L37.68 34.34C37.80 34.44 37.92 34.54 38.04 34.64L38.32 34.75C38.44 34.85 38.56 34.95 38.68 35.05L38.96 35.16C39.08 35.26 39.20 35.36 39.32 35.46L39.60 35.57C39.72 35.67 39.84 35.77 39.96 35.87L40.24 35.98C40.36 36.08 40.48 36.18 40.60 36.28L40.88 36.39C41.00 36.49 41.12 36.59 41.24 36.69L41.52 36.80C41.64 36.90 41.76 37.00 41.88 37.10L42.16 37.21C42.28 37.31 42.40 37.41 42.52 37.51L42.80 37.62C42.92 37.72 43.04 37.82 43.16 37.92L43.44 38.03C43.56 38.13 43.68 38.23 43.80 38.33L44.08 38.44C44.20 38.54 44.32 38.64 44.44 38.74L44.72 38.85C44.84 38.95 44.96 39.05 45.08 39.15L45.36 39.26C45.48 39.36 45.60 39.46 45.72 39.56L46.00 39.67C46.12 39.77 46.24 39.87 46.36 39.97L46.64 40.08C46.76 40.18 46.88 40.28 47.00 40.38L47.28 40.49C47.40 40.59 47.52 40.69 47.64 40.79L47.92 40.90C48.04 41.00 48.16 41.10 48.28 41.20L48.56 41.31C48.68 41.41 48.80 41.51 48.92 41.61L49.20 41.72C49.32 41.82 49.44 41.92 49.56 42.02L49.84 42.13C49.96 42.23 50.08 42.33 50.20 42.43L50.48 42.54C50.60 42.64 50.72 42.74 50.84 42.84L51.12 42.95C51.24 43.05 51.36 43.15 51.48 43.25L51.76 43.36C51.88 43.46 52.00 43.56 52.12 43.66L52.40 43.77C52.52 43.87 52.64 43.97 52.76 44.07L53.04 44.18C53.16 44.28 53.28 44.38 53.40 44.48L53.68 44.59C53.80 44.69 53.92 44.79 54.04 44.89L54.32 45.00C54.44 45.10 54.56 45.20 54.68 45.30L54.96 45.41C55.08 45.51 55.20 45.61 55.32 45.71L55.60 45.82C55.72 45.92 55.84 46.02 55.96 46.12L56.24 46.23C56.36 46.33 56.48 46.43 56.60 46.53L56.88 46.64C57.00 46.74 57.12 46.84 57.24 46.94L57.52 47.05C57.64 47.15 57.76 47.25 57.88 47.35L58.16 47.46C58.28 47.56 58.40 47.66 58.52 47.76L58.80 47.87C58.92 47.97 59.04 48.07 59.16 48.17L59.44 48.28C59.56 48.38 59.68 48.48 59.80 48.58L60.08 48.69C60.20 48.79 60.32 48.89 60.44 48.99L60.72 49.10C60.84 49.20 60.96 49.30 61.08 49.40L61.36 49.51C61.48 49.61 61.60 49.71 61.72 49.81L62.00 49.92C62.12 50.02 62.24 50.12 62.36 50.22L62.64 50.33C62.76 50.43 62.88 50.53 63.00 50.63L63.28 50.74C63.40 50.84 63.52 50.94 63.64 51.04L63.92 51.15C64.04 51.25 64.16 51.35 64.28 51.45L64.56 51.56C64.68 51.66 64.80 51.76 64.92 51.86L65.20 51.97C65.32 52.07 65.44 52.17 65.56 52.27L65.84 52.38C65.96 52.48 66.08 52.58 66.20 52.68L66.48 52.79C66.60 52.89 66.72 52.99 66.84 53.09L67.12 53.20C67.24 53.30 67.36 53.40 67.48 53.50L67.76 53.61C67.88 53.71 68.00 53.81 68.12 53.91L68.40 54.02C68.52 54.12 68.64 54.22 68.76 54.32L69.04 54.43C69.16 54.53 69.28 54.63 69.40 54.73L69.68 54.84C69.80 54.94 69.92 55.04 70.04 55.14L70.32 55.25C70.44 55.35 70.56 55.45 70.68 55.55L70.96 55.66C71.08 55.76 71.20 55.86 71.32 55.96L71.60 56.07C71.72 56.17 71.84 56.27 71.96 56.37L72.24 56.48C72.36 56.58 72.48 56.68 72.60 56.78L72.88 56.89C72.90 56.90 72.92 56.91 72.94 56.92L73.18 57.03L73.40 57.14C73.43 57.15 73.46 57.16 73.49 57.17L73.71 57.28C73.74 57.29 73.77 57.30 73.80 57.31L74.02 57.42C74.05 57.43 74.08 57.44 74.11 57.45L74.33 57.56C74.36 57.57 74.39 57.58 74.42 57.59L74.64 57.70C74.67 57.71 74.70 57.72 74.73 57.73L74.95 57.84C74.98 57.85 75.01 57.86 75.04 57.87L75.26 57.98C75.29 57.99 75.32 58.00 75.35 58.01L75.57 58.12C75.60 58.13 75.63 58.14 75.66 58.15L75.88 58.26C75.91 58.27 75.94 58.28 75.97 58.29L76.19 58.40C76.22 58.41 76.25 58.42 76.28 58.43L76.50 58.54C76.53 58.55 76.56 58.56 76.59 58.57L76.81 58.68C76.84 58.69 76.87 58.70 76.90 58.71L77.12 58.82C77.15 58.83 77.18 58.84 77.21 58.85L77.43 58.96C77.46 58.97 77.49 58.98 77.52 58.99L77.74 59.10C77.77 59.11 77.80 59.12 77.83 59.13L78.05 59.24C78.08 59.25 78.11 59.26 78.14 59.27L78.36 59.38C78.39 59.39 78.42 59.40 78.45 59.41L78.67 59.52C78.70 59.53 78.73 59.54 78.76 59.55L78.98 59.66C79.01 59.67 79.04 59.68 79.07 59.69L79.29 59.80C79.32 59.81 79.35 59.82 79.38 59.83L79.60 59.94C79.63 59.95 79.66 59.96 79.69 59.97L79.91 60.08C79.94 60.09 79.97 60.10 80.00 60.11L80.22 60.22C80.25 60.23 80.28 60.24 80.31 60.25L80.53 60.36C80.56 60.37 80.59 60.38 80.62 60.39L80.84 60.50C80.87 60.51 80.90 60.52 80.93 60.53L81.15 60.64C81.18 60.65 81.21 60.66 81.24 60.67L81.46 60.78C81.49 60.79 81.52 60.80 81.55 60.81L81.77 60.92C81.80 60.93 81.83 60.94 81.86 60.95L82.08 61.06C82.11 61.07 82.14 61.08 82.17 61.09L82.39 61.20C82.42 61.21 82.45 61.22 82.48 61.23L82.70 61.34C82.73 61.35 82.76 61.36 82.79 61.37L83.01 61.48C83.04 61.49 83.07 61.50 83.10 61.51L83.32 61.62C83.35 61.63 83.38 61.64 83.41 61.65L83.63 61.76C83.66 61.77 83.69 61.78 83.72 61.79L83.94 61.90C83.97 61.91 84.00 61.92 84.03 61.93L84.25 62.04C84.28 62.05 84.31 62.06 84.34 62.07L84.56 62.18C84.59 62.19 84.62 62.20 84.65 62.21L84.87 62.32C84.90 62.33 84.93 62.34 84.96 62.35L85.18 62.46C85.21 62.47 85.24 62.48 85.27 62.49L85.49 62.60C85.52 62.61 85.55 62.62 85.58 62.63L85.80 62.74C85.83 62.75 85.86 62.76 85.89 62.77L86.11 62.88C86.14 62.89 86.17 62.90 86.20 62.91L86.42 63.02C86.45 63.03 86.48 63.04 86.51 63.05L86.73 63.16C86.76 63.17 86.79 63.18 86.82 63.19L87.04 63.30C87.07 63.31 87.10 63.32 87.13 63.33L87.35 63.44C87.38 63.45 87.41 63.46 87.44 63.47L87.66 63.58C87.69 63.59 87.72 63.60 87.75 63.61L87.97 63.72C88.00 63.73 88.03 63.74 88.06 63.75L88.28 63.86C88.31 63.87 88.34 63.88 88.37 63.89L88.59 64.00C88.62 64.01 88.65 64.02 88.68 64.03L88.90 64.14C88.93 64.15 88.96 64.16 88.99 64.17L89.21 64.28C89.24 64.29 89.27 64.30 89.30 64.31L89.52 64.42C89.55 64.43 89.58 64.44 89.61 64.45L89.83 64.56C89.86 64.57 89.89 64.58 89.92 64.59L90.14 64.70C90.17 64.71 90.20 64.72 90.23 64.73L90.45 64.84C90.48 64.85 90.51 64.86 90.54 64.87L90.76 64.98C90.79 64.99 90.82 65.00 90.85 65.01L91.07 65.12C91.10 65.13 91.13 65.14 91.16 65.15L91.38 65.26C91.41 65.27 91.44 65.28 91.47 65.29L91.69 65.40C91.72 65.41 91.75 65.42 91.78 65.43L92.00 65.54C92.03 65.55 92.06 65.56 92.09 65.57L92.31 65.68C92.34 65.69 92.37 65.70 92.40 65.71L92.62 65.82C92.65 65.83 92.68 65.84 92.71 65.85L92.93 65.96C92.96 65.97 92.99 65.98 93.02 65.99L93.24 66.10C93.27 66.11 93.30 66.12 93.33 66.13L93.55 66.24C93.58 66.25 93.61 66.26 93.64 66.27L93.86 66.38C93.89 66.39 93.92 66.40 93.95 66.41L94.17 66.52C94.20 66.53 94.23 66.54 94.26 66.55L94.48 66.66C94.51 66.67 94.54 66.68 94.57 66.69L94.79 66.80C94.82 66.81 94.85 66.82 94.88 66.83L95.10 66.94C95.13 66.95 95.16 66.96 95.19 66.97L95.41 67.08C95.44 67.09 95.47 67.10 95.50 67.11L95.72 67.22C95.75 67.23 95.78 67.24 95.81 67.25L96.03 67.36C96.06 67.37 96.09 67.38 96.12 67.39L96.34 67.50C96.37 67.51 96.40 67.52 96.43 67.53L96.65 67.64C96.68 67.65 96.71 67.66 96.74 67.67L96.96 67.78C96.99 67.79 97.02 67.80 97.05 67.81L97.27 67.92C97.30 67.93 97.33 67.94 97.36 67.95L97.58 68.06C97.61 68.07 97.64 68.08 97.67 68.09L97.89 68.20C97.92 68.21 97.95 68.22 97.98 68.23L98.20 68.34C98.23 68.35 98.26 68.36 98.29 68.37L98.51 68.48C98.54 68.49 98.57 68.50 98.60 68.51L98.82 68.62C98.85 68.63 98.88 68.64 98.91 68.65L99.13 68.76C99.16 68.77 99.19 68.78 99.22 68.79L99.44 68.90C99.47 68.91 99.50 68.92 99.53 68.93L99.75 69.04C99.78 69.05 99.81 69.06 99.84 69.07L100.06 69.18C100.09 69.19 100.12 69.20 100.15 69.21L100.37 69.32C100.40 69.33 100.43 69.34 100.46 69.35L100.68 69.46C100.71 69.47 100.74 69.48 100.77 69.49L100.99 69.60C101.02 69.61 101.05 69.62 101.08 69.63L101.30 69.74C101.33 69.75 101.36 69.76 101.39 69.77L101.61 69.88C101.64 69.89 101.67 69.90 101.70 69.91L101.92 70.02C101.95 70.03 101.98 70.04 102.01 70.05L102.23 70.16C102.26 70.17 102.29 70.18 102.32 70.19L102.54 70.30C102.57 70.31 102.60 70.32 102.63 70.33L102.85 70.44C102.88 70.45 102.91 70.46 102.94 70.47L103.16 70.58C103.19 70.59 103.22 70.60 103.25 70.61L103.47 70.72C103.50 70.73 103.53 70.74 103.56 70.75L103.78 70.86C103.81 70.87 103.84 70.88 103.87 70.89L104.09 71.00C104.12 71.01 104.15 71.02 104.18 71.03L104.40 71.14C104.43 71.15 104.46 71.16 104.49 71.17L104.71 71.28C104.74 71.29 104.77 71.30 104.80 71.31L105.02 71.42C105.05 71.43 105.08 71.44 105.11 71.45L105.33 71.56C105.36 71.57 105.39 71.58 105.42 71.59L15.53 17.7ZM11.04 14.88C11.53 15.02 12.02 15.11 12.51 15.15C13.00 15.11 13.49 15.02 13.98 14.88C14.07 14.85 14.16 14.82 14.25 14.79L14.63 14.68C14.72 14.65 14.81 14.62 14.90 14.59L15.28 14.48C15.37 14.45 15.46 14.42 15.55 14.39L15.93 14.28C16.02 14.25 16.11 14.22 16.20 14.19L16.58 14.08C16.67 14.05 16.76 14.02 16.85 13.99L17.23 13.88C17.32 13.85 17.41 13.82 17.50 13.79L17.88 13.68C17.97 13.65 18.06 13.62 18.15 13.59L18.53 13.48C18.62 13.45 18.71 13.42 18.80 13.39L19.18 13.28C19.27 13.25 19.36 13.22 19.45 13.19L19.83 13.08C19.92 13.05 20.01 13.02 20.10 12.99L20.48 12.88C20.57 12.85 20.66 12.82 20.75 12.79L21.13 12.68C21.22 12.65 21.31 12.62 21.40 12.59L21.78 12.48C21.87 12.45 21.96 12.42 22.05 12.39L22.43 12.28C22.52 12.25 22.61 12.22 22.70 12.19L23.08 12.08C23.17 12.05 23.26 12.02 23.35 11.99L23.73 11.88C23.82 11.85 23.91 11.82 24.00 11.79L24.38 11.68C24.47 11.65 24.56 11.62 24.65 11.59L25.03 11.48C25.12 11.45 25.21 11.42 25.30 11.39L25.68 11.28C25.77 11.25 25.86 11.22 25.95 11.19L26.33 11.08C26.42 11.05 26.51 11.02 26.60 10.99L26.98 10.88C27.07 10.85 27.16 10.82 27.25 10.79L27.63 10.68C27.72 10.65 27.81 10.62 27.90 10.59L28.28 10.48C28.37 10.45 28.46 10.42 28.55 10.39L28.93 10.28C29.02 10.25 29.11 10.22 29.20 10.19L29.58 10.08C29.67 10.05 29.76 10.02 29.85 9.99L30.23 9.88C30.32 9.85 30.41 9.82 30.50 9.79L30.88 9.68C30.97 9.65 31.06 9.62 31.15 9.59L31.53 9.48C31.62 9.45 31.71 9.42 31.80 9.39L32.18 9.28C32.27 9.25 32.36 9.22 32.45 9.19L32.83 9.08C32.92 9.05 33.01 9.02 33.10 8.99L33.48 8.88C33.57 8.85 33.66 8.82 33.75 8.79L34.13 8.68C34.22 8.65 34.31 8.62 34.40 8.59L34.78 8.48C34.87 8.45 34.96 8.42 35.05 8.39L35.43 8.28C35.52 8.25 35.61 8.22 35.70 8.19L36.08 8.08C36.17 8.05 36.26 8.02 36.35 7.99L36.73 7.88C36.82 7.85 36.91 7.82 37.00 7.79L37.38 7.68C37.47 7.65 37.56 7.62 37.65 7.59L38.03 7.48C38.12 7.45 38.21 7.42 38.30 7.39L38.68 7.28C38.77 7.25 38.86 7.22 38.95 7.19L39.33 7.08C39.42 7.05 39.51 7.02 39.60 6.99L39.98 6.88C40.07 6.85 40.16 6.82 40.25 6.79L40.63 6.68C40.72 6.65 40.81 6.62 40.90 6.59L41.28 6.48C41.37 6.45 41.46 6.42 41.55 6.39L41.93 6.28C42.02 6.25 42.11 6.22 42.20 6.19L42.58 6.08C42.67 6.05 42.76 6.02 42.85 5.99L43.23 5.88C43.32 5.85 43.41 5.82 43.50 5.79L43.88 5.68C43.97 5.65 44.06 5.62 44.15 5.59L44.53 5.48C44.62 5.45 44.71 5.42 44.80 5.39L45.18 5.28C45.27 5.25 45.36 5.22 45.45 5.19L45.83 5.08C45.92 5.05 46.01 5.02 46.10 4.99L46.48 4.88C46.57 4.85 46.66 4.82 46.75 4.79L47.13 4.68C47.22 4.65 47.31 4.62 47.40 4.59L47.78 4.48C47.87 4.45 47.96 4.42 48.05 4.39L48.43 4.28C48.52 4.25 48.61 4.22 48.70 4.19L49.08 4.08C49.17 4.05 49.26 4.02 49.35 3.99L49.73 3.88C49.82 3.85 49.91 3.82 50.00 3.79L50.38 3.68C50.47 3.65 50.56 3.62 50.65 3.59L51.03 3.48C51.12 3.45 51.21 3.42 51.30 3.39L51.68 3.28C51.77 3.25 51.86 3.22 51.95 3.19L52.33 3.08C52.42 3.05 52.51 3.02 52.60 2.99L52.98 2.88C53.07 2.85 53.16 2.82 53.25 2.79L53.63 2.68C53.72 2.65 53.81 2.62 53.90 2.59L54.28 2.48C54.37 2.45 54.46 2.42 54.55 2.39L54.93 2.28C55.02 2.25 55.11 2.22 55.20 2.19L55.58 2.08C55.67 2.05 55.76 2.02 55.85 1.99L56.23 1.88C56.32 1.85 56.41 1.82 56.50 1.79L56.88 1.68C56.97 1.65 57.06 1.62 57.15 1.59L57.53 1.48C57.62 1.45 57.71 1.42 57.80 1.39L58.18 1.28C58.27 1.25 58.36 1.22 58.45 1.19L58.83 1.08C58.92 1.05 59.01 1.02 59.10 0.99L59.48 0.88C59.57 0.85 59.66 0.82 59.75 0.79L60.13 0.68C60.22 0.65 60.31 0.62 60.40 0.59L60.78 0.48C60.87 0.45 60.96 0.42 61.05 0.39L61.43 0.28C61.52 0.25 61.61 0.22 61.70 0.19L62.08 0.08C62.17 0.05 62.26 0.02 62.35 0.00L11.04 14.88ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58ZM15.53 17.7C14.07 18.3 12.44 18.59 10.82 18.59C9.19 18.59 7.56 18.3 6.11 17.7L6.72 16.63C7.57 16.96 8.49 17.22 9.42 17.4C9.52 17.42 9.61 17.45 9.71 17.47C9.74 17.48 9.77 17.49 9.80 17.49L10.07 17.56L10.36 17.65L10.63 17.72L10.90 17.79L11.17 17.86L11.44 17.93L11.71 18.00L11.98 18.07L12.25 18.14L12.52 18.21L12.79 18.28L13.06 18.35L13.33 18.42L13.60 18.49L13.87 18.56L14.14 18.63L14.41 18.70L14.68 18.77L14.95 18.84L15.22 18.91L15.49 18.98L15.76 19.05L16.03 19.12L16.30 19.19L16.57 19.26L16.84 19.33L17.11 19.40L17.38 19.47L17.65 19.54L17.92 19.61L18.19 19.68L18.46 19.75L18.73 19.82L19.00 19.89L19.27 19.96L19.54 20.03L19.81 20.10L20.08 20.17L20.35 20.24L20.62 20.31L20.89 20.38L21.16 20.45L21.43 20.52L21.70 20.59L21.97 20.66L22.24 20.73L22.51 20.80L22.78 20.87L23.05 20.94L23.32 21.01L23.59 21.08L23.86 21.15L24.13 21.22L24.40 21.29L24.67 21.36L24.94 21.43L25.21 21.50L25.48 21.57L25.75 21.64L26.02 21.71L26.29 21.78L26.56 21.85L26.83 21.92L27.10 21.99L27.37 22.06L27.64 22.13L27.91 22.20L28.18 22.27L28.45 22.34L28.72 22.41L28.99 22.48L29.26 22.55L29.53 22.62L29.80 22.69L30.07 22.76L30.34 22.83L30.61 22.90L30.88 22.97L31.15 23.04L31.42 23.11L31.69 23.18L31.96 23.25L32.23 23.32L32.50 23.39L32.77 23.46L33.04 23.53L33.31 23.60L33.58 23.67L33.85 23.74L34.12 23.81L34.39 23.88L34.66 23.95L34.93 24.02L35.20 24.09L35.47 24.16L35.74 24.23L36.01 24.30L36.28 24.37L36.55 24.44L36.82 24.51L37.09 24.58Z" fill="currentColor"/><path d="M19.73 3.99C18.57 3.32 17.21 2.87 15.77 2.65C13.88 2.37 11.96 2.37 10.07 2.65C8.63 2.87 7.27 3.32 6.11 3.99C1.94 6.36 -0.11 11.08 0.00 15.64C0.29 17.58 1.48 19.34 3.06 20.37C4.65 21.40 6.55 21.84 8.44 21.99C9.72 22.09 11.00 22.09 12.28 21.99C14.17 21.84 16.07 21.40 17.66 20.37C19.24 19.34 20.43 17.58 20.72 15.64C20.83 11.08 18.78 6.36 14.61 3.99L19.73 3.99Z" fill="currentColor"/>
-                        </svg>
-                        Login with Discord
-                    </button>
+                    <div className="login-container">
+                        <button onClick={handleDiscordLogin} className="discord-login-button">
+                            <img src="https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png" alt="Discord Logo" className="discord-logo-icon" onError={(e) => e.target.style.display = 'none'} />
+                            Login with Discord
+                        </button>
+                        <div className="stay-logged-in-checkbox">
+                            <input
+                                type="checkbox"
+                                id="stayLoggedIn"
+                                checked={stayLoggedIn}
+                                onChange={(e) => setStayLoggedIn(e.target.checked)}
+                            />
+                            <label htmlFor="stayLoggedIn">Stay Logged In (1 day)</label>
+                        </div>
+                    </div>
                 ) : (
                     <>
                         {/* Custom Server Dropdown */}
@@ -333,17 +455,22 @@ function App() {
                                 id="guild-select-custom"
                                 className={`dropdown-header ${showGuildDropdown ? 'open' : ''}`}
                                 onClick={() => setShowGuildDropdown(!showGuildDropdown)}
-                                disabled={userGuilds.length === 0}
+                                tabIndex="0"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        setShowGuildDropdown(prev => !prev);
+                                    }
+                                }}
                             >
                                 {selectedGuildId ? (
                                     <>
-                                        <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Server Icon" className="guild-icon-header" />
+                                        <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Server Icon" className="guild-icon-header" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
                                         <span>{currentSelectedGuildName}</span>
                                     </>
                                 ) : (
                                     <span>{userGuilds.length > 0 ? "Select a server" : "No leaderboards available"}</span>
                                 )}
-                                <span className="dropdown-arrow">{showGuildDropdown ? '▲' : '▼'}</span>
+                                <span className="dropdown-arrow"></span>
                             </div>
                             {showGuildDropdown && (
                                 <ul className="dropdown-list">
@@ -355,8 +482,14 @@ function App() {
                                                 key={guild.id}
                                                 className={`dropdown-item ${selectedGuildId === guild.id ? 'selected' : ''}`}
                                                 onClick={() => handleCustomGuildSelect(guild.id)}
+                                                tabIndex="0"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        handleCustomGuildSelect(guild.id);
+                                                    }
+                                                }}
                                             >
-                                                <img src={getGuildIconUrl(guild.id, guild.icon)} alt="Server Icon" className="guild-icon" />
+                                                <img src={getGuildIconUrl(guild.id, guild.icon)} alt="Server Icon" className="guild-icon" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
                                                 {guild.name}
                                             </li>
                                         ))
@@ -383,7 +516,6 @@ function App() {
                         </button>
                     </>
                 )}
-                {/* Dark Mode Toggle */}
                 <button onClick={toggleDarkMode} className="dark-mode-toggle">
                     {isDarkMode ? '🌞 Light Mode' : '🌙 Dark Mode'}
                 </button>
@@ -410,25 +542,25 @@ function App() {
                                                 <th>Rank</th>
                                                 <th>Track</th>
                                                 <th className="sortable" onClick={() => handleSort('Driver')}>
-                                                    Driver {getSortIcon('discord_tag')}
+                                                    Driver <span className="sort-icon">{getSortIcon('discord_tag')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('Lap Time')}>
-                                                    Lap Time {getSortIcon('lap_time')}
+                                                    Lap Time <span className="sort-icon">{getSortIcon('lap_time')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('S1')}>
-                                                    S1 {getSortIcon('s1_time')}
+                                                    S1 <span className="sort-icon">{getSortIcon('s1_time')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('S2')}>
-                                                    S2 {getSortIcon('s2_time')}
+                                                    S2 <span className="sort-icon">{getSortIcon('s2_time')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('S3')}>
-                                                    S3 {getSortIcon('s3_time')}
+                                                    S3 <span className="sort-icon">{getSortIcon('s3_time')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('Custom Setup')}>
-                                                    Custom Setup {getSortIcon('custom_setup')}
+                                                    Custom Setup <span className="sort-icon">{getSortIcon('custom_setup')}</span>
                                                 </th>
                                                 <th className="sortable" onClick={() => handleSort('Date')}>
-                                                    Date {getSortIcon('submission_date')}
+                                                    Date <span className="sort-icon">{getSortIcon('submission_date')}</span>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -436,21 +568,22 @@ function App() {
                                             {leaderboardData.map((entry, index) => (
                                                 <React.Fragment key={entry.user_id}>
                                                     <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
-                                                        <td>{index + 1}</td>
-                                                        <td>{entry.track_location_name}</td>
+                                                        <td data-label="Rank">{index + 1}</td>
+                                                        <td data-label="Track">{entry.track_location_name}</td>
                                                         <td
+                                                            data-label="Driver"
                                                             className="driver-name-link"
                                                             onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
                                                             title="Click to see all laps for this driver on this track"
                                                         >
-                                                            {entry.discord_tag || entry.driver_name} {expandedDriverId === entry.user_id ? '▲' : '▼'}
+                                                            <span>{entry.discord_tag || entry.driver_name}</span> {expandedDriverId === entry.user_id ? '▲' : '▼'}
                                                         </td>
-                                                        <td>{entry.lap_time}</td>
-                                                        <td>{entry.s1_time}</td>
-                                                        <td>{entry.s2_time}</td>
-                                                        <td>{entry.s3_time}</td>
-                                                        <td>{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                        <td>{new Date(entry.submission_date).toLocaleString()}</td>
+                                                        <td data-label="Lap Time">{entry.lap_time}</td>
+                                                        <td data-label="S1">{entry.s1_time}</td>
+                                                        <td data-label="S2">{entry.s2_time}</td>
+                                                        <td data-label="S3">{entry.s3_time}</td>
+                                                        <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                        <td data-label="Date">{new Date(entry.submission_date).toLocaleString()}</td>
                                                     </tr>
                                                     {expandedDriverId === entry.user_id && (
                                                         <tr>
@@ -472,12 +605,12 @@ function App() {
                                                                         <tbody>
                                                                             {expandedDriverLaps.map((lap, lapIndex) => (
                                                                                 <tr key={lap.id || lapIndex}>
-                                                                                    <td>{lap.lap_time}</td>
-                                                                                    <td>{lap.s1_time}</td>
-                                                                                    <td>{lap.s2_time}</td>
-                                                                                    <td>{lap.s3_time}</td>
-                                                                                    <td>{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                                                    <td>{new Date(lap.submission_date).toLocaleString()}</td>
+                                                                                    <td data-label="Lap Time">{lap.lap_time}</td>
+                                                                                    <td data-label="S1">{lap.s1_time}</td>
+                                                                                    <td data-label="S2">{lap.s2_time}</td>
+                                                                                    <td data-label="S3">{lap.s3_time}</td>
+                                                                                    <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                                                    <td data-label="Date">{new Date(lap.submission_date).toLocaleString()}</td>
                                                                                 </tr>
                                                                             ))}
                                                                         </tbody>
