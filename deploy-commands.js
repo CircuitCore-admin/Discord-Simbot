@@ -36,7 +36,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         channel_types: [0], // 0 is GuildText
                     },
                 ],
-                default_member_permissions: String(PermissionFlagsBits.ManageGuild), // Use String for bitfield
+                // default_member_permissions: String(PermissionFlagsBits.ManageGuild), // Use String for bitfield
             },
             {
                 name: 'leaderboard',

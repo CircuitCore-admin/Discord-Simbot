@@ -1,37 +1,85 @@
 // commands/analyze_hotlap.js
 const { SlashCommandBuilder } = require('discord.js');
 const analyzeImage = require('../services/analyzeImage');
-
-// --- REMOVED: MIN_IMAGE_WIDTH and MIN_IMAGE_HEIGHT ---
+const db = require('../services/database'); // Make sure you require your database connection
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('analyze_hotlap')
-    .setDescription('Analyze an F1 hotlap screenshot using Gemini AI')
-    .addAttachmentOption(option =>
-      option.setName('image')
-        .setDescription('Upload the screenshot of the hotlap')
-        .setRequired(true)
-    ),
+    data: new SlashCommandBuilder()
+        .setName('analyze_hotlap')
+        .setDescription('Analyze an F1 hotlap screenshot using Gemini AI')
+        .addAttachmentOption(option =>
+            option.setName('image')
+                .setDescription('Upload the screenshot of the hotlap')
+                .setRequired(true)
+        ),
 
-  async execute(interaction) {
-    await interaction.deferReply();
-    const image = interaction.options.getAttachment('image');
+    async execute(interaction) {
+        await interaction.deferReply();
+        const image = interaction.options.getAttachment('image');
 
-    // --- REMOVED: Dimension Check ---
+        try {
+            const analysisResult = await analyzeImage(image.url); // This now returns an object
 
-    try {
-      const analysisResult = await analyzeImage(image.url);
+            if (analysisResult.status === 'incomplete') {
+                return interaction.editReply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing ALL required sections and columns (Track Location, Driver, Team, Time, S1, S2, S3, PEN., Custom Setup, Assists).`);
+            } else if (analysisResult.status === 'complete') {
+                // Extract data for database insertion
+                const guildId = interaction.guildId;
+                const channelId = interaction.channelId;
+                const messageId = interaction.id; // Interaction ID can serve as a unique identifier for the command use
+                const userId = interaction.user.id;
+                const driverName = analysisResult.driver_name;
+                const teamName = analysisResult.team_name;
+                const lapTime = analysisResult.lap_time;
+                const s1Time = analysisResult.s1_time;
+                const s2Time = analysisResult.s2_time;
+                const s3Time = analysisResult.s3_time;
+                const isValid = analysisResult.is_valid; // This will be true/false
+                const customSetup = analysisResult.custom_setup;
+                const trackLocationName = analysisResult.track_location_name;
+                const submissionDate = new Date(); // Current timestamp
 
-      if (analysisResult.trim() === 'Hotlap Submission Denied: Incomplete picture') {
-          return interaction.editReply('⚠️ Hotlap Submission Denied: Your picture is incomplete. Please upload a full screenshot showing ALL required sections and columns (Track Location, Driver, Team, Time, S1, S2, S3, PEN., Custom Setup, Assists).');
-      } else {
-          return interaction.editReply(`\`\`\`\n${analysisResult.trim()}\n\`\`\` `);
-      }
+                // Construct the reply message
+                let replyContent = `📊 Hotlap Analysis for your image:\n`;
+                replyContent += `Top Lap Time: ${lapTime}\n`;
+                replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
+                replyContent += `Driver: ${driverName}\n`;
+                replyContent += `Team: ${teamName}\n`;
+                replyContent += `Track: ${trackLocationName}\n`;
+                replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
+                replyContent += `Custom Setup: ${customSetup}\n`;
+                replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`; // Add notes based on validity
 
-    } catch (err) {
-      console.error('❌ Command Error:', err);
-      return interaction.editReply(`⚠️ ${err.message || 'Something went wrong while analyzing the screenshot.'}`);
+                // Insert into the database
+                await db.query(
+                    `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+                    [
+                        guildId, channelId, messageId, userId,
+                        driverName, teamName, lapTime,
+                        s1Time, s2Time, s3Time, isValid,
+                        customSetup, trackLocationName, submissionDate
+                    ]
+                );
+
+                return interaction.editReply(`\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!`);
+
+            } else {
+                // Fallback for unexpected analysisResult.status
+                console.error('❌ Unexpected analysis status from Gemini:', analysisResult.status);
+                return interaction.editReply('⚠️ Something went wrong during analysis. Unexpected AI response.');
+            }
+
+        } catch (err) {
+            console.error('❌ Command Error:', err);
+            // Provide a more user-friendly error message
+            if (err.message.includes('AI analysis failed to return valid data')) {
+                return interaction.editReply(`⚠️ Sorry, I couldn't understand the image properly. Please ensure the screenshot is clear and correctly formatted. Error: ${err.message}`);
+            } else if (err.message.includes('Failed to analyze image with AI')) {
+                return interaction.editReply(`⚠️ An error occurred while communicating with the AI. Please try again later. Error: ${err.message}`);
+            } else {
+                return interaction.editReply(`⚠️ Something went wrong while analyzing the screenshot: ${err.message || 'An unknown error occurred.'}`);
+            }
+        }
     }
-  }
 };

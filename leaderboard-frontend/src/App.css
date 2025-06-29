@@ -1,0 +1,172 @@
+/* leaderboard-frontend/src/App.css */
+
+body {
+  font-family: 'Formula1 Display', sans-serif; /* Or 'Arial', sans-serif; if you don't have the custom font */
+  background-color: #121212; /* Darker background for depth */
+  color: #e0e0e0; /* Softer white for general text */
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex; /* Use flexbox to center content */
+  justify-content: center; /* Center horizontally */
+  align-items: flex-start; /* Align to top, not middle of screen */
+  min-height: 100vh; /* Ensure it takes full viewport height */
+  padding-top: 40px; /* Some space from the top */
+  padding-bottom: 40px; /* Some space at the bottom */
+}
+
+.app-container {
+  width: 95%; /* Use a percentage for responsiveness */
+  max-width: 1300px; /* Max width to prevent it from getting too wide */
+  margin: 0 auto; /* Center horizontally (can remove if using body flexbox centering) */
+  padding: 30px; /* Increased padding */
+  background-color: #1e1e1e; /* Slightly lighter than body for content area */
+  border-radius: 12px; /* More rounded corners */
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Stronger, deeper shadow */
+  overflow-x: auto; /* Allow horizontal scrolling for table on small screens */
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 40px; /* More space below header */
+  color: #e10600; /* F1 red */
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.app-header h1 {
+  font-size: 3em; /* Larger heading */
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.filter-section {
+  margin-bottom: 30px; /* More space below filter */
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Increased gap */
+}
+
+.filter-section label {
+  font-size: 1.15em;
+  color: #bbbbbb;
+  font-weight: bold;
+}
+
+.filter-section select {
+  padding: 10px 15px; /* More padding */
+  border-radius: 6px; /* Slightly more rounded */
+  border: 1px solid #444;
+  background-color: #282828; /* Darker background for select */
+  color: #e0e0e0;
+  font-size: 1.05em;
+  cursor: pointer;
+  appearance: none; /* Remove default select arrow */
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e0e0e0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
+  background-repeat: no-repeat;
+  background-position: right 10px top 50%;
+  background-size: 12px auto;
+  padding-right: 30px; /* Space for the custom arrow */
+}
+
+.filter-section select:focus {
+  outline: none;
+  border-color: #e10600;
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.5);
+}
+
+.loading-message,
+.error-message,
+.no-data-message {
+  text-align: center;
+  padding: 30px; /* More padding */
+  font-size: 1.3em;
+  color: #cccccc;
+  background-color: #282828;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.error-message {
+  color: #ff4747; /* Brighter red for errors */
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 30px;
+  font-size: 0.9em; /* Slightly smaller font for table data */
+  min-width: 800px; /* Ensure table doesn't get too squished */
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 14px 18px; /* More padding */
+  text-align: left;
+  border-bottom: 1px solid #3a3a3a; /* Softer border */
+}
+
+.leaderboard-table th {
+  background-color: #222; /* Darker header background */
+  color: #e10600; /* F1 red for headers */
+  text-transform: uppercase;
+  font-weight: bold;
+  cursor: pointer; /* Indicate sortable columns */
+  position: relative; /* For sort arrows */
+  user-select: none; /* Prevent text selection on click */
+}
+
+.leaderboard-table th:hover {
+  background-color: #282828; /* Subtle hover on headers */
+}
+
+.leaderboard-table th.sortable {
+    padding-right: 25px; /* Space for sort icon */
+}
+
+.sort-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8em;
+    color: #e0e0e0; /* Color for the arrow */
+}
+.sort-icon.asc::after {
+    content: ' ▲';
+}
+.sort-icon.desc::after {
+    content: ' ▼';
+}
+
+
+.leaderboard-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.leaderboard-table tbody tr:nth-child(even) {
+  background-color: #252525; /* Alternate row background for readability */
+}
+
+.leaderboard-table tbody tr:hover {
+  background-color: #353535; /* Stronger hover effect */
+}
+
+/* Specific styling for valid/invalid */
+.leaderboard-table td:nth-child(8) { /* Assuming 'Valid' is the 8th column */
+    font-weight: bold;
+}
+
+/* Optional: F1 specific font */
+/* @font-face {
+  font-family: 'Formula1 Display';
+  src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Formula1 Display';
+  src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+} */
