@@ -91,7 +91,7 @@ body {
 
 .app-container {
     width: 100%; /* Will take full width up to max-width */
-    max-width: 1200px; /* Max width for large screens */
+    max-width: 1600px; /* Increased max width for larger screens (from 1400px) */
     margin: 0 auto; /* Center the container */
     padding: 30px; /* Increased padding inside */
     background-color: var(--bg-color-app-container);
@@ -384,7 +384,7 @@ body {
 
 .leaderboard-table {
     width: 100%; /* Take full width of its container by default */
-    min-width: 1100px; /* Increased minimum width for the table */
+    min-width: 1200px; /* Increased minimum width for the table (from 1100px) */
     border-collapse: separate; /* Allows border-radius on cells */
     border-spacing: 0; /* Remove default cell spacing */
     font-size: 0.95em;
@@ -413,9 +413,21 @@ body {
     white-space: nowrap; /* Keep headers on a single line */
 }
 
-/* Importantly, remove white-space: nowrap for td to allow content to wrap */
+/* Default table data cells to allow wrapping */
 .leaderboard-table td {
-    white-space: normal; /* Allow text to wrap within cells */
+    white-space: normal; /* Allow text to wrap within cells by default */
+}
+
+/* Specific styling for driver name column to truncate and show tooltip on desktop */
+@media (min-width: 769px) { /* Apply only on wider screens */
+    .leaderboard-table td.driver-name-link span { /* Target the inner span */
+        display: inline-block; /* Essential for text-overflow to work with text */
+        max-width: 180px; /* Adjust as needed - gives space for arrow and padding */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap; /* Keep driver name on a single line for truncation */
+        vertical-align: middle; /* Align with arrow */
+    }
 }
 
 
@@ -466,6 +478,9 @@ body {
     color: var(--color-discord-blue);
     font-weight: bold;
     transition: color 0.2s ease;
+    display: flex; /* Make it a flex container to align text and arrow */
+    align-items: center; /* Vertically align items */
+    gap: 5px; /* Space between name span and arrow */
 }
 
 .driver-name-link:hover {
@@ -697,7 +712,7 @@ body {
     }
 
     .custom-dropdown-container {
-        flex-direction: column; /* Stack label and dropdown */
+        flex-direction: column;
         align-items: flex-start;
         gap: 8px; /* Space between label and dropdown */
         margin-right: 0;
@@ -770,6 +785,9 @@ body {
     }
     .leaderboard-table td.driver-name-link span { /* Target the driver name text */
         margin-right: 5px; /* Space between name and arrow */
+        /* On mobile, allow driver name to wrap if it's very long in card view */
+        white-space: normal;
+        max-width: none; /* Remove desktop max-width constraint */
     }
 
 
