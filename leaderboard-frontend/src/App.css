@@ -1,29 +1,58 @@
 /* leaderboard-frontend/src/App.css */
 
+/*
+   To enable the F1 fonts:
+   1. Obtain the font files (Formula1-Display-Regular.woff2 and Formula1-Display-Bold.woff2).
+      These are proprietary fonts and usually need to be licensed.
+   2. Place these .woff2 files in the 'leaderboard-frontend/src/assets/fonts/' directory.
+      You might need to create the 'assets' and 'fonts' subdirectories if they don't exist.
+   3. Uncomment the @font-face rules below.
+*/
+@font-face {
+  font-family: 'Formula1 Display';
+  src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Formula1 Display';
+  src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+}
+
+/* Removed the html font-size scaling to keep text sizes as they were before */
+/* html {
+  font-size: max(16px, 1.1vw);
+} */
+
 body {
-  font-family: 'Formula1 Display', sans-serif; /* Or 'Arial', sans-serif; if you don't have the custom font */
+  font-family: 'Formula1 Display', sans-serif; /* Applied F1 font. Fallback to sans-serif */
   background-color: #121212; /* Darker background for depth */
   color: #e0e0e0; /* Softer white for general text */
   margin: 0;
-  padding: 0;
+  /* Reduced padding to make the content sit closer to the edges of the screen */
+  padding: 20px; /* Uniform padding for top, right, bottom, left */
   box-sizing: border-box;
   display: flex; /* Use flexbox to center content */
   justify-content: center; /* Center horizontally */
   align-items: flex-start; /* Align to top, not middle of screen */
   min-height: 100vh; /* Ensure it takes full viewport height */
-  padding-top: 40px; /* Some space from the top */
-  padding-bottom: 40px; /* Some space at the bottom */
 }
 
 .app-container {
-  width: 95%; /* Use a percentage for responsiveness */
-  max-width: 1300px; /* Max width to prevent it from getting too wide */
-  margin: 0 auto; /* Center horizontally (can remove if using body flexbox centering) */
-  padding: 30px; /* Increased padding */
+  /* Set width to auto to allow it to grow naturally,
+     and remove max-width to allow it to expand indefinitely
+     based on content and viewport. */
+  width: auto;
+  max-width: none; /* Removed the max-width restriction */
+  margin: 0 20px; /* Adjusted horizontal margins to 20px on left/right for slight spacing */
+  /* Reduced padding inside the container */
+  padding: 20px;
   background-color: #1e1e1e; /* Slightly lighter than body for content area */
   border-radius: 12px; /* More rounded corners */
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Stronger, deeper shadow */
-  overflow-x: auto; /* Allow horizontal scrolling for table on small screens */
+  overflow-x: auto; /* Fallback: Allow horizontal scrolling for table if content still exceeds screen width */
 }
 
 .app-header {
@@ -35,7 +64,7 @@ body {
 }
 
 .app-header h1 {
-  font-size: 3em; /* Larger heading */
+  font-size: 3em; /* Reverted to original em unit to maintain text size */
   margin-bottom: 10px;
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
 }
@@ -48,7 +77,7 @@ body {
 }
 
 .filter-section label {
-  font-size: 1.15em;
+  font-size: 1.15em; /* Reverted to original em unit to maintain text size */
   color: #bbbbbb;
   font-weight: bold;
 }
@@ -59,7 +88,7 @@ body {
   border: 1px solid #444;
   background-color: #282828; /* Darker background for select */
   color: #e0e0e0;
-  font-size: 1.05em;
+  font-size: 1.05em; /* Reverted to original em unit to maintain text size */
   cursor: pointer;
   appearance: none; /* Remove default select arrow */
   background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e0e0e0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
@@ -80,7 +109,7 @@ body {
 .no-data-message {
   text-align: center;
   padding: 30px; /* More padding */
-  font-size: 1.3em;
+  font-size: 1.3em; /* Reverted to original em unit to maintain text size */
   color: #cccccc;
   background-color: #282828;
   border-radius: 8px;
@@ -92,18 +121,20 @@ body {
 }
 
 .leaderboard-table {
-  width: 100%;
+  width: 100%; /* Ensure table takes 100% of its parent's width */
   border-collapse: collapse;
   margin-top: 30px;
-  font-size: 0.9em; /* Slightly smaller font for table data */
-  min-width: 800px; /* Ensure table doesn't get too squished */
+  font-size: 0.9em; /* Retained original em unit for text size */
+  min-width: 100%; /* Ensures table will at least fill the container's width,
+                       and due to white-space:nowrap, will expand beyond if needed */
 }
 
 .leaderboard-table th,
 .leaderboard-table td {
-  padding: 14px 18px; /* More padding */
+  padding: 10px 15px; /* Slightly increased horizontal padding for more spacing within cells */
   text-align: left;
   border-bottom: 1px solid #3a3a3a; /* Softer border */
+  white-space: nowrap; /* Prevents text from wrapping */
 }
 
 .leaderboard-table th {
@@ -129,7 +160,7 @@ body {
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.8em;
+    font-size: 0.8em; /* Retained original em unit for text size */
     color: #e0e0e0; /* Color for the arrow */
 }
 .sort-icon.asc::after {
@@ -151,24 +182,3 @@ body {
 .leaderboard-table tbody tr:hover {
   background-color: #353535; /* Stronger hover effect */
 }
-
-/* Removed the specific styling for the 8th column that was making S3 bold */
-/*
-.leaderboard-table td:nth-child(8) { 
-    font-weight: bold;
-}
-*/
-
-/* Optional: F1 specific font */
-/* @font-face {
-  font-family: 'Formula1 Display';
-  src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Formula1 Display';
-  src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
-  font-weight: bold;
-  font-style: normal;
-} */

@@ -254,14 +254,12 @@ function App() {
                                         <td>{entry.s3_time}</td>
                                         {/* COMPLETELY REMOVED: 'Valid' cell from the main leaderboard table */}
                                         <td>{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                        {/* Updated to show full date, time, and timezone on hover (via title attribute) and a more readable format for display */}
-                                        <td title={new Date(entry.submission_date).toLocaleString()}>
-                                            {new Date(entry.submission_date).toLocaleDateString()}
-                                        </td>
+                                        {/* Changed to toLocaleString() to display time as well */}
+                                        <td>{new Date(entry.submission_date).toLocaleString()}</td>
                                     </tr>
                                     {expandedDriverId === entry.user_id && (
                                         <tr>
-                                            {/* colSpan is 9: Rank, Track, Driver, Team, Lap Time, S1, S2, S3, Custom Setup, Date (10 columns total)
+                                            {/* colSpan is 9: Rank, Track, Driver, Team, Lap Time, S1, S2, S3, Custom Setup, Date (10 columns)
                                                 The nested table expands across all columns of the parent table,
                                                 so the colSpan should match the number of columns in the parent table.
                                                 Rank (1) + Track (1) + Driver (1) + Team (1) + Lap Time (1) + S1 (1) + S2 (1) + S3 (1) + Custom Setup (1) + Date (1) = 10 columns.
@@ -291,9 +289,7 @@ function App() {
                                                                     <td>{lap.s3_time}</td>
                                                                     {/* REMOVED: 'Valid' cell from nested table */}
                                                                     <td>{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                                    <td title={new Date(lap.submission_date).toLocaleString()}>
-                                                                        {new Date(lap.submission_date).toLocaleDateString()}
-                                                                    </td>
+                                                                    <td>{new Date(lap.submission_date).toLocaleString()}</td>
                                                                 </tr>
                                                             ))}
                                                         </tbody>
