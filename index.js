@@ -475,10 +475,11 @@ app.get('/api/leaderboard', async (req, res) => {
         case 'driver_name':
         case 'team_name':
         case 'track_location_name':
-            orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`;
+            // Use LOWER() for case-insensitive alphabetical sorting
+            orderByClause = `LOWER(${sortColumn}) ${orderDirection}`;
             break;
         default:
-            orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`;
+            orderByClause = `${sortColumn} ${orderDirection}`; // Fallback, consider if a default collation is desired
             break;
     }
 
@@ -503,8 +504,6 @@ app.get('/api/leaderboard/csv', async (req, res) => {
     const guildId = req.query.guildId;
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
-    const startTime = req.query.startTime;
-    const endTime = req.query.endTime;
 
     if (!trackName) {
         return res.status(400).send('Track name is required.');
@@ -524,16 +523,14 @@ app.get('/api/leaderboard/csv', async (req, res) => {
     let paramIndex = 3;
 
     if (startDate) {
-        const startDateTime = `${startDate} ${startTime || '00:00:00'}`;
         whereConditions.push(`submission_date >= $${paramIndex}`);
-        queryParams.push(startDateTime);
+        queryParams.push(startDate);
         paramIndex++;
     }
 
     if (endDate) {
-        const endDateTime = `${endDate} ${endTime || '23:59:59.999'}`;
         whereConditions.push(`submission_date <= $${paramIndex}`);
-        queryParams.push(endDateTime);
+        queryParams.push(endDate);
         paramIndex++;
     }
 
@@ -605,24 +602,22 @@ app.get('/api/leaderboard/csv', async (req, res) => {
 
         // CSV conversion logic
         const header = Object.keys(result.rows[0]);
-        const timeColumns = ["Lap Time", "S1 Time", "S2 Time", "S3 Time"];
         
-        const headerRow = header.map(colName => `"${colName.replace(/"/g, '""')}"`).join(',');
+        // No quotes for headers either
+        const headerRow = header.map(colName => colName.replace(/"/g, '""')).join(',');
 
         const rows = result.rows.map(row => {
             return header.map(colName => {
                 let value = row[colName];
                 if (value === null || value === undefined) return '';
 
-                // Force time values to be treated as text in Excel
-                if (timeColumns.includes(colName) && typeof value === 'string' && value.includes('.')) {
-                    return `=" ${value}"`;
-                }
-
                 if (value instanceof Date) {
-                    return `"${value.toISOString()}"`;
+                    return value.toISOString();
                 }
-                return `"${String(value).replace(/"/g, '""')}"`;
+                // No quotes for values. Escape internal quotes if any.
+                // If a value contains a comma, it will be split into multiple cells
+                // by Excel, as it's no longer quoted.
+                return String(value).replace(/"/g, '""');
             }).join(',');
         });
 
@@ -676,6 +671,7 @@ app.get('/api/driverLaps', async (req, res) => {
             FROM hotlaps
             WHERE user_id = $1 AND track_location_name ILIKE $2 AND guild_id = $3
             ORDER BY
+                -- Ensure driver laps are sorted by lap time
                 CASE
                     WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\\.[0-9]{3}$' THEN
                         SPLIT_PART(lap_time, ':', 1)::INT * 60000 +

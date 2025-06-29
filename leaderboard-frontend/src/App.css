@@ -35,7 +35,6 @@
 .light-mode {
     --color-primary-text: #1A1A1A;
     --color-secondary-text: #333333;
-    /* Set to a very dark grey for strong contrast */
     --bg-color-body: #F5F5F5;
     --bg-color-app-container: #FFFFFF;
     --bg-color-surface: #E8E8E8;
@@ -58,8 +57,8 @@
 body {
     font-family: 'Formula1 Display', 'system-ui', sans-serif;
     background: linear-gradient(135deg, var(--bg-color-body) 0%, #151515 50%, #050505 100%);
-    background-size: 200% 200%; /* Make it larger than viewport to enable animation */
-    animation: gradientShift 15s ease infinite alternate; /* Subtle animation */
+    background-size: 200% 200%;
+    animation: gradientShift 15s ease infinite alternate;
     color: var(--color-primary-text);
     margin: 0;
     padding: 20px;
@@ -97,11 +96,11 @@ body {
 }
 
 .app-header h1 {
-    font-size: 3.5em; /* Slightly larger for more impact */
+    font-size: 3.5em;
     color: var(--color-f1-red);
     margin-bottom: 10px;
     letter-spacing: 1px;
-    text-shadow: 0 0 10px rgba(225, 6, 0, 0.5); /* Subtle red glow */
+    text-shadow: 0 0 10px rgba(225, 6, 0, 0.5);
 }
 
 .user-info {
@@ -119,8 +118,8 @@ body {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    border: 2px solid var(--color-f1-red); /* Add a border to the avatar */
-    box-shadow: 0 0 8px rgba(225, 6, 0, 0.4); /* Subtle glow */
+    border: 2px solid var(--color-f1-red);
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.4);
 }
 
 .discord-logout-button {
@@ -202,59 +201,14 @@ body {
     font-family: inherit;
     font-size: 1em;
     min-width: 200px;
-    transition: background-color 0.1s ease, color 0.1s ease; /* Adjusted transition to 0.1s */
+    transition: background-color 0.1s ease, color 0.1s ease;
 }
 
 .search-input:focus {
     outline: none;
     border-color: var(--color-f1-red);
-    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5); /* F1 red glow on focus */
-}
-
-/* --- Combined Date/Time Input Group --- */
-.datetime-group {
-    display: flex;
-    gap: 0; /* Remove gap to make them touch */
-    border: 1px solid var(--border-color-strong); /* Add a subtle border around the entire group */
-    border-radius: 6px; /* Match input border-radius */
-    overflow: hidden; /* Ensures inner inputs don't break rounded corners */
-    min-width: 200px; /* Ensure group has a minimum width */
-    /* Add transition for background and border color for light/dark mode */
-    transition: background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
-}
-
-.datetime-group .search-input {
-    flex-grow: 1; /* Allow inputs to grow within the group */
-    border: none; /* Remove individual borders on left/right for seamless look */
-    border-radius: 0; /* Remove individual rounded corners */
-    outline: none; /* Ensure no focus outline on individual inputs */
-    padding: 11px 15px; /* Re-add padding since border is removed */
-    background-color: var(--bg-color-app-container); /* Explicitly set background for smooth transition */
-    color: var(--color-primary-text); /* Explicitly set color for smooth transition */
-}
-
-/* Re-apply rounded corners to the first and last inputs in the group */
-.datetime-group .search-input:first-child {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-}
-
-.datetime-group .search-input:last-child {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-}
-
-/* Add a subtle separator between date and time inputs */
-.datetime-group .search-input + .search-input {
-    border-left: 1px solid var(--border-color-subtle);
-}
-
-/* Focus style for the entire group */
-.datetime-group:focus-within {
-    border-color: var(--color-f1-red);
     box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
 }
-
 
 /* --- CUSTOM DROPDOWN --- */
 .custom-dropdown-container {
@@ -277,7 +231,7 @@ body {
 
 .dropdown-header.open {
     border-color: var(--color-f1-red);
-    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5); /* F1 red glow when open */
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
 }
 
 .dropdown-header.disabled {
@@ -415,7 +369,6 @@ body {
     border-radius: 8px;
     overflow: hidden;
     table-layout: fixed;
-    /* Lock column widths */
 }
 
 /* Define column widths to prevent shifting */
@@ -424,49 +377,40 @@ body {
     width: 8%;
 }
 
-/* Rank */
 .leaderboard-table th:nth-child(2),
 .leaderboard-table td:nth-child(2) {
     width: 25%;
 }
 
-/* Driver */
 .leaderboard-table th:nth-child(3),
 .leaderboard-table td:nth-child(3) {
     width: 15%;
 }
 
-/* Lap Time */
 .leaderboard-table th:nth-child(4),
 .leaderboard-table td:nth-child(4) {
     width: 10%;
 }
 
-/* S1 */
 .leaderboard-table th:nth-child(5),
 .leaderboard-table td:nth-child(5) {
     width: 10%;
 }
 
-/* S2 */
 .leaderboard-table th:nth-child(6),
 .leaderboard-table td:nth-child(6) {
     width: 10%;
 }
 
-/* S3 */
 .leaderboard-table th:nth-child(7),
 .leaderboard-table td:nth-child(7) {
     width: 8%;
 }
 
-/* Setup */
 .leaderboard-table th:nth-child(8),
 .leaderboard-table td:nth-child(8) {
     width: 14%;
 }
-
-/* Date */
 
 
 .leaderboard-table th,
@@ -475,7 +419,6 @@ body {
     text-align: left;
     border: none;
     vertical-align: middle;
-    /* Ensures all rows have the same height, preventing jumps */
     height: 54px;
 }
 
@@ -516,7 +459,6 @@ body {
 .leaderboard-table.is-updating {
     opacity: 0.6;
     pointer-events: none;
-    /* Prevent clicks while updating */
     transition: opacity 0.2s ease-in-out;
 }
 
@@ -526,7 +468,6 @@ body {
     color: var(--color-primary-text);
     display: inline-flex;
     align-items: center;
-    /* This ensures consistent vertical alignment */
     gap: 5px;
 }
 
@@ -610,4 +551,28 @@ body {
 
 .text-left {
     text-align: left;
+}
+
+/* --- Current User Highlight (Subtler) --- */
+.leaderboard-table tbody tr.is-current-user {
+    background-color: rgba(225, 6, 0, 0.08); /* Much lighter red tint */
+    border-left: 3px solid rgba(225, 6, 0, 0.6); /* Thinner, slightly less opaque border */
+    /* Removed font-weight: bold for more subtlety */
+    /* color: var(--color-primary-text); -- keep current text color for readability */
+}
+
+/* Ensure expanded laps for the current user also have a consistent background */
+.leaderboard-table tbody tr.is-current-user + .additional-lap-row {
+    background-color: rgba(225, 6, 0, 0.04); /* Even lighter for expanded rows */
+    border-left: 3px solid rgba(225, 6, 0, 0.3); /* Slightly lighter border */
+}
+
+/* Adjust cell padding for rows with left border to prevent content shift */
+.leaderboard-table tbody tr.is-current-user td:first-child {
+    padding-left: 10px; /* Reduce padding to accommodate the border */
+}
+
+/* Adjust hover effects for the highlighted row to match the new subtlety */
+.leaderboard-table tbody tr.is-current-user:hover {
+    background-color: rgba(225, 6, 0, 0.15); /* Slightly darker on hover */
 }
