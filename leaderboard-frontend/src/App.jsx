@@ -162,10 +162,9 @@ function App() {
     const [stayLoggedIn, setStayLoggedIn] = useState(true);
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [startDate, setStartDate] = useState(''); // State for start date filter
-    const [endDate, setEndDate] = useState('');     // State for end date filter
-    const [startTime, setStartTime] = useState(''); // State for start time filter
-    const [endTime, setEndTime] = useState('');     // State for end time filter
+    // Use combined datetime-local strings for startDate and endDate
+    const [startDate, setStartDate] = useState(''); 
+    const [endDate, setEndDate] = useState('');     
 
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -322,13 +321,13 @@ function App() {
 
         // Apply start date/time filter
         if (startDate) {
-            const startDateTime = new Date(`${startDate}T${startTime || '00:00'}:00`);
+            const startDateTime = new Date(startDate); // Directly use the datetime-local string
             matchesStartDate = submissionDate >= startDateTime;
         }
 
         // Apply end date/time filter
         if (endDate) {
-            const endDateTime = new Date(`${endDate}T${endTime || '23:59'}:59.999`);
+            const endDateTime = new Date(endDate); // Directly use the datetime-local string
             matchesEndDate = submissionDate <= endDateTime;
         }
 
@@ -372,13 +371,12 @@ function App() {
         setDownloadingCSV(true);
         setError(null);
         try {
+            // Pass startDate and endDate directly as they now contain full datetime strings
             const params = new URLSearchParams({
                 track: selectedTrack,
                 guildId: selectedGuildId,
-                startDate: startDate,
+                startDate: startDate, 
                 endDate: endDate,
-                startTime: startTime,
-                endTime: endTime
             }).toString();
 
             const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?${params}`);
@@ -454,11 +452,11 @@ function App() {
                                 }}
                             />
                         </div>
-                        {/* Date and Time Filter Inputs */}
+                        {/* Start Date and Time Combined Field */}
                         <div className="control-group">
-                            <label htmlFor="startDate">Start Date</label>
+                            <label htmlFor="startDate">Start</label>
                             <input
-                                type="date"
+                                type="datetime-local"
                                 id="startDate"
                                 className="search-input"
                                 value={startDate}
@@ -474,23 +472,11 @@ function App() {
                                 }}
                             />
                         </div>
+                        {/* End Date and Time Combined Field */}
                         <div className="control-group">
-                            <label htmlFor="startTime">Start Time</label>
+                            <label htmlFor="endDate">End</label>
                             <input
-                                type="time"
-                                id="startTime"
-                                className="search-input"
-                                value={startTime}
-                                onChange={(e) => {
-                                    setStartTime(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                        </div>
-                        <div className="control-group">
-                            <label htmlFor="endDate">End Date</label>
-                            <input
-                                type="date"
+                                type="datetime-local"
                                 id="endDate"
                                 className="search-input"
                                 value={endDate}
@@ -502,22 +488,13 @@ function App() {
                                     // If newEndDate is earlier than current startDate, adjust endDate
                                     if (startDate && new Date(newEndDate) < new Date(startDate)) {
                                         const adjustedEndDate = new Date(startDate);
-                                        adjustedEndDate.setDate(adjustedEndDate.getDate() + 1); // Set to one day after start date
-                                        setEndDate(adjustedEndDate.toISOString().split('T')[0]);
+                                        // Adding a day to the datetime-local string can be tricky.
+                                        // For simplicity, setting it to the start date's datetime
+                                        // would be the most robust default here, or requiring manual adjustment.
+                                        // For now, we'll just set it to the startDate value if it's earlier.
+                                        // A more complex solution would involve parsing and reformatting.
+                                        setEndDate(startDate); 
                                     }
-                                }}
-                            />
-                        </div>
-                        <div className="control-group">
-                            <label htmlFor="endTime">End Time</label>
-                            <input
-                                type="time"
-                                id="endTime"
-                                className="search-input"
-                                value={endTime}
-                                onChange={(e) => {
-                                    setEndTime(e.target.value);
-                                    setCurrentPage(1);
                                 }}
                             />
                         </div>
@@ -547,19 +524,19 @@ function App() {
                 {error && <p className="error-message">{error}</p>}
 
                 {/* Render the table if we have data, even if it's currently loading a new sort */}
-                {!error && isAuthenticated && leaderboardData.length > 0 && (
+                {!error && isAuthenticated && filteredLeaderboard.length > 0 && ( 
                     <>
                         <table className={`leaderboard-table ${loading ? 'is-updating' : ''}`}>
                              <thead>
                                 <tr>
-                                    <th>Rank</th>
-                                    <th className="sortable" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('S3')}>S3 {getSortIcon(sortableColumnsMap['S3'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('Custom Setup')}>Setup {getSortIcon(sortableColumnsMap['Custom Setup'])}</th>
-                                    <th className="sortable" onClick={() => handleSort('Date')}>Date {getSortIcon(sortableColumnsMap['Date'])}</th>
+                                    <th className="text-left">Rank</th>
+                                    <th className="sortable text-left" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
+                                    <th className="sortable text-right" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
+                                    <th className="sortable text-right" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
+                                    <th className="sortable text-right" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
+                                    <th className="sortable text-right" onClick={() => handleSort('S3')}>S3 {getSortIcon(sortableColumnsMap['S3'])}</th>
+                                    <th className="sortable text-left" onClick={() => handleSort('Custom Setup')}>Setup {getSortIcon(sortableColumnsMap['Custom Setup'])}</th>
+                                    <th className="sortable text-left" onClick={() => handleSort('Date')}>Date {getSortIcon(sortableColumnsMap['Date'])}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -568,8 +545,8 @@ function App() {
                                     return (
                                     <React.Fragment key={entry.user_id}>
                                         <tr className={entry.user_id === discordUser?.id ? 'is-current-user' : ''}>
-                                          <td data-label="Rank">{rank}</td>
-                                          <td data-label="Driver">
+                                          <td data-label="Rank" className="text-left">{rank}</td>
+                                          <td data-label="Driver" className="text-left">
                                             {entry.lap_count > 1
                                               ? (
                                                 <span
@@ -586,12 +563,12 @@ function App() {
                                               : <span>{entry.discord_tag || entry.driver_name}</span>
                                             }
                                           </td>
-                                            <td data-label="Lap Time">{entry.lap_time}</td>
-                                            <td data-label="S1">{entry.s1_time}</td>
-                                            <td data-label="S2">{entry.s2_time}</td>
-                                            <td data-label="S3">{entry.s3_time}</td>
-                                            <td data-label="Custom Setup">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                            <td data-label="Date" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
+                                            <td data-label="Lap Time" className="text-right">{entry.lap_time}</td>
+                                            <td data-label="S1" className="text-right">{entry.s1_time}</td>
+                                            <td data-label="S2" className="text-right">{entry.s2_time}</td>
+                                            <td data-label="S3" className="text-right">{entry.s3_time}</td>
+                                            <td data-label="Custom Setup" className="text-left">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                            <td data-label="Date" className="text-left" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
                                         </tr>
                                         {expandedDriverId === entry.user_id && (
                                             loadingExpandedLaps ? <tr><td colSpan="8"><div className="spinner-container" style={{height: '100px'}}><div className="spinner"></div></div></td></tr> :
@@ -600,12 +577,12 @@ function App() {
                                                 expandedDriverLaps.filter(lap => lap.submission_date !== entry.submission_date).map(lap => (
                                                     <tr key={lap.id} className="additional-lap-row">
                                                         <td></td><td></td>
-                                                        <td data-label="Lap Time">{lap.lap_time}</td>
-                                                        <td data-label="S1">{lap.s1_time}</td>
-                                                        <td data-label="S2">{lap.s2_time}</td>
-                                                        <td data-label="S3">{lap.s3_time}</td>
-                                                        <td data-label="Custom Setup">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                                        <td data-label="Date" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
+                                                        <td data-label="Lap Time" className="text-right">{lap.lap_time}</td>
+                                                        <td data-label="S1" className="text-right">{lap.s1_time}</td>
+                                                        <td data-label="S2" className="text-right">{lap.s2_time}</td>
+                                                        <td data-label="S3" className="text-right">{lap.s3_time}</td>
+                                                        <td data-label="Custom Setup" className="text-left">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                                        <td data-label="Date" className="text-left" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
                                                     </tr>
                                                 ))
                                             )
@@ -629,6 +606,16 @@ function App() {
                             currentPage={currentPage}
                         />
                     </>
+                )}
+                {/* Display message if no track is selected or leaderboard is empty after initial load */}
+                {!isAuthenticated && !loading && (
+                    <p className="no-data-message">Please log in with Discord to view leaderboards.</p>
+                )}
+                {isAuthenticated && !selectedTrack && !loading && tracks.length > 0 && (
+                     <p className="no-data-message">Please select a track to view the leaderboard.</p>
+                )}
+                 {isAuthenticated && !selectedTrack && !loading && tracks.length === 0 && (
+                     <p className="no-data-message">No tracks available for this server. Try selecting a different server or check if any hotlaps have been submitted.</p>
                 )}
             </div>
         </div>

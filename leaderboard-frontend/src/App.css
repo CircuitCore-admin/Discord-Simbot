@@ -57,7 +57,9 @@
 
 body {
     font-family: 'Formula1 Display', 'system-ui', sans-serif;
-    background-color: var(--bg-color-body);
+    background: linear-gradient(135deg, var(--bg-color-body) 0%, #151515 50%, #050505 100%);
+    background-size: 200% 200%; /* Make it larger than viewport to enable animation */
+    animation: gradientShift 15s ease infinite alternate; /* Subtle animation */
     color: var(--color-primary-text);
     margin: 0;
     padding: 20px;
@@ -69,6 +71,12 @@ body {
     font-size: 16px;
     overflow-x: hidden;
 }
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
 
 .app-container {
     width: 100%;
@@ -89,9 +97,11 @@ body {
 }
 
 .app-header h1 {
-    font-size: 3.2em;
+    font-size: 3.5em; /* Slightly larger for more impact */
     color: var(--color-f1-red);
     margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(225, 6, 0, 0.5); /* Subtle red glow */
 }
 
 .user-info {
@@ -109,6 +119,8 @@ body {
     width: 32px;
     height: 32px;
     border-radius: 50%;
+    border: 2px solid var(--color-f1-red); /* Add a border to the avatar */
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.4); /* Subtle glow */
 }
 
 .discord-logout-button {
@@ -190,12 +202,59 @@ body {
     font-family: inherit;
     font-size: 1em;
     min-width: 200px;
+    transition: background-color 0.1s ease, color 0.1s ease; /* Adjusted transition to 0.1s */
 }
 
 .search-input:focus {
     outline: none;
     border-color: var(--color-f1-red);
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5); /* F1 red glow on focus */
 }
+
+/* --- Combined Date/Time Input Group --- */
+.datetime-group {
+    display: flex;
+    gap: 0; /* Remove gap to make them touch */
+    border: 1px solid var(--border-color-strong); /* Add a subtle border around the entire group */
+    border-radius: 6px; /* Match input border-radius */
+    overflow: hidden; /* Ensures inner inputs don't break rounded corners */
+    min-width: 200px; /* Ensure group has a minimum width */
+    /* Add transition for background and border color for light/dark mode */
+    transition: background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.datetime-group .search-input {
+    flex-grow: 1; /* Allow inputs to grow within the group */
+    border: none; /* Remove individual borders on left/right for seamless look */
+    border-radius: 0; /* Remove individual rounded corners */
+    outline: none; /* Ensure no focus outline on individual inputs */
+    padding: 11px 15px; /* Re-add padding since border is removed */
+    background-color: var(--bg-color-app-container); /* Explicitly set background for smooth transition */
+    color: var(--color-primary-text); /* Explicitly set color for smooth transition */
+}
+
+/* Re-apply rounded corners to the first and last inputs in the group */
+.datetime-group .search-input:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.datetime-group .search-input:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* Add a subtle separator between date and time inputs */
+.datetime-group .search-input + .search-input {
+    border-left: 1px solid var(--border-color-subtle);
+}
+
+/* Focus style for the entire group */
+.datetime-group:focus-within {
+    border-color: var(--color-f1-red);
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
+}
+
 
 /* --- CUSTOM DROPDOWN --- */
 .custom-dropdown-container {
@@ -218,6 +277,7 @@ body {
 
 .dropdown-header.open {
     border-color: var(--color-f1-red);
+    box-shadow: 0 0 8px rgba(225, 6, 0, 0.5); /* F1 red glow when open */
 }
 
 .dropdown-header.disabled {
@@ -541,4 +601,13 @@ body {
     background-color: var(--color-f1-red);
     color: white;
     border-color: var(--color-f1-red);
+}
+
+/* --- New alignment classes --- */
+.text-right {
+    text-align: right;
+}
+
+.text-left {
+    text-align: left;
 }
