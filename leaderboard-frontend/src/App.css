@@ -211,7 +211,6 @@ body {
     color: var(--color-primary-text);
     font-size: 1em;
     cursor: pointer;
-    /* justify-content is removed to use flex-grow on the label instead */
     transition: all 0.3s ease;
 }
 
@@ -232,14 +231,12 @@ body {
     flex-shrink: 0;
 }
 
-/* New style for flag emojis */
 .dropdown-prefix {
     font-size: 1.4em;
     margin-right: 10px;
     line-height: 1;
 }
 
-/* New style for the label to make it take up space */
 .dropdown-label {
     flex-grow: 1;
     overflow: hidden;
@@ -247,18 +244,14 @@ body {
     white-space: nowrap;
 }
 
-/* Updated style for the arrow to position it correctly */
 .dropdown-arrow {
     transition: transform 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-left: 15px;
-    /* Controls spacing */
     flex-shrink: 0;
-    /* Prevents arrow from shrinking */
 }
-
 
 .dropdown-header.open .dropdown-arrow {
     transform: rotate(180deg);
@@ -354,41 +347,93 @@ body {
 /* --- TABLE --- */
 .leaderboard-table {
     width: 100%;
-    border-collapse: separate; /* Keep separate for this technique to work best */
+    border-collapse: separate;
     border-spacing: 0;
     font-size: 0.95em;
     border-radius: 8px;
-    overflow: hidden; /* This clips the corners of the cells */
+    overflow: hidden;
+    table-layout: fixed;
+    /* Lock column widths */
 }
 
-/* Remove all real borders from cells */
+/* Define column widths to prevent shifting */
+.leaderboard-table th:nth-child(1),
+.leaderboard-table td:nth-child(1) {
+    width: 8%;
+}
+
+/* Rank */
+.leaderboard-table th:nth-child(2),
+.leaderboard-table td:nth-child(2) {
+    width: 25%;
+}
+
+/* Driver */
+.leaderboard-table th:nth-child(3),
+.leaderboard-table td:nth-child(3) {
+    width: 15%;
+}
+
+/* Lap Time */
+.leaderboard-table th:nth-child(4),
+.leaderboard-table td:nth-child(4) {
+    width: 10%;
+}
+
+/* S1 */
+.leaderboard-table th:nth-child(5),
+.leaderboard-table td:nth-child(5) {
+    width: 10%;
+}
+
+/* S2 */
+.leaderboard-table th:nth-child(6),
+.leaderboard-table td:nth-child(6) {
+    width: 10%;
+}
+
+/* S3 */
+.leaderboard-table th:nth-child(7),
+.leaderboard-table td:nth-child(7) {
+    width: 8%;
+}
+
+/* Setup */
+.leaderboard-table th:nth-child(8),
+.leaderboard-table td:nth-child(8) {
+    width: 14%;
+}
+
+/* Date */
+
+
 .leaderboard-table th,
 .leaderboard-table td {
     padding: 12px 15px;
     text-align: left;
-    border: none; /* REMOVE ALL BORDERS */
+    border: none;
     vertical-align: middle;
+    /* Ensures all rows have the same height, preventing jumps */
+    height: 54px;
 }
 
-/* Create fake borders using inset box-shadow */
 .leaderboard-table td {
     box-shadow: inset 0 -1px 0 var(--border-color-subtle);
 }
+
 .leaderboard-table th {
     background-color: var(--bg-color-table-header);
     color: var(--color-f1-red);
     text-transform: uppercase;
     font-size: 0.9em;
-    box-shadow: inset 0 -2px 0 var(--color-f1-red); /* Header has a thicker red line */
+    box-shadow: inset 0 -2px 0 var(--color-f1-red);
 }
 
-/* When a row is expanded, remove its bottom shadow */
 .leaderboard-table tbody tr.is-expanded td {
     box-shadow: none;
 }
 
-/* For the first sub-lap row, add a top shadow to create the separator */
-.leaderboard-table tbody tr.is-expanded + .additional-lap-row td {
+.leaderboard-table tbody tr.is-expanded+.additional-lap-row td {
     box-shadow: inset 0 1px 0 var(--border-color-subtle);
 }
 
@@ -396,25 +441,41 @@ body {
     cursor: pointer;
 }
 
-.leaderboard-table th .sort-icon {
-    display: inline-block;
+.sort-icon {
+    display: inline-flex;
+    align-items: center;
     vertical-align: middle;
     margin-left: 5px;
-    transition: transform 0.2s;
+    transition: transform 0.3s ease;
 }
+
+/* New style to dim the table during background updates (like sorting) */
+.leaderboard-table.is-updating {
+    opacity: 0.6;
+    pointer-events: none;
+    /* Prevent clicks while updating */
+    transition: opacity 0.2s ease-in-out;
+}
+
 
 .leaderboard-table .driver-name-link {
     cursor: pointer;
     color: var(--color-discord-blue);
     display: inline-flex;
-    align-items: baseline;
+    align-items: center; /* This ensures consistent vertical alignment */
     gap: 5px;
 }
 
 .leaderboard-table .expand-arrow {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     vertical-align: middle;
     margin-left: 5px;
+    transition: transform 0.2s ease;
+}
+
+.leaderboard-table .expand-arrow.is-expanded {
+    transform: rotate(180deg);
 }
 
 .leaderboard-table .driver-name-link:hover {
@@ -427,12 +488,10 @@ body {
     font-size: 0.9em;
 }
 
-/* All additional rows get a bottom shadow for separation */
 .additional-lap-row {
     box-shadow: inset 0 -1px 0 var(--border-color-subtle);
 }
 
-/* The very last row of the table should have no line */
 .leaderboard-table tr:last-child td {
     box-shadow: none;
 }

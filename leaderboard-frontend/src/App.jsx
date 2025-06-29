@@ -118,8 +118,7 @@ const getFlagForTrack = (trackName) => {
     const countryCode = trackToCountryCode[normalizedTrackName];
     if (!countryCode) return null;
     
-    // Formula to convert 2-letter country code to regional indicator symbols (flag emoji)
-    const base = 0x1F1A5; // Offset for regional indicator symbols
+    const base = 0x1F1A5;
     const char1 = String.fromCodePoint(base + countryCode.charCodeAt(0));
     const char2 = String.fromCodePoint(base + countryCode.charCodeAt(1));
     return `${char1}${char2}`;
@@ -139,7 +138,6 @@ const Pagination = ({ itemsPerPage, totalItems, paginate, currentPage }) => {
 };
 
 function App() {
-    // ... All state and useEffect hooks remain unchanged from the previous version ...
     const [tracks, setTracks] = useState([]);
     const [selectedTrack, setSelectedTrack] = useState('');
     const [leaderboardData, setLeaderboardData] = useState([]);
@@ -159,9 +157,6 @@ function App() {
     const [loadingExpandedLaps, setLoadingExpandedLaps] = useState(false);
     const [expandedLapsError, setExpandedLapsError] = useState(null);
 
-    const [expandedCardUserId, setExpandedCardUserId] = useState(null);
-    const [expandedLapId, setExpandedLapId] = useState(null);
-
     const [downloadingCSV, setDownloadingCSV] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [stayLoggedIn, setStayLoggedIn] = useState(true);
@@ -169,7 +164,6 @@ function App() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(25);
-
 
     const sortableColumnsMap = {
         'Lap Time': 'lap_time', 'S1': 's1_time', 'S2': 's2_time', 'S3': 's3_time',
@@ -185,6 +179,18 @@ function App() {
             setSortColumn(dbColumnName);
             setSortOrder('asc');
         }
+    };
+
+    const getSortIcon = (columnDbName) => {
+        if (sortColumn === columnDbName) {
+            const style = sortOrder === 'desc' ? { transform: 'rotate(180deg)' } : {};
+            return (
+                <span className="sort-icon" style={style}>
+                    <ChevronDownIcon />
+                </span>
+            );
+        }
+        return null;
     };
 
     useEffect(() => {
@@ -265,13 +271,10 @@ function App() {
         fetchLeaderboard();
     }, [isAuthenticated, selectedTrack, sortColumn, sortOrder, selectedGuildId]);
     
-
     const handleTrackChange = (value) => {
         setSelectedTrack(value);
         setExpandedDriverId(null);
         setExpandedDriverLaps(null);
-        setExpandedCardUserId(null);
-        setExpandedLapId(null);
         setCurrentPage(1);
     };
 
@@ -281,16 +284,7 @@ function App() {
         setLeaderboardData([]);
         setExpandedDriverId(null);
         setExpandedDriverLaps(null);
-        setExpandedCardUserId(null);
-        setExpandedLapId(null);
         setCurrentPage(1);
-    };
-
-    const getSortIcon = (columnDbName) => {
-        if (sortColumn === columnDbName) {
-            return sortOrder === 'asc' ? <ChevronDownIcon /> : <ChevronDownIcon style={{transform: 'rotate(180deg)'}} />;
-        }
-        return null;
     };
 
     const toggleDriverLaps = async (userId, trackName, event) => {
@@ -322,14 +316,11 @@ function App() {
     const currentLeaderboardItems = filteredLeaderboard.slice(indexOfFirstItem, indexOfLastItem);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-
     const handleDiscordLogin = () => { window.location.href = `https://bottesting.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`; };
-    const handleDiscordLogout = async () => { /* ... unchanged ... */ };
-    const handleDownloadCSV = async () => { /* ... unchanged ... */ };
+    const handleDiscordLogout = async () => { /* Logic would go here */ };
+    const handleDownloadCSV = async () => { /* Logic would go here */ };
     const toggleDarkMode = () => setIsDarkMode(p => !p);
     
-    // ... Rest of the component function remains the same ...
-
     return (
         <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
             <header className="app-header">
@@ -399,22 +390,25 @@ function App() {
                         <div className="stay-logged-in-checkbox"><input type="checkbox" id="stay" checked={stayLoggedIn} onChange={(e)=>setStayLoggedIn(e.target.checked)} /><label htmlFor="stay">Stay Logged In</label></div>
                     </div>
                 )}
-                {loading && <div className="spinner-container"><div className="spinner"></div></div>}
+                 {/* Only show the full page spinner on initial load */}
+                {loading && leaderboardData.length === 0 && <div className="spinner-container"><div className="spinner"></div></div>}
+
                 {error && <p className="error-message">{error}</p>}
 
-                {!loading && !error && isAuthenticated && (
+                {/* Render the table if we have data, even if it's currently loading a new sort */}
+                {!error && isAuthenticated && leaderboardData.length > 0 && (
                     <>
-                        <table className="leaderboard-table">
-                            <thead>
+                        <table className={`leaderboard-table ${loading ? 'is-updating' : ''}`}>
+                             <thead>
                                 <tr>
                                     <th>Rank</th>
-                                    <th className="sortable" onClick={() => handleSort('Driver')}>Driver <span className="sort-icon">{getSortIcon('discord_tag')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('Lap Time')}>Lap Time <span className="sort-icon">{getSortIcon('lap_time')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('S1')}>S1 <span className="sort-icon">{getSortIcon('s1_time')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('S2')}>S2 <span className="sort-icon">{getSortIcon('s2_time')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('S3')}>S3 <span className="sort-icon">{getSortIcon('s3_time')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('Custom Setup')}>Setup <span className="sort-icon">{getSortIcon('custom_setup')}</span></th>
-                                    <th className="sortable" onClick={() => handleSort('Date')}>Date <span className="sort-icon">{getSortIcon('submission_date')}</span></th>
+                                    <th className="sortable" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('S3')}>S3 {getSortIcon(sortableColumnsMap['S3'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('Custom Setup')}>Setup {getSortIcon(sortableColumnsMap['Custom Setup'])}</th>
+                                    <th className="sortable" onClick={() => handleSort('Date')}>Date {getSortIcon(sortableColumnsMap['Date'])}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -433,7 +427,9 @@ function App() {
                                                   title="Click to view all laps"
                                                 >
                                                   <span>{entry.discord_tag || entry.driver_name}</span>
-                                                  <span className="expand-arrow"><ChevronDownIcon/></span>
+                                                  <span className={`expand-arrow ${expandedDriverId === entry.user_id ? 'is-expanded' : ''}`}>
+                                                    <ChevronDownIcon/>
+                                                  </span>
                                                 </span>
                                               )
                                               : <span>{entry.discord_tag || entry.driver_name}</span>
