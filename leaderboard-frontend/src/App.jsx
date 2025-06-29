@@ -162,6 +162,12 @@ function App() {
     const [stayLoggedIn, setStayLoggedIn] = useState(true);
     
     const [searchTerm, setSearchTerm] = useState('');
+    const [startDate, setStartDate] = useState(''); // State for start date filter
+    const [endDate, setEndDate] = useState('');     // State for end date filter
+    const [startTime, setStartTime] = useState(''); // State for start time filter
+    const [endTime, setEndTime] = useState('');     // State for end time filter
+
+
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(25);
 
@@ -307,9 +313,27 @@ function App() {
         }
     };
     
-    const filteredLeaderboard = leaderboardData.filter(entry =>
-        entry.discord_tag.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredLeaderboard = leaderboardData.filter(entry => {
+        const matchesSearchTerm = entry.discord_tag.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const submissionDate = new Date(entry.submission_date);
+        let matchesStartDate = true;
+        let matchesEndDate = true;
+
+        // Apply start date/time filter
+        if (startDate) {
+            const startDateTime = new Date(`${startDate}T${startTime || '00:00'}:00`);
+            matchesStartDate = submissionDate >= startDateTime;
+        }
+
+        // Apply end date/time filter
+        if (endDate) {
+            const endDateTime = new Date(`${endDate}T${endTime || '23:59'}:59.999`);
+            matchesEndDate = submissionDate <= endDateTime;
+        }
+
+        return matchesSearchTerm && matchesStartDate && matchesEndDate;
+    });
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -348,7 +372,16 @@ function App() {
         setDownloadingCSV(true);
         setError(null);
         try {
-            const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            const params = new URLSearchParams({
+                track: selectedTrack,
+                guildId: selectedGuildId,
+                startDate: startDate,
+                endDate: endDate,
+                startTime: startTime,
+                endTime: endTime
+            }).toString();
+
+            const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?${params}`);
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to download CSV: ${errorText}`);
@@ -417,6 +450,73 @@ function App() {
                                 className="search-input"
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                        {/* Date and Time Filter Inputs */}
+                        <div className="control-group">
+                            <label htmlFor="startDate">Start Date</label>
+                            <input
+                                type="date"
+                                id="startDate"
+                                className="search-input"
+                                value={startDate}
+                                onChange={(e) => {
+                                    const newStartDate = e.target.value;
+                                    setStartDate(newStartDate);
+                                    setCurrentPage(1);
+
+                                    // If newStartDate is later than current endDate, adjust endDate
+                                    if (endDate && new Date(endDate) < new Date(newStartDate)) {
+                                        setEndDate(newStartDate);
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label htmlFor="startTime">Start Time</label>
+                            <input
+                                type="time"
+                                id="startTime"
+                                className="search-input"
+                                value={startTime}
+                                onChange={(e) => {
+                                    setStartTime(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label htmlFor="endDate">End Date</label>
+                            <input
+                                type="date"
+                                id="endDate"
+                                className="search-input"
+                                value={endDate}
+                                onChange={(e) => {
+                                    const newEndDate = e.target.value;
+                                    setEndDate(newEndDate);
+                                    setCurrentPage(1);
+
+                                    // If newEndDate is earlier than current startDate, adjust endDate
+                                    if (startDate && new Date(newEndDate) < new Date(startDate)) {
+                                        const adjustedEndDate = new Date(startDate);
+                                        adjustedEndDate.setDate(adjustedEndDate.getDate() + 1); // Set to one day after start date
+                                        setEndDate(adjustedEndDate.toISOString().split('T')[0]);
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label htmlFor="endTime">End Time</label>
+                            <input
+                                type="time"
+                                id="endTime"
+                                className="search-input"
+                                value={endTime}
+                                onChange={(e) => {
+                                    setEndTime(e.target.value);
                                     setCurrentPage(1);
                                 }}
                             />

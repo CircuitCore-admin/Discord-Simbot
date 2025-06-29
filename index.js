@@ -7,8 +7,6 @@ const axios = require('axios'); // For making HTTP requests to Discord API
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session'); // Import express-session
-// Removed: const pgSession = require('connect-pg-simple')(session); // No longer needed
-// Removed: const { Pool } = require('pg'); // No longer needed
 
 const analyzeImage = require('./services/analyzeImage');
 const db = require('./services/database'); // Your existing database connection
@@ -503,6 +501,10 @@ app.get('/api/leaderboard/csv', async (req, res) => {
 
     const trackName = req.query.track;
     const guildId = req.query.guildId;
+    const startDate = req.query.startDate;
+    const endDate = req.query.endDate;
+    const startTime = req.query.startTime;
+    const endTime = req.query.endTime;
 
     if (!trackName) {
         return res.status(400).send('Track name is required.');
@@ -515,6 +517,24 @@ app.get('/api/leaderboard/csv', async (req, res) => {
     const isMemberOfGuild = userGuilds.some(guild => guild.id === guildId);
     if (!isMemberOfGuild) {
         return res.status(403).send('Forbidden: You are not a member of this guild or it has no leaderboards.');
+    }
+
+    let whereConditions = ['track_location_name ILIKE $1', 'guild_id = $2'];
+    let queryParams = [trackName, guildId];
+    let paramIndex = 3;
+
+    if (startDate) {
+        const startDateTime = `${startDate} ${startTime || '00:00:00'}`;
+        whereConditions.push(`submission_date >= $${paramIndex}`);
+        queryParams.push(startDateTime);
+        paramIndex++;
+    }
+
+    if (endDate) {
+        const endDateTime = `${endDate} ${endTime || '23:59:59.999'}`;
+        whereConditions.push(`submission_date <= $${paramIndex}`);
+        queryParams.push(endDateTime);
+        paramIndex++;
     }
 
     let query = `
@@ -548,7 +568,7 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                         submission_date ASC
                 ) as rn
             FROM hotlaps
-            WHERE track_location_name ILIKE $1 AND guild_id = $2
+            WHERE ${whereConditions.join(' AND ')}
         )
         SELECT
             discord_tag AS "Discord Tag",
@@ -575,13 +595,12 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                 ELSE 999999999
             END ASC;
     `;
-    const params = [trackName, guildId];
 
     try {
-        const result = await db.query(query, params);
+        const result = await db.query(query, queryParams);
 
         if (result.rows.length === 0) {
-            return res.status(404).send('No data found for this track or guild.');
+            return res.status(404).send('No data found for this track or guild within the specified date/time range.');
         }
 
         // CSV conversion logic
