@@ -213,7 +213,7 @@ function lapTimeToMs(lapTimeString) {
 // --- Discord OAuth Routes ---
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `http://localhost:${webPort}/`;
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `https://bottesting.circuitcore.net/`;
 
 // Route to initiate Discord OAuth2 login
 app.get('/auth/discord', (req, res) => {

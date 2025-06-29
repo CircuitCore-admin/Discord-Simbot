@@ -91,7 +91,7 @@ body {
 
 .app-container {
     width: 100%; /* Will take full width up to max-width */
-    max-width: 1600px; /* Increased max width for larger screens (from 1400px) */
+    max-width: 1600px; /* Increased max width for larger screens */
     margin: 0 auto; /* Center the container */
     padding: 30px; /* Increased padding inside */
     background-color: var(--bg-color-app-container);
@@ -127,6 +127,11 @@ body {
     color: var(--color-secondary-text);
     margin-top: 15px; /* Spacing below main title */
     font-weight: normal;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    text-align: center;
+}
+.user-info .discord-logout-button {
+    margin-left: 15px; /* Adjust spacing for logout button */
 }
 
 .user-avatar,
@@ -137,6 +142,7 @@ body {
     object-fit: cover;
     border: 2px solid var(--color-discord-blue); /* Consistent border */
     box-shadow: 0 0 10px rgba(114, 137, 218, 0.6); /* Enhanced glow */
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
 /* Filter Section */
@@ -291,7 +297,6 @@ body {
     font-size: 0.9em;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-    margin-left: 15px; /* Space from user info */
 }
 
 .discord-logout-button:hover {
@@ -384,7 +389,7 @@ body {
 
 .leaderboard-table {
     width: 100%; /* Take full width of its container by default */
-    min-width: 1200px; /* Increased minimum width for the table (from 1100px) */
+    min-width: 1200px; /* Increased minimum width for the table */
     border-collapse: separate; /* Allows border-radius on cells */
     border-spacing: 0; /* Remove default cell spacing */
     font-size: 0.95em;
@@ -667,24 +672,42 @@ body {
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
     body {
-        padding: 15px;
+        padding: 10px; /* Reduced padding for very small screens */
+        align-items: stretch; /* Stretch body content vertically */
     }
 
     .app-container {
         margin: 0;
-        padding: 20px; /* Slightly more padding than before on mobile */
-        border-radius: 10px;
-        box-shadow: 0 5px 20px var(--shadow-color-dark);
+        padding: 15px; /* Slightly more padding than before on mobile */
+        border-radius: 8px; /* Smaller border-radius for mobile */
+        box-shadow: 0 3px 15px var(--shadow-color-dark); /* Less pronounced shadow */
+    }
+
+    .app-header {
+        margin-bottom: 25px; /* Reduced margin */
+        padding-bottom: 15px;
     }
 
     .app-header h1 {
-        font-size: 2.5em; /* Adjusted for better mobile fit */
-        letter-spacing: 2px;
+        font-size: 2em; /* Adjusted for better mobile fit */
+        letter-spacing: 1.5px;
     }
+
+    .user-info,
+    .guild-display-message {
+        font-size: 0.9em; /* Smaller font size for mobile info */
+        flex-direction: column; /* Stack user info vertically */
+        gap: 5px; /* Smaller gap */
+    }
+    .user-info .discord-logout-button {
+        margin-left: 0; /* Remove left margin on mobile */
+        margin-top: 5px; /* Add top margin */
+    }
+
 
     .filter-section {
         flex-direction: column;
-        align-items: stretch;
+        align-items: stretch; /* Stretch items to fill container */
         gap: 15px; /* Slightly reduced gap for tighter layout */
         padding: 12px;
     }
@@ -692,7 +715,9 @@ body {
     .filter-section label {
         text-align: left;
         width: auto; /* Let it size naturally */
-        margin-bottom: 0; /* Remove negative margin */
+        margin-right: 0; /* Remove any right margin */
+        margin-bottom: -5px; /* Bring label closer to select/input */
+        font-size: 1em; /* Adjust label font size */
     }
 
     .filter-section select,
@@ -712,7 +737,7 @@ body {
     }
 
     .custom-dropdown-container {
-        flex-direction: column;
+        flex-direction: column; /* Stack label and dropdown */
         align-items: flex-start;
         gap: 8px; /* Space between label and dropdown */
         margin-right: 0;
@@ -724,49 +749,54 @@ body {
 
     /* Table Responsiveness (Card View) */
     .leaderboard-table {
-        display: block;
-        /* Re-added overflow-x: auto here for card view on mobile */
-        overflow-x: auto;
+        display: block; /* Make the table behave like a block element */
+        min-width: unset; /* Remove minimum width for mobile to allow proper stacking */
+        overflow-x: auto; /* Provides horizontal scrollbar if needed, but should be rare */
         border-radius: 8px; /* Slightly smaller radius for cards */
         box-shadow: none; /* Remove outer table shadow for card view */
         background-color: transparent; /* Make table background transparent */
     }
 
     .leaderboard-table thead {
-        display: none; /* Hide header completely */
+        display: none; /* Hide table headers completely on mobile */
     }
 
     .leaderboard-table tbody {
-        display: block;
+        display: block; /* Make tbody behave like a block element */
         width: 100%;
     }
 
     .leaderboard-table tr {
-        display: block;
-        margin-bottom: 20px; /* More space between "card" rows */
+        display: block; /* Each row becomes a card */
+        margin-bottom: 15px; /* Space between "card" rows */
         border: 1px solid var(--border-color-subtle);
         border-radius: 8px;
         background-color: var(--bg-color-app-container); /* Each card uses app container background */
-        box-shadow: 0 3px 12px var(--shadow-color-dark); /* Shadow for each card */
-        padding: 15px; /* Padding inside each card */
+        box-shadow: 0 3px 10px var(--shadow-color-dark); /* Shadow for each card */
+        padding: 12px; /* Padding inside each card */
         overflow: hidden; /* Ensure content respects border-radius */
+    }
+
+    .leaderboard-table tr:last-child {
+        margin-bottom: 0; /* No margin after the very last card */
     }
 
     .leaderboard-table td {
         display: flex; /* Flexbox for label and value in each td */
         justify-content: space-between; /* Push label to left, value to right */
         align-items: center;
-        padding: 8px 0; /* Vertical padding, no horizontal as handled by card padding */
+        padding: 6px 0; /* Vertical padding, no horizontal as handled by card padding */
         border-bottom: 1px dashed var(--border-color-subtle); /* Dashed separator between fields */
         white-space: normal; /* Allow text to wrap within the field */
+        font-size: 0.9em; /* Smaller font for table data */
     }
 
     .leaderboard-table td:last-child {
-        border-bottom: none;
+        border-bottom: none; /* No border for the last item in a card */
     }
 
     .leaderboard-table td::before {
-        content: attr(data-label);
+        content: attr(data-label); /* Use data-label attribute for content */
         font-weight: bold;
         color: var(--color-secondary-text);
         flex-shrink: 0; /* Prevent label from shrinking */
@@ -829,6 +859,7 @@ body {
         padding: 6px 0;
         border-bottom: 1px dashed var(--border-color-subtle);
         white-space: normal;
+        font-size: 0.85em; /* Slightly smaller font for nested table data */
     }
 
     .nested-laps-table td:last-child {

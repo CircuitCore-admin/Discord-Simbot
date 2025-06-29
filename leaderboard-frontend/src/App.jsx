@@ -20,12 +20,25 @@ const getUserAvatarUrl = (userId, avatarHash) => {
     return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.png?size=32`;
 };
 
+// Helper function to format date and time as "6/29/2025 16:08:56"
+const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // getMonth() is 0-indexed
+    const day = date.getDate();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+
+    return `${month}/${day}/${year}\n${hours}:${minutes}:${seconds}`;
+};
+
 
 function App() {
     const [tracks, setTracks] = useState([]);
     const [selectedTrack, setSelectedTrack] = useState('');
     const [leaderboardData, setLeaderboardData] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false); // Used for general loading states, including initial API calls
     const [error, setError] = useState(null);
 
     const [sortColumn, setSortColumn] = useState('lap_time');
@@ -83,10 +96,10 @@ function App() {
     // --- Discord OAuth Handling & Session Check ---
     useEffect(() => {
         const checkAuthStatus = async () => {
-            setLoading(true);
+            setLoading(true); // Set loading true at the start of initial data fetch
             setError(null);
             try {
-                const response = await fetch('http://localhost:3000/auth/me');
+                const response = await fetch('https://bottesting.circuitcore.net/auth/me');
                 const data = await response.json();
 
                 if (data.isAuthenticated) {
@@ -106,7 +119,7 @@ function App() {
                         window.history.pushState({}, document.title, window.location.pathname);
 
                         try {
-                            const callbackResponse = await fetch('http://localhost:3000/auth/discord/callback', {
+                            const callbackResponse = await fetch('https://bottesting.circuitcore.net/auth/discord/callback', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -137,7 +150,7 @@ function App() {
                 setError("Failed to connect to authentication server. Please try again later.");
                 setIsAuthenticated(false);
             } finally {
-                setLoading(false);
+                setLoading(false); // Set loading false after initial data fetch completes or fails
             }
         };
 
@@ -161,12 +174,12 @@ function App() {
 
     const handleDiscordLogin = () => {
         // Append stayLoggedIn preference to the redirect URL
-        window.location.href = `http://localhost:3000/auth/discord?stayLoggedIn=${stayLoggedIn}`;
+        window.location.href = `https://bottesting.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`;
     };
 
     const handleDiscordLogout = async () => {
         try {
-            const response = await fetch('http://localhost:3000/auth/logout', {
+            const response = await fetch('https://bottesting.circuitcore.net/auth/logout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -218,9 +231,9 @@ function App() {
             }
 
             try {
-                setLoading(true);
+                setLoading(true); // Set loading true when fetching tracks (if not already true from initial auth check)
                 setError(null);
-                const response = await fetch(`http://localhost:3000/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
+                const response = await fetch(`https://bottesting.circuitcore.net/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
                 if (!response.ok) {
                     // Check for unauthorized status explicitly
                     if (response.status === 401 || response.status === 403) {
@@ -244,7 +257,7 @@ function App() {
                 console.error("Failed to fetch tracks:", e);
                 setError("Failed to load tracks. Please try again later.");
             } finally {
-                setLoading(false);
+                setLoading(false); // Set loading false after fetching tracks
             }
         };
         fetchTracks();
@@ -257,7 +270,7 @@ function App() {
             // Only fetch if authenticated and track/guild are selected
             if (!isAuthenticated || !selectedTrack || !selectedGuildId) {
                 setLeaderboardData([]);
-                setLoading(false);
+                setLoading(false); // Ensure loading is false if conditions not met
                 return;
             }
 
@@ -265,7 +278,7 @@ function App() {
             setError(null);
             try {
                 const response = await fetch(
-                    `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`
+                    `https://bottesting.circuitcore.net/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`
                 );
                 if (!response.ok) {
                     // Check for unauthorized status explicitly
@@ -338,7 +351,7 @@ function App() {
 
         try {
             const response = await fetch(
-                `http://localhost:3000/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`
+                `https://bottesting.circuitcore.net/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`
             );
             if (!response.ok) {
                 // Check for unauthorized status explicitly
@@ -355,8 +368,8 @@ function App() {
             const data = await response.json();
             setExpandedDriverLaps(data);
         } catch (e) {
-            console.error("Failed to fetch driver's laps:", e);
-            setExpandedLapsError("Failed to load driver's laps. Please try again later.");
+                console.error("Failed to fetch driver's laps:", e);
+                setExpandedLapsError("Failed to load driver's laps. Please try again later.");
         } finally {
             setLoadingExpandedLaps(false);
         }
@@ -370,7 +383,7 @@ function App() {
         }
         setDownloadingCSV(true); // Set loading state for CSV
         try {
-            const response = await fetch(`http://localhost:3000/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) {
                 // Check for unauthorized status explicitly
                 if (response.status === 401 || response.status === 403) {
@@ -414,6 +427,7 @@ function App() {
         <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}> {/* Apply dark/light mode class */}
             <header className="app-header">
                 <h1>F1 Hotlap Leaderboard</h1>
+                {/* Display user info if authenticated, otherwise login button */}
                 {isAuthenticated && discordUser && (
                     <p className="user-info">
                         <img src={getUserAvatarUrl(discordUser.id, discordUser.avatar)} alt="User Avatar" className="user-avatar" onError={(e) => e.target.src = 'https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png'} />
@@ -421,6 +435,7 @@ function App() {
                         <button onClick={handleDiscordLogout} className="discord-logout-button">Logout</button>
                     </p>
                 )}
+                {/* Display current guild if selected */}
                 {selectedGuildId && (
                     <p className="guild-display-message">
                         {currentSelectedGuildIcon && <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Guild Icon" className="guild-icon-display" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />}
@@ -430,91 +445,95 @@ function App() {
             </header>
 
             <div className="filter-section">
-                {!isAuthenticated ? (
-                    <div className="login-container">
-                        <button onClick={handleDiscordLogin} className="discord-login-button">
-                            <img src="https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png" alt="Discord Logo" className="discord-logo-icon" onError={(e) => e.target.style.display = 'none'} />
-                            Login with Discord
-                        </button>
-                        <div className="stay-logged-in-checkbox">
-                            <input
-                                type="checkbox"
-                                id="stayLoggedIn"
-                                checked={stayLoggedIn}
-                                onChange={(e) => setStayLoggedIn(e.target.checked)}
-                            />
-                            <label htmlFor="stayLoggedIn">Stay Logged In (1 day)</label>
-                        </div>
-                    </div>
+                {loading && !isAuthenticated ? ( // Show loading message only for initial auth/guild data fetch
+                    <p className="loading-message">Loading authentication and server data...</p>
                 ) : (
-                    <>
-                        {/* Custom Server Dropdown */}
-                        <div className="custom-dropdown-container" ref={dropdownRef}>
-                            <label htmlFor="guild-select-custom">Select Server:</label>
-                            <div
-                                id="guild-select-custom"
-                                className={`dropdown-header ${showGuildDropdown ? 'open' : ''}`}
-                                onClick={() => setShowGuildDropdown(!showGuildDropdown)}
-                                tabIndex="0"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        setShowGuildDropdown(prev => !prev);
-                                    }
-                                }}
-                            >
-                                {selectedGuildId ? (
-                                    <>
-                                        <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Server Icon" className="guild-icon-header" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
-                                        <span>{currentSelectedGuildName}</span>
-                                    </>
-                                ) : (
-                                    <span>{userGuilds.length > 0 ? "Select a server" : "No leaderboards available"}</span>
-                                )}
-                                <span className="dropdown-arrow"></span>
+                    !isAuthenticated ? (
+                        <div className="login-container">
+                            <button onClick={handleDiscordLogin} className="discord-login-button">
+                                <img src="https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png" alt="Discord Logo" className="discord-logo-icon" onError={(e) => e.target.style.display = 'none'} />
+                                Login with Discord
+                            </button>
+                            <div className="stay-logged-in-checkbox">
+                                <input
+                                    type="checkbox"
+                                    id="stayLoggedIn"
+                                    checked={stayLoggedIn}
+                                    onChange={(e) => setStayLoggedIn(e.target.checked)}
+                                />
+                                <label htmlFor="stayLoggedIn">Stay Logged In (1 day)</label>
                             </div>
-                            {showGuildDropdown && (
-                                <ul className="dropdown-list">
-                                    {userGuilds.length === 0 ? (
-                                        <li className="dropdown-item disabled">No leaderboards available</li>
-                                    ) : (
-                                        userGuilds.map((guild) => (
-                                            <li
-                                                key={guild.id}
-                                                className={`dropdown-item ${selectedGuildId === guild.id ? 'selected' : ''}`}
-                                                onClick={() => handleCustomGuildSelect(guild.id)}
-                                                tabIndex="0"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        handleCustomGuildSelect(guild.id);
-                                                    }
-                                                }}
-                                            >
-                                                <img src={getGuildIconUrl(guild.id, guild.icon)} alt="Server Icon" className="guild-icon" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
-                                                {guild.name}
-                                            </li>
-                                        ))
-                                    )}
-                                </ul>
-                            )}
                         </div>
+                    ) : (
+                        <>
+                            {/* Custom Server Dropdown */}
+                            <div className="custom-dropdown-container" ref={dropdownRef}>
+                                <label htmlFor="guild-select-custom">Select Server:</label>
+                                <div
+                                    id="guild-select-custom"
+                                    className={`dropdown-header ${showGuildDropdown ? 'open' : ''}`}
+                                    onClick={() => setShowGuildDropdown(!showGuildDropdown)}
+                                    tabIndex="0"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            setShowGuildDropdown(prev => !prev);
+                                        }
+                                    }}
+                                >
+                                    {selectedGuildId ? (
+                                        <>
+                                            <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Server Icon" className="guild-icon-header" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
+                                            <span>{currentSelectedGuildName}</span>
+                                        </>
+                                    ) : (
+                                        <span>{userGuilds.length > 0 ? "Select a server" : "No leaderboards available"}</span>
+                                    )}
+                                    <span className="dropdown-arrow"></span>
+                                </div>
+                                {showGuildDropdown && (
+                                    <ul className="dropdown-list">
+                                        {userGuilds.length === 0 ? (
+                                            <li className="dropdown-item disabled">No leaderboards available</li>
+                                        ) : (
+                                            userGuilds.map((guild) => (
+                                                <li
+                                                    key={guild.id}
+                                                    className={`dropdown-item ${selectedGuildId === guild.id ? 'selected' : ''}`}
+                                                    onClick={() => handleCustomGuildSelect(guild.id)}
+                                                    tabIndex="0"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            handleCustomGuildSelect(guild.id);
+                                                        }
+                                                    }}
+                                                >
+                                                    <img src={getGuildIconUrl(guild.id, guild.icon)} alt="Server Icon" className="guild-icon" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />
+                                                    {guild.name}
+                                                </li>
+                                            ))
+                                        )}
+                                    </ul>
+                                )}
+                            </div>
 
-                        <label htmlFor="track-select">Filter by Track:</label>
-                        <select id="track-select" onChange={handleTrackChange} value={selectedTrack} disabled={!selectedGuildId}>
-                            {tracks.length === 0 ? (
-                                <option value="">{selectedGuildId ? 'No tracks available' : 'Select a server first'}</option>
-                            ) : (
-                                tracks.map((track) => (
-                                    <option key={track} value={track}>
-                                        {track}
-                                    </option>
-                                ))
-                            )}
-                        </select>
+                            <label htmlFor="track-select">Filter by Track:</label>
+                            <select id="track-select" onChange={handleTrackChange} value={selectedTrack} disabled={!selectedGuildId}>
+                                {tracks.length === 0 ? (
+                                    <option value="">{selectedGuildId ? 'No tracks available' : 'Select a server first'}</option>
+                                ) : (
+                                    tracks.map((track) => (
+                                        <option key={track} value={track}>
+                                            {track}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
 
-                        <button onClick={handleDownloadCSV} disabled={!selectedTrack || !selectedGuildId || loading || downloadingCSV} className="download-csv-button">
-                            {downloadingCSV ? 'Downloading...' : 'Download CSV'}
-                        </button>
-                    </>
+                            <button onClick={handleDownloadCSV} disabled={!selectedTrack || !selectedGuildId || loading || downloadingCSV} className="download-csv-button">
+                                {downloadingCSV ? 'Downloading...' : 'Download CSV'}
+                            </button>
+                        </>
+                    )
                 )}
                 <button onClick={toggleDarkMode} className="dark-mode-toggle">
                     {isDarkMode ? '🌞 Light Mode' : '🌙 Dark Mode'}
@@ -522,113 +541,121 @@ function App() {
             </div>
 
             <div className="leaderboard-section">
-                {!isAuthenticated ? (
-                    <p className="no-data-message">Please log in with Discord to view leaderboards.</p>
+                {/* Note: Leaderboard table content should go here */}
+                {loading && isAuthenticated ? ( // Show loading message for leaderboard data after auth
+                    <p className="loading-message">Loading leaderboard data...</p>
                 ) : (
-                    <>
-                        {!selectedGuildId ? (
-                            <p className="no-data-message">Select a Discord server from the dropdown above to view its leaderboard.</p>
-                        ) : (
-                            <>
-                                {loading && <p className="loading-message">Loading leaderboard...</p>}
-                                {error && <p className="error-message">{error}</p>}
-                                {!loading && !error && leaderboardData.length === 0 && (
-                                    <p className="no-data-message">No hotlap data available for {selectedTrack || 'the selected track'} in this guild.</p>
-                                )}
-                                {!loading && !error && leaderboardData.length > 0 && (
-                                    <table className="leaderboard-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Rank</th>
-                                                <th>Track</th>
-                                                <th className="sortable" onClick={() => handleSort('Driver')}>
-                                                    Driver <span className="sort-icon">{getSortIcon('discord_tag')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('Lap Time')}>
-                                                    Lap Time <span className="sort-icon">{getSortIcon('lap_time')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('S1')}>
-                                                    S1 <span className="sort-icon">{getSortIcon('s1_time')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('S2')}>
-                                                    S2 <span className="sort-icon">{getSortIcon('s2_time')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('S3')}>
-                                                    S3 <span className="sort-icon">{getSortIcon('s3_time')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('Custom Setup')}>
-                                                    Custom Setup <span className="sort-icon">{getSortIcon('custom_setup')}</span>
-                                                </th>
-                                                <th className="sortable" onClick={() => handleSort('Date')}>
-                                                    Date <span className="sort-icon">{getSortIcon('submission_date')}</span>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {leaderboardData.map((entry, index) => (
-                                                <React.Fragment key={entry.user_id}>
-                                                    <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
-                                                        <td data-label="Rank">{index + 1}</td>
-                                                        <td data-label="Track">{entry.track_location_name}</td>
-                                                        <td
-                                                            data-label="Driver"
-                                                            className="driver-name-link"
-                                                            onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
-                                                            title="Click to see all laps for this driver on this track"
-                                                        >
-                                                            <span>{entry.discord_tag || entry.driver_name}</span> {expandedDriverId === entry.user_id ? '▲' : '▼'}
-                                                        </td>
-                                                        <td data-label="Lap Time">{entry.lap_time}</td>
-                                                        <td data-label="S1">{entry.s1_time}</td>
-                                                        <td data-label="S2">{entry.s2_time}</td>
-                                                        <td data-label="S3">{entry.s3_time}</td>
-                                                        <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                        <td data-label="Date">{new Date(entry.submission_date).toLocaleString()}</td>
-                                                    </tr>
-                                                    {expandedDriverId === entry.user_id && (
-                                                        <tr>
-                                                            <td colSpan="9">
-                                                                {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
-                                                                {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
-                                                                {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
-                                                                    <table className="nested-laps-table">
-                                                                        <thead>
-                                                                            <tr>
-                                                                                <th>Lap Time</th>
-                                                                                <th>S1</th>
-                                                                                <th>S2</th>
-                                                                                <th>S3</th>
-                                                                                <th>Custom Setup</th>
-                                                                                <th>Date</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {expandedDriverLaps.map((lap, lapIndex) => (
-                                                                                <tr key={lap.id || lapIndex}>
-                                                                                    <td data-label="Lap Time">{lap.lap_time}</td>
-                                                                                    <td data-label="S1">{lap.s1_time}</td>
-                                                                                    <td data-label="S2">{lap.s2_time}</td>
-                                                                                    <td data-label="S3">{lap.s3_time}</td>
-                                                                                    <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                                                    <td data-label="Date">{new Date(lap.submission_date).toLocaleString()}</td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                ) : (
-                                                                    !loadingExpandedLaps && !expandedLapsError && <p className="no-data-message">No additional lap data found for this driver on this track.</p>
-                                                                )}
+                    !isAuthenticated ? (
+                        <p className="no-data-message">Please log in with Discord to view leaderboards.</p>
+                    ) : (
+                        <>
+                            {!selectedGuildId ? (
+                                <p className="no-data-message">Select a Discord server from the dropdown above to view its leaderboard.</p>
+                            ) : (
+                                <>
+                                    {error && <p className="error-message">{error}</p>}
+                                    {!error && leaderboardData.length === 0 && (
+                                        <p className="no-data-message">No hotlap data available for {selectedTrack || 'the selected track'} in this guild.</p>
+                                    )}
+                                    {!error && leaderboardData.length > 0 && (
+                                        <table className="leaderboard-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Rank</th>
+                                                    <th>Track</th>
+                                                    <th className="sortable" onClick={() => handleSort('Driver')}>
+                                                        Driver <span className="sort-icon">{getSortIcon('discord_tag')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('Lap Time')}>
+                                                        Lap Time <span className="sort-icon">{getSortIcon('lap_time')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('S1')}>
+                                                        S1 <span className="sort-icon">{getSortIcon('s1_time')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('S2')}>
+                                                        S2 <span className="sort-icon">{getSortIcon('s2_time')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('S3')}>
+                                                        S3 <span className="sort-icon">{getSortIcon('s3_time')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('Custom Setup')}>
+                                                        Custom Setup <span className="sort-icon">{getSortIcon('custom_setup')}</span>
+                                                    </th>
+                                                    <th className="sortable" onClick={() => handleSort('Date')}>
+                                                        Date <span className="sort-icon">{getSortIcon('submission_date')}</span>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {leaderboardData.map((entry, index) => (
+                                                    <React.Fragment key={entry.user_id}>
+                                                        <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
+                                                            <td data-label="Rank">{index + 1}</td>
+                                                            <td data-label="Track">{entry.track_location_name}</td>
+                                                            <td
+                                                                data-label="Driver"
+                                                                className="driver-name-link"
+                                                                onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
+                                                                title={`Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track`} /* Tooltip for full name */
+                                                            >
+                                                                <span title={entry.discord_tag || entry.driver_name}> {/* Inner span for truncation and tooltip */}
+                                                                    {entry.discord_tag || entry.driver_name}
+                                                                </span> {expandedDriverId === entry.user_id ? '▲' : '▼'}
                                                             </td>
+                                                            <td data-label="Lap Time">{entry.lap_time}</td>
+                                                            <td data-label="S1">{entry.s1_time}</td>
+                                                            <td data-label="S2">{entry.s2_time}</td>
+                                                            <td data-label="S3">{entry.s3_time}</td>
+                                                            <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                            <td data-label="Date">{formatDateTime(entry.submission_date)}</td>
                                                         </tr>
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </>
-                        )}
-                    </>
+                                                        {expandedDriverId === entry.user_id && (
+                                                            <tr>
+                                                                <td colSpan="9">
+                                                                    {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
+                                                                    {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
+                                                                    {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
+                                                                        <table className="nested-laps-table">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    <th>Lap Time</th>
+                                                                                    <th>S1</th>
+                                                                                    <th>S2</th>
+                                                                                    <th>S3</th>
+                                                                                    <th>Valid</th>
+                                                                                    <th>Custom Setup</th>
+                                                                                    <th>Date</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {expandedDriverLaps.map((lap, lapIndex) => (
+                                                                                    <tr key={lap.id || lapIndex}>
+                                                                                        <td data-label="Lap Time">{lap.lap_time}</td>
+                                                                                        <td data-label="S1">{lap.s1_time}</td>
+                                                                                        <td data-label="S2">{lap.s2_time}</td>
+                                                                                        <td data-label="S3">{lap.s3_time}</td>
+                                                                                        <td data-label="Valid">{lap.is_valid ? '✅ Yes' : '❌ No'}</td>
+                                                                                        <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                                                        <td data-label="Date">{formatDateTime(lap.submission_date)}</td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    ) : (
+                                                                        !loadingExpandedLaps && !expandedLapsError && <p className="no-data-message">No additional lap data found for this driver on this track.</p>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </>
+                            )}
+                        </>
+                    )
                 )}
             </div>
         </div>
