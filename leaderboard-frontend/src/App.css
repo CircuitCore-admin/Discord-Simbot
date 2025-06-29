@@ -140,19 +140,33 @@ body {
 /* --- CONTROLS SECTION (NEW) --- */
 .controls-section {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Allows wrapping on smaller screens */
     gap: 20px;
-    align-items: flex-end;
+    align-items: flex-end; /* Aligns items at the bottom of their container */
     margin-bottom: 30px;
     padding: 20px;
     background-color: var(--bg-color-surface);
     border-radius: 8px;
+    /* justify-content: flex-start;  Removing old justify-content */
+    /* NEW: Use justify-content to push left and right groups */
+    justify-content: space-between;
 }
 
 .control-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+/* Specific styling for date/time control groups to make them inline */
+.control-group.datetime-local {
+    flex-direction: row; /* Make label and input inline */
+    align-items: center; /* Vertically center label and input */
+    gap: 10px; /* Space between label and input */
+}
+
+.control-group.datetime-local label {
+    margin-bottom: 0; /* Remove bottom margin from label */
 }
 
 .control-group label {
@@ -164,8 +178,12 @@ body {
 }
 
 .control-group.actions {
-    margin-left: auto;
+    /* No margin-left: auto; needed here, as flexbox handles distribution */
     flex-direction: row;
+    align-items: center; /* Align buttons nicely */
+    gap: 10px; /* Space between buttons */
+    /* To keep the actions and date pickers together on the right */
+    /* Add a flex basis or wrap it in another container if they need to behave as one unit that moves to the right */
 }
 
 .control-button {
@@ -191,8 +209,9 @@ body {
     cursor: not-allowed;
 }
 
-/* --- Search Input --- */
-.search-input {
+/* --- Search Input & Datetime-local Input --- */
+.search-input,
+input[type="datetime-local"] { /* Apply consistent styling */
     background-color: var(--bg-color-app-container);
     border: 1px solid var(--border-color-strong);
     color: var(--color-primary-text);
@@ -204,11 +223,19 @@ body {
     transition: background-color 0.1s ease, color 0.1s ease;
 }
 
-.search-input:focus {
+.search-input:focus,
+input[type="datetime-local"]:focus {
     outline: none;
     border-color: var(--color-f1-red);
     box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
 }
+
+/* Ensure datetime-local input looks good */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1); /* Adjust color for dark mode if needed */
+    cursor: pointer;
+}
+
 
 /* --- CUSTOM DROPDOWN --- */
 .custom-dropdown-container {
@@ -575,4 +602,54 @@ body {
 /* Adjust hover effects for the highlighted row to match the new subtlety */
 .leaderboard-table tbody tr.is-current-user:hover {
     background-color: rgba(225, 6, 0, 0.15); /* Slightly darker on hover */
+}
+
+/* New responsive adjustments for controls-section */
+@media (min-width: 992px) { /* Adjust breakpoint as needed for larger screens */
+    .controls-section {
+        /* On larger screens, arrange elements into two conceptual columns */
+        display: grid;
+        grid-template-columns: repeat(3, auto) 1fr 1fr auto; /* Server, Track, Find Driver, Start, End, Actions */
+        align-items: flex-end;
+        gap: 20px;
+    }
+
+    .controls-section .control-group {
+        /* Ensure inputs take up their full grid cell */
+        width: auto;
+    }
+
+    .controls-section .control-group.actions {
+        /* Align actions to the very end of the grid row */
+        grid-column: -1 / span 1; /* Place in the last column */
+        justify-self: end; /* Push to the right within its grid cell */
+    }
+
+    /* Adjust specific control groups to span correctly if needed, or remove min-widths */
+    .search-input,
+    input[type="datetime-local"],
+    .custom-dropdown-container {
+        min-width: unset; /* Remove fixed min-width when using grid for better distribution */
+        width: 100%; /* Make them fill their grid column */
+    }
+}
+
+/* For smaller screens, revert to flex-wrap with space-between if the grid doesn't fit */
+@media (max-width: 991px) {
+    .controls-section {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between; /* Distribute items across the row as before */
+    }
+
+    .control-group {
+        flex-basis: calc(50% - 10px); /* Adjust to allow two items per row, or more depending on content */
+        max-width: calc(50% - 10px);
+    }
+
+    .control-group.actions,
+    .control-group.datetime-local {
+        flex-basis: auto; /* Let content dictate width for these groups */
+        max-width: none;
+    }
 }
