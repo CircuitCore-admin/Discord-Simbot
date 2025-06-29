@@ -10,17 +10,17 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // State for sorting: [columnName, order]
-    const [sortColumn, setSortColumn] = useState('lap_time'); // Default sort by lap time
-    const [sortOrder, setSortOrder] = useState('asc');      // Default ascending
+    const [sortColumn, setSortColumn] = useState('lap_time');
+    const [sortOrder, setSortOrder] = useState('asc');
 
-    // New state for driver details modal
-    const [selectedDriverLaps, setSelectedDriverLaps] = useState(null); // Stores laps for selected driver
-    const [isDriverDetailsModalOpen, setIsDriverDetailsModalOpen] = useState(false);
-    const [loadingDriverLaps, setLoadingDriverLaps] = useState(false);
-    const [driverLapsError, setDriverLapsError] = useState(null);
+    const [excludeInvalidLaps, setExcludeInvalidLaps] = useState(false); // New state for the toggle
 
-    // Helper to map UI column names to database column names for sorting
+    // State for driver details expansion
+    const [expandedDriverId, setExpandedDriverId] = useState(null); // Stores user_id of the expanded driver
+    const [expandedDriverLaps, setExpandedDriverLaps] = useState(null); // Stores laps for the expanded driver
+    const [loadingExpandedLaps, setLoadingExpandedLaps] = useState(false);
+    const [expandedLapsError, setExpandedLapsError] = useState(null);
+
     const sortableColumnsMap = {
         'Lap Time': 'lap_time',
         'S1': 's1_time',
@@ -30,23 +30,22 @@ function App() {
         'Team': 'team_name',
         'Date': 'submission_date',
         'Valid': 'is_valid',
-        'Custom Setup': 'custom_setup' // Added custom setup to sortable columns
+        'Custom Setup': 'custom_setup'
     };
 
-    // Function to handle header clicks for sorting
     const handleSort = (columnName) => {
         const dbColumnName = sortableColumnsMap[columnName];
-        if (!dbColumnName) return; // Not a sortable column
+        if (!dbColumnName) return;
 
         if (sortColumn === dbColumnName) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); // Toggle order
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
         } else {
-            setSortColumn(dbColumnName); // Set new column
-            setSortOrder('asc'); // Default to ascending for new column
+            setSortColumn(dbColumnName);
+            setSortOrder('asc');
         }
     };
 
-    // Function to fetch tracks
+    // Fetch tracks (no change)
     useEffect(() => {
         const fetchTracks = async () => {
             try {
@@ -57,7 +56,7 @@ function App() {
                 const data = await response.json();
                 setTracks(data);
                 if (data.length > 0) {
-                    setSelectedTrack(data[0]); // Select the first track by default
+                    setSelectedTrack(data[0]);
                 }
             } catch (e) {
                 console.error("Failed to fetch tracks:", e);
@@ -67,7 +66,7 @@ function App() {
         fetchTracks();
     }, []);
 
-    // Function to fetch leaderboard data based on selected track and sorting
+    // Fetch leaderboard data
     useEffect(() => {
         const fetchLeaderboard = async () => {
             if (!selectedTrack) return;
@@ -76,7 +75,7 @@ function App() {
             setError(null);
             try {
                 const response = await fetch(
-                    `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}`
+                    `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&excludeInvalid=${excludeInvalidLaps}`
                 );
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -91,46 +90,54 @@ function App() {
             }
         };
         fetchLeaderboard();
-    }, [selectedTrack, sortColumn, sortOrder]); // Re-fetch whenever these change
+    }, [selectedTrack, sortColumn, sortOrder, excludeInvalidLaps]); // Add excludeInvalidLaps to dependency array
 
     const handleTrackChange = (event) => {
         setSelectedTrack(event.target.value);
     };
 
+    const handleExcludeInvalidToggle = () => {
+        setExcludeInvalidLaps(prev => !prev);
+    };
+
     const getSortIcon = (columnDbName) => {
         if (sortColumn === columnDbName) {
-            return sortOrder === 'asc' ? '▲' : '▼'; // Use Unicode arrows
+            return sortOrder === 'asc' ? '▲' : '▼';
         }
         return '';
     };
 
-    // New: Function to fetch a specific driver's laps for a track
-    const fetchDriverLaps = async (driverName, trackName) => {
-        setLoadingDriverLaps(true);
-        setDriverLapsError(null);
+    // New: Function to fetch a specific driver's *all* laps for a track
+    const toggleDriverLaps = async (userId, trackName) => {
+        if (expandedDriverId === userId) {
+            setExpandedDriverId(null); // Collapse if already expanded
+            setExpandedDriverLaps(null);
+            setExpandedLapsError(null);
+            return;
+        }
+
+        setExpandedDriverId(userId); // Expand this driver
+        setLoadingExpandedLaps(true);
+        setExpandedLapsError(null);
+        setExpandedDriverLaps(null); // Clear previous laps
+
         try {
             const response = await fetch(
-                `http://localhost:3000/api/driverLaps?driver=${encodeURIComponent(driverName)}&track=${encodeURIComponent(trackName)}`
+                `http://localhost:3000/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}`
             );
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            setSelectedDriverLaps(data);
-            setIsDriverDetailsModalOpen(true);
+            setExpandedDriverLaps(data);
         } catch (e) {
             console.error("Failed to fetch driver's laps:", e);
-            setDriverLapsError("Failed to load driver's laps. Please try again later.");
+            setExpandedLapsError("Failed to load driver's laps. Please try again later.");
         } finally {
-            setLoadingDriverLaps(false);
+            setLoadingExpandedLaps(false);
         }
     };
 
-    const closeDriverDetailsModal = () => {
-        setIsDriverDetailsModalOpen(false);
-        setSelectedDriverLaps(null);
-        setDriverLapsError(null);
-    };
 
     return (
         <div className="app-container">
@@ -151,6 +158,16 @@ function App() {
                         ))
                     )}
                 </select>
+
+                <div className="toggle-container">
+                    <input
+                        type="checkbox"
+                        id="excludeInvalid"
+                        checked={excludeInvalidLaps}
+                        onChange={handleExcludeInvalidToggle}
+                    />
+                    <label htmlFor="excludeInvalid">Exclude Invalid Laps</label>
+                </div>
             </div>
 
             <div className="leaderboard-section">
@@ -163,7 +180,7 @@ function App() {
                     <table className="leaderboard-table">
                         <thead>
                             <tr>
-                                <th>Rank</th> {/* New Rank Column */}
+                                <th>Rank</th>
                                 <th>Track</th>
                                 <th className="sortable" onClick={() => handleSort('Driver')}>
                                     Driver {getSortIcon('driver_name')}
@@ -196,72 +213,70 @@ function App() {
                         </thead>
                         <tbody>
                             {leaderboardData.map((entry, index) => (
-                                <tr key={index}>
-                                    <td>{index + 1}</td> {/* Rank based on current order */}
-                                    <td>{entry.track_location_name}</td>
-                                    <td
-                                        className="driver-name-link" // Add class for styling and click
-                                        onClick={() => fetchDriverLaps(entry.driver_name, entry.track_location_name)}
-                                        title="Click to see all laps for this driver on this track"
-                                    >
-                                        {entry.driver_name}
-                                    </td>
-                                    <td>{entry.team_name}</td>
-                                    <td>{entry.lap_time}</td>
-                                    <td>{entry.s1_time}</td>
-                                    <td>{entry.s2_time}</td>
-                                    <td>{entry.s3_time}</td>
-                                    <td>{entry.is_valid ? '✅ Yes' : '❌ No'}</td>
-                                    <td>{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td> {/* Ensure custom_setup displays correctly */}
-                                    <td>{new Date(entry.submission_date).toLocaleDateString()}</td>
-                                </tr>
+                                <React.Fragment key={entry.user_id}> {/* Use user_id as key for Fragment */}
+                                    <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
+                                        <td>{index + 1}</td>
+                                        <td>{entry.track_location_name}</td>
+                                        <td
+                                            className="driver-name-link"
+                                            onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
+                                            title="Click to see all laps for this driver on this track"
+                                        >
+                                            {entry.driver_name} {expandedDriverId === entry.user_id ? '▲' : '▼'} {/* Show expand/collapse icon */}
+                                        </td>
+                                        <td>{entry.team_name}</td>
+                                        <td>{entry.lap_time}</td>
+                                        <td>{entry.s1_time}</td>
+                                        <td>{entry.s2_time}</td>
+                                        <td>{entry.s3_time}</td>
+                                        <td>{entry.is_valid ? '✅ Yes' : '❌ No'}</td>
+                                        <td>{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                        <td>{new Date(entry.submission_date).toLocaleDateString()}</td>
+                                    </tr>
+                                    {expandedDriverId === entry.user_id && (
+                                        <tr>
+                                            <td colSpan="11"> {/* Span all columns */}
+                                                {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
+                                                {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
+                                                {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
+                                                    <table className="nested-laps-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Lap Time</th>
+                                                                <th>S1</th>
+                                                                <th>S2</th>
+                                                                <th>S3</th>
+                                                                <th>Valid</th>
+                                                                <th>Custom Setup</th>
+                                                                <th>Date</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {expandedDriverLaps.map((lap, lapIndex) => (
+                                                                <tr key={lap.id || lapIndex}> {/* Use lap.id as key if available, fallback to index */}
+                                                                    <td>{lap.lap_time}</td>
+                                                                    <td>{lap.s1_time}</td>
+                                                                    <td>{lap.s2_time}</td>
+                                                                    <td>{lap.s3_time}</td>
+                                                                    <td>{lap.is_valid ? '✅ Yes' : '❌ No'}</td>
+                                                                    <td>{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                                    <td>{new Date(lap.submission_date).toLocaleString()}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                ) : (
+                                                    !loadingExpandedLaps && !expandedLapsError && <p className="no-data-message">No additional lap data found for this driver on this track.</p>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             ))}
                         </tbody>
                     </table>
                 )}
             </div>
-
-            {/* Driver Details Modal */}
-            {isDriverDetailsModalOpen && (
-                <div className="modal-overlay" onClick={closeDriverDetailsModal}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>Laps for {selectedDriverLaps && selectedDriverLaps.length > 0 ? selectedDriverLaps[0].driver_name : 'Selected Driver'} on {selectedTrack}</h2>
-                        {loadingDriverLaps && <p>Loading driver's laps...</p>}
-                        {driverLapsError && <p className="error-message">{driverLapsError}</p>}
-                        {!loadingDriverLaps && !driverLapsError && selectedDriverLaps && selectedDriverLaps.length > 0 ? (
-                            <table className="driver-laps-table">
-                                <thead>
-                                    <tr>
-                                        <th>Lap Time</th>
-                                        <th>S1</th>
-                                        <th>S2</th>
-                                        <th>S3</th>
-                                        <th>Valid</th>
-                                        <th>Custom Setup</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {selectedDriverLaps.map((lap, index) => (
-                                        <tr key={index}>
-                                            <td>{lap.lap_time}</td>
-                                            <td>{lap.s1_time}</td>
-                                            <td>{lap.s2_time}</td>
-                                            <td>{lap.s3_time}</td>
-                                            <td>{lap.is_valid ? '✅ Yes' : '❌ No'}</td>
-                                            <td>{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                            <td>{new Date(lap.submission_date).toLocaleString()}</td> {/* Use toLocaleString for full date/time */}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            !loadingDriverLaps && !driverLapsError && <p>No detailed lap data found for this driver on this track.</p>
-                        )}
-                        <button onClick={closeDriverDetailsModal} className="close-modal-button">Close</button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

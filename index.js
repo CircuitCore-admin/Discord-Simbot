@@ -4,10 +4,10 @@ const path = require('path');
 require('dotenv').config();
 
 const express = require('express');
-const cors = require('cors'); // This line is correct and crucial!
+const cors = require('cors');
 
 const analyzeImage = require('./services/analyzeImage');
-const db = require('./services/database'); // Import database service
+const db = require('./services/database');
 
 // --- Discord Bot Setup ---
 const client = new Client({
@@ -53,14 +53,13 @@ client.once('ready', () => {
             }
         ],
     });
-    // Ensure webPort is defined before this console.log if it's placed here
     console.log(`🌐 Web server running on http://localhost:${webPort}`);
 });
 
 // Message Create Listener for Automatic Image Processing
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
-    if (!message.guild) return; // Ensure it's in a guild, not a DM
+    if (!message.guild) return;
 
     let configuredChannelId = null;
     try {
@@ -98,6 +97,8 @@ client.on('messageCreate', async message => {
                     const channelId = message.channelId;
                     const messageId = message.id;
                     const userId = message.author.id;
+                    const discordTag = message.author.tag; // For username#discriminator
+
                     const driverName = analysisResult.driver_name;
                     const teamName = analysisResult.team_name;
                     const lapTime = analysisResult.lap_time;
@@ -105,7 +106,8 @@ client.on('messageCreate', async message => {
                     const s2Time = analysisResult.s2_time;
                     const s3Time = analysisResult.s3_time;
                     const isValid = analysisResult.is_valid;
-                    const customSetup = analysisResult.custom_setup;
+                    // Convert custom_setup string ("Yes"/"No") to boolean
+                    const customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
                     const trackLocationName = analysisResult.track_location_name;
                     const submissionDate = new Date();
 
@@ -116,17 +118,19 @@ client.on('messageCreate', async message => {
                     replyContent += `Team: ${teamName}\n`;
                     replyContent += `Track: ${trackLocationName}\n`;
                     replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-                    replyContent += `Custom Setup: ${customSetup}\n`;
+                    replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`; // Display converted boolean
                     replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
 
+                    // Corrected parameter order for db.query
                     await db.query(
-                        `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+                        `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, discord_tag, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                         [
-                            guildId, channelId, messageId, userId,
+                            guildId, channelId, messageId, userId, discordTag, // Correct: $5 is discordTag
                             driverName, teamName, lapTime,
                             s1Time, s2Time, s3Time, isValid,
-                            customSetup, trackLocationName, submissionDate
+                            customSetupBoolean, // Correct: $12 is customSetup (boolean)
+                            trackLocationName, submissionDate // Correct: $13 is trackLocationName, $14 is submissionDate
                         ]
                     );
 
@@ -151,22 +155,23 @@ client.login(process.env.DISCORD_TOKEN);
 
 // --- Web Server Setup ---
 const app = express();
-const webPort = process.env.WEB_PORT || 3000; // Use port from .env or default to 3000
+const webPort = process.env.WEB_PORT || 3000;
 
-app.use(cors()); // Enable CORS for all routes (important for frontend to fetch data)
-app.use(express.json()); // Enable JSON body parsing
+app.use(cors());
+app.use(express.json());
 
 // Helper function to convert lap time string (e.g., "1:23.456") to milliseconds
+// Used for internal sorting in SQL, not directly exposed via API now
 function lapTimeToMs(lapTimeString) {
     if (!lapTimeString || lapTimeString === 'N/A') return null;
     const parts = lapTimeString.split(':');
-    if (parts.length === 2) { // M:SS.mmm
+    if (parts.length === 2) {
         const minutes = parseInt(parts[0]);
         const secondsParts = parts[1].split('.');
         const seconds = parseInt(secondsParts[0]);
         const milliseconds = parseInt(secondsParts[1] || '0');
         return (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
-    } else if (parts.length === 3) { // H:MM:SS.mmm (less common for F1 hotlaps, but good to handle)
+    } else if (parts.length === 3) {
         const hours = parseInt(parts[0]);
         const minutes = parseInt(parts[1]);
         const secondsParts = parts[2].split('.');
@@ -174,7 +179,7 @@ function lapTimeToMs(lapTimeString) {
         const milliseconds = parseInt(secondsParts[1] || '0');
         return (hours * 3600 * 1000) + (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
     }
-    return null; // Invalid format
+    return null;
 }
 
 // API Endpoint to get unique track locations
@@ -188,13 +193,13 @@ app.get('/api/tracks', async (req, res) => {
     }
 });
 
-// API Endpoint to get leaderboard data
+// API Endpoint to get leaderboard data (fastest lap per driver per track)
 app.get('/api/leaderboard', async (req, res) => {
     const trackName = req.query.track;
-    const sortColumn = req.query.sortColumn || 'lap_time'; // Default to lap_time
-    const sortOrder = req.query.sortOrder || 'asc';      // Default to ascending
+    const sortColumn = req.query.sortColumn || 'lap_time';
+    const sortOrder = req.query.sortOrder || 'asc';
+    const excludeInvalid = req.query.excludeInvalid === 'true'; // New parameter
 
-    // Whitelist allowed sort columns to prevent SQL injection
     const allowedSortColumns = new Set([
         'driver_name', 'team_name', 'lap_time', 's1_time', 's2_time',
         's3_time', 'is_valid', 'submission_date', 'track_location_name'
@@ -206,8 +211,44 @@ app.get('/api/leaderboard', async (req, res) => {
 
     const orderDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
+    // CTE to select the fastest lap for each unique driver_id and track
     let query = `
+        WITH RankedLaps AS (
+            SELECT
+                id,
+                driver_name,
+                team_name,
+                lap_time,
+                s1_time,
+                s2_time,
+                s3_time,
+                is_valid,
+                custom_setup,
+                track_location_name,
+                submission_date,
+                user_id,
+                discord_tag, -- Include discord_tag here
+                ROW_NUMBER() OVER (
+                    PARTITION BY user_id, track_location_name
+                    ORDER BY
+                        CASE
+                            WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\.[0-9]{3}$' THEN
+                                SPLIT_PART(lap_time, ':', 1)::INT * 60000 +
+                                SPLIT_PART(SPLIT_PART(lap_time, ':', 2), '.', 1)::INT * 1000 +
+                                SPLIT_PART(SPLIT_PART(lap_time, ':', 2), '.', 2)::INT
+                            WHEN lap_time ~ '^[0-5]?[0-9]\.[0-9]{3}$' THEN
+                                SPLIT_PART(lap_time, '.', 1)::INT * 1000 +
+                                SPLIT_PART(lap_time, '.', 2)::INT
+                            ELSE 999999999
+                        END ASC,
+                        submission_date ASC
+                ) as rn
+            FROM hotlaps
+            WHERE track_location_name ILIKE $1
+            ${excludeInvalid ? 'AND is_valid = TRUE' : ''}
+        )
         SELECT
+            id,
             driver_name,
             team_name,
             lap_time,
@@ -217,53 +258,46 @@ app.get('/api/leaderboard', async (req, res) => {
             is_valid,
             custom_setup,
             track_location_name,
-            submission_date
-        FROM hotlaps
+            submission_date,
+            user_id,
+            discord_tag -- Select discord_tag here
+        FROM RankedLaps
+        WHERE rn = 1
     `;
-    const params = [];
-    let paramIndex = 1;
+    const params = [trackName]; // trackName is always the first parameter
 
-    if (trackName) {
-        query += ` WHERE track_location_name ILIKE $${paramIndex}`;
-        params.push(trackName);
-        paramIndex++;
-    }
-
-    // Dynamic ORDER BY clause with type conversion for time fields
+    // Dynamic ORDER BY clause (applied to the already filtered fastest laps)
     let orderByClause = '';
     switch (sortColumn) {
         case 'lap_time':
         case 's1_time':
         case 's2_time':
         case 's3_time':
-            // Convert 'M:SS.mmm' or 'SS.mmm' text to milliseconds for numerical sorting
-            // Note: This assumes times are always in 'M:SS.mmm' or 'SS.mmm' format.
-            // If they can be 'N/A', NULLs will be handled by the CASE WHEN NULL clause.
             orderByClause = `
                 CASE
-                    WHEN ${sortColumn} ~ '^[0-9]+:[0-5][0-9]\.[0-9]{3}$' THEN -- M:SS.mmm
+                    WHEN ${sortColumn} ~ '^[0-9]+:[0-5][0-9]\.[0-9]{3}$' THEN
                         SPLIT_PART(${sortColumn}, ':', 1)::INT * 60000 +
                         SPLIT_PART(SPLIT_PART(${sortColumn}, ':', 2), '.', 1)::INT * 1000 +
                         SPLIT_PART(SPLIT_PART(${sortColumn}, ':', 2), '.', 2)::INT
-                    WHEN ${sortColumn} ~ '^[0-5]?[0-9]\.[0-9]{3}$' THEN -- SS.mmm (optional M if single digit)
+                    WHEN ${sortColumn} ~ '^[0-5]?[0-9]\.[0-9]{3}$' THEN
                         SPLIT_PART(${sortColumn}, '.', 1)::INT * 1000 +
                         SPLIT_PART(${sortColumn}, '.', 2)::INT
-                    ELSE NULL -- Handles 'N/A' or other non-numeric strings by putting them last/first
+                    ELSE 999999999
                 END ${orderDirection} NULLS LAST`;
             break;
         case 'submission_date':
-            orderByClause = `${sortColumn} ${orderDirection}`; // timestamp sorts directly
+            orderByClause = `${sortColumn} ${orderDirection}`;
             break;
         case 'is_valid':
-            orderByClause = `${sortColumn} ${orderDirection}`; // boolean sorts directly
+            orderByClause = `${sortColumn} ${orderDirection}`;
             break;
         case 'custom_setup':
-            // Convert text 'true'/'false' to boolean for proper sorting
-            orderByClause = `(${sortColumn} ${orderDirection}`;
+            // Ensure proper boolean casting for sorting if column is text 'Yes'/'No'
+            // If custom_setup is already boolean, this cast is harmless but good to be explicit
+            orderByClause = `${sortColumn} ${orderDirection}`;
             break;
         default:
-            // For text fields like driver_name, team_name, track_location_name
-            orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`; // Use COLLATE "C" for consistent string sorting
+            orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`;
             break;
     }
 
@@ -278,27 +312,63 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
+// API Endpoint to get a specific driver's laps for a given track
+app.get('/api/driverLaps', async (req, res) => {
+    const userId = req.query.userId; // Changed to userId
+    const trackName = req.query.track;
+
+    if (!userId || !trackName) {
+        return res.status(400).json({ error: 'User ID and track name are required.' });
+    }
+
+    try {
+        const result = await db.query(
+            `SELECT
+                id,
+                driver_name,
+                team_name,
+                lap_time,
+                s1_time,
+                s2_time,
+                s3_time,
+                is_valid,
+                custom_setup,
+                track_location_name,
+                submission_date,
+                user_id,
+                discord_tag -- Include discord_tag here
+            FROM hotlaps
+            WHERE user_id = $1 AND track_location_name ILIKE $2
+            ORDER BY
+                CASE
+                    WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\.[0-9]{3}$' THEN
+                        SPLIT_PART(lap_time, ':', 1)::INT * 60000 +
+                        SPLIT_PART(SPLIT_PART(lap_time, ':', 2), '.', 1)::INT * 1000 +
+                        SPLIT_PART(SPLIT_PART(lap_time, ':', 2), '.', 2)::INT
+                    WHEN lap_time ~ '^[0-5]?[0-9]\.[0-9]{3}$' THEN
+                        SPLIT_PART(lap_time, '.', 1)::INT * 1000 +
+                        SPLIT_PART(lap_time, '.', 2)::INT
+                    ELSE 999999999
+                END ASC;`,
+            [userId, trackName]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('❌ Error fetching driver laps:', err);
+        res.status(500).json({ error: 'Failed to fetch driver laps.' });
+    }
+});
+
 // --- Static File Serving for React Frontend ---
-// Assuming 'leaderboard-frontend' is a sub-directory of 'Discord-Simbot'
 const reactAppBuildPath = path.join(__dirname, 'leaderboard-frontend', 'dist');
 
-// Serve static files from the React app's build directory
-// This middleware will try to match requests like '/', '/static/css/main.css', etc.
-// It should be placed AFTER your specific API routes.
 app.use(express.static(reactAppBuildPath));
 
-// For any other GET request that was not handled by API routes or static files,
-// serve the React app's index.html. This is crucial for client-side routing.
-// This route MUST be the very last route defined in your Express app.
 app.get('*', (req, res) => {
     res.sendFile(path.join(reactAppBuildPath, 'index.html'));
 });
 
-
 // Start the Express server
 app.listen(webPort, () => {
-    // console.log(`🌐 Web server running on http://localhost:${webPort}`); // This is logged in client.once('ready')
+    // console.log(`🌐 Web server running on http://localhost:${webPort}`);
 });
-
-// Add WEB_PORT to your .env file
-// WEB_PORT=3000

@@ -28,6 +28,8 @@ module.exports = {
                 const channelId = interaction.channelId;
                 const messageId = interaction.id; // Interaction ID can serve as a unique identifier for the command use
                 const userId = interaction.user.id;
+                const discordTag = interaction.user.tag; // Get the Discord tag here
+
                 const driverName = analysisResult.driver_name;
                 const teamName = analysisResult.team_name;
                 const lapTime = analysisResult.lap_time;
@@ -35,7 +37,8 @@ module.exports = {
                 const s2Time = analysisResult.s2_time;
                 const s3Time = analysisResult.s3_time;
                 const isValid = analysisResult.is_valid; // This will be true/false
-                const customSetup = analysisResult.custom_setup;
+                // Convert custom_setup string ("Yes"/"No") to boolean
+                const customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
                 const trackLocationName = analysisResult.track_location_name;
                 const submissionDate = new Date(); // Current timestamp
 
@@ -47,18 +50,19 @@ module.exports = {
                 replyContent += `Team: ${teamName}\n`;
                 replyContent += `Track: ${trackLocationName}\n`;
                 replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-                replyContent += `Custom Setup: ${customSetup}\n`;
+                replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`; // Display boolean
                 replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`; // Add notes based on validity
 
-                // Insert into the database
+                // Insert into the database - UPDATED COLUMNS AND PARAMETERS
                 await db.query(
-                    `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+                    `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, discord_tag, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                     [
-                        guildId, channelId, messageId, userId,
+                        guildId, channelId, messageId, userId, discordTag, // Added discordTag
                         driverName, teamName, lapTime,
                         s1Time, s2Time, s3Time, isValid,
-                        customSetup, trackLocationName, submissionDate
+                        customSetupBoolean, // Use converted boolean value
+                        trackLocationName, submissionDate
                     ]
                 );
 
