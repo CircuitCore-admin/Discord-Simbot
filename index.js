@@ -259,7 +259,7 @@ app.get('/api/leaderboard', async (req, res) => {
             break;
         case 'custom_setup':
             // Convert text 'true'/'false' to boolean for proper sorting
-            orderByClause = `(${sortColumn}::boolean) ${orderDirection}`;
+            orderByClause = `(${sortColumn} ${orderDirection}`;
             break;
         default:
             // For text fields like driver_name, team_name, track_location_name
