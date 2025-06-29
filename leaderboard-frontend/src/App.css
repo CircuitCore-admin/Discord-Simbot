@@ -1,184 +1,609 @@
 /* leaderboard-frontend/src/App.css */
 
 /*
-   To enable the F1 fonts:
-   1. Obtain the font files (Formula1-Display-Regular.woff2 and Formula1-Display-Bold.woff2).
-      These are proprietary fonts and usually need to be licensed.
-   2. Place these .woff2 files in the 'leaderboard-frontend/src/assets/fonts/' directory.
-      You might need to create the 'assets' and 'fonts' subdirectories if they don't exist.
-   3. Uncomment the @font-face rules below.
+    To enable the F1 fonts:
+    1. Obtain the font files (Formula1-Display-Regular.woff2 and Formula1-Display-Bold.woff2).
+       These are proprietary fonts and usually need to be licensed.
+    2. Place these .woff2 files in the 'leaderboard-frontend/src/assets/fonts/' directory.
+       You might need to create the 'assets' and 'fonts' subdirectories if they don't exist.
+    3. Uncomment the @font-face rules below.
 */
 @font-face {
-  font-family: 'Formula1 Display';
-  src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
+    font-family: 'Formula1 Display';
+    src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
 }
 @font-face {
-  font-family: 'Formula1 Display';
-  src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
-  font-weight: bold;
-  font-style: normal;
+    font-family: 'Formula1 Display';
+    src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
+    font-weight: bold;
+    font-style: normal;
 }
 
-/* Removed the html font-size scaling to keep text sizes as they were before */
-/* html {
-  font-size: max(16px, 1.1vw);
-} */
+/* --- Dark Mode and Light Mode Variables --- */
+/* Default to Dark Mode variables */
+:root {
+    --bg-color-body: #121212;
+    --bg-color-app-container: #1e1e1e;
+    --bg-color-filter-elements: #282828;
+    --bg-color-table-header: #222;
+    --bg-color-table-row-even: #252525;
+    --bg-color-table-row-hover: #353535;
+    --border-color: #444;
+    --border-color-table: #3a3a3a;
+    --text-color-primary: #e0e0e0;
+    --text-color-secondary: #bbbbbb;
+    --text-color-f1-red: #e10600;
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --select-arrow-color: %23e0e0e0; /* SVG encoded color for arrow */
+}
+
+/* Light Mode variables - applied when .light-mode class is present on app-container */
+.light-mode {
+    --bg-color-body: #f0f2f5; /* Light background */
+    --bg-color-app-container: #ffffff; /* White content area */
+    --bg-color-filter-elements: #e8e8e8;
+    --bg-color-table-header: #f8f8f8;
+    --bg-color-table-row-even: #f5f5f5;
+    --bg-color-table-row-hover: #e0e0e0;
+    --border-color: #bbb;
+    --border-color-table: #ddd;
+    --text-color-primary: #333333;
+    --text-color-secondary: #555555;
+    --text-color-f1-red: #e10600; /* F1 Red remains the same */
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --select-arrow-color: %23333333; /* Darker SVG encoded color for arrow */
+}
 
 body {
-  font-family: 'Formula1 Display', sans-serif; /* Applied F1 font. Fallback to sans-serif */
-  background-color: #121212; /* Darker background for depth */
-  color: #e0e0e0; /* Softer white for general text */
-  margin: 0;
-  /* Reduced padding to make the content sit closer to the edges of the screen */
-  padding: 20px; /* Uniform padding for top, right, bottom, left */
-  box-sizing: border-box;
-  display: flex; /* Use flexbox to center content */
-  justify-content: center; /* Center horizontally */
-  align-items: flex-start; /* Align to top, not middle of screen */
-  min-height: 100vh; /* Ensure it takes full viewport height */
+    font-family: 'Formula1 Display', sans-serif;
+    background-color: var(--bg-color-body); /* Use variable */
+    color: var(--text-color-primary); /* Use variable */
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition for dark/light mode */
 }
 
 .app-container {
-  /* Set width to auto to allow it to grow naturally,
-     and remove max-width to allow it to expand indefinitely
-     based on content and viewport. */
-  width: auto;
-  max-width: none; /* Removed the max-width restriction */
-  margin: 0 20px; /* Adjusted horizontal margins to 20px on left/right for slight spacing */
-  /* Reduced padding inside the container */
-  padding: 20px;
-  background-color: #1e1e1e; /* Slightly lighter than body for content area */
-  border-radius: 12px; /* More rounded corners */
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Stronger, deeper shadow */
-  overflow-x: auto; /* Fallback: Allow horizontal scrolling for table if content still exceeds screen width */
+    width: auto;
+    max-width: none;
+    margin: 0 20px;
+    padding: 20px;
+    background-color: var(--bg-color-app-container); /* Use variable */
+    border-radius: 12px;
+    box-shadow: 0 8px 25px var(--shadow-color); /* Use variable */
+    overflow-x: auto;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transition for dark/light mode */
 }
 
 .app-header {
-  text-align: center;
-  margin-bottom: 40px; /* More space below header */
-  color: #e10600; /* F1 red */
-  text-transform: uppercase;
-  letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 40px;
+    color: var(--text-color-f1-red); /* Use variable */
+    text-transform: uppercase;
+    letter-spacing: 2px;
 }
 
 .app-header h1 {
-  font-size: 3em; /* Reverted to original em unit to maintain text size */
-  margin-bottom: 10px;
-  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+    font-size: 3em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
 }
 
+/* User Info and Avatar */
+.user-info {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center horizontally */
+    margin-top: -20px; /* Adjust as needed to pull it up closer to header */
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    font-weight: normal;
+    color: var(--text-color-secondary);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%; /* Make it circular */
+    margin-right: 10px;
+    border: 2px solid #7289da; /* Discord blue border */
+    box-shadow: 0 0 8px rgba(114, 137, 218, 0.5); /* Glowing effect */
+}
+
+.guild-display-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 1.1em;
+    color: var(--text-color-secondary);
+    margin-top: -20px; /* Adjust positioning */
+}
+
+.guild-icon-display {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+
 .filter-section {
-  margin-bottom: 30px; /* More space below filter */
-  display: flex;
-  align-items: center;
-  gap: 15px; /* Increased gap */
+    margin-bottom: 30px;
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    align-items: center;
+    gap: 15px;
+    justify-content: center; /* Center items for better mobile layout */
 }
 
 .filter-section label {
-  font-size: 1.15em; /* Reverted to original em unit to maintain text size */
-  color: #bbbbbb;
-  font-weight: bold;
+    font-size: 1.15em;
+    color: var(--text-color-secondary); /* Use variable */
+    font-weight: bold;
 }
 
 .filter-section select {
-  padding: 10px 15px; /* More padding */
-  border-radius: 6px; /* Slightly more rounded */
-  border: 1px solid #444;
-  background-color: #282828; /* Darker background for select */
-  color: #e0e0e0;
-  font-size: 1.05em; /* Reverted to original em unit to maintain text size */
-  cursor: pointer;
-  appearance: none; /* Remove default select arrow */
-  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e0e0e0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
-  background-repeat: no-repeat;
-  background-position: right 10px top 50%;
-  background-size: 12px auto;
-  padding-right: 30px; /* Space for the custom arrow */
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color); /* Use variable */
+    background-color: var(--bg-color-filter-elements); /* Use variable */
+    color: var(--text-color-primary); /* Use variable */
+    font-size: 1.05em;
+    cursor: pointer;
+    appearance: none;
+    /* Updated SVG for select arrow to use variable color */
+    background-image: var(--select-arrow-image);
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: 12px auto;
+    padding-right: 30px;
 }
 
-.filter-section select:focus {
-  outline: none;
-  border-color: #e10600;
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.5);
+/* Update the background-image for select based on dark/light mode */
+.dark-mode .filter-section select {
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e0e0e0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E');
 }
+
+.light-mode .filter-section select {
+    background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E');
+}
+
+
+.filter-section select:focus {
+    outline: none;
+    border-color: var(--text-color-f1-red); /* Use variable */
+    box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.5);
+}
+
+/* Discord Login Button */
+.discord-login-button {
+    background-color: #7289da; /* Discord brand color */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.discord-login-button:hover {
+    background-color: #677eb4;
+    transform: translateY(-2px);
+}
+
+.discord-login-button svg {
+    fill: white;
+    width: 20px;
+    height: 20px;
+}
+
+/* CSV Download Button */
+.download-csv-button {
+    background-color: #007bff; /* Blue for action */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.download-csv-button:hover:not(:disabled) {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.download-csv-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Dark Mode Toggle Button */
+.dark-mode-toggle {
+    background-color: #555;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin-left: auto; /* Pushes it to the right */
+}
+
+.dark-mode-toggle:hover {
+    background-color: #777;
+    transform: translateY(-2px);
+}
+
 
 .loading-message,
 .error-message,
 .no-data-message {
-  text-align: center;
-  padding: 30px; /* More padding */
-  font-size: 1.3em; /* Reverted to original em unit to maintain text size */
-  color: #cccccc;
-  background-color: #282828;
-  border-radius: 8px;
-  margin-top: 20px;
+    text-align: center;
+    padding: 30px;
+    font-size: 1.3em;
+    color: var(--text-color-secondary); /* Use variable */
+    background-color: var(--bg-color-filter-elements); /* Use variable */
+    border-radius: 8px;
+    margin-top: 20px;
 }
 
 .error-message {
-  color: #ff4747; /* Brighter red for errors */
+    color: #ff4747;
 }
 
 .leaderboard-table {
-  width: 100%; /* Ensure table takes 100% of its parent's width */
-  border-collapse: collapse;
-  margin-top: 30px;
-  font-size: 0.9em; /* Retained original em unit for text size */
-  min-width: 100%; /* Ensures table will at least fill the container's width,
-                       and due to white-space:nowrap, will expand beyond if needed */
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 30px;
+    font-size: 0.9em;
+    min-width: 100%;
 }
 
 .leaderboard-table th,
 .leaderboard-table td {
-  padding: 10px 15px; /* Slightly increased horizontal padding for more spacing within cells */
-  text-align: left;
-  border-bottom: 1px solid #3a3a3a; /* Softer border */
-  white-space: nowrap; /* Prevents text from wrapping */
+    padding: 10px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color-table); /* Use variable */
+    white-space: nowrap;
 }
 
 .leaderboard-table th {
-  background-color: #222; /* Darker header background */
-  color: #e10600; /* F1 red for headers */
-  text-transform: uppercase;
-  font-weight: bold;
-  cursor: pointer; /* Indicate sortable columns */
-  position: relative; /* For sort arrows */
-  user-select: none; /* Prevent text selection on click */
+    background-color: var(--bg-color-table-header); /* Use variable */
+    color: var(--text-color-f1-red); /* Use variable */
+    text-transform: uppercase;
+    font-weight: bold;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
 }
 
 .leaderboard-table th:hover {
-  background-color: #282828; /* Subtle hover on headers */
+    background-color: var(--bg-color-table-row-hover); /* Use a slightly darker hover for headers too */
 }
 
 .leaderboard-table th.sortable {
-    padding-right: 25px; /* Space for sort icon */
+    padding-right: 25px;
 }
 
-.sort-icon {
+.leaderboard-table th .sort-icon { /* Specific targeting for the span holding the arrow */
+    color: var(--text-color-primary); /* Use primary text color for the arrow */
     position: absolute;
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.8em; /* Retained original em unit for text size */
-    color: #e0e0e0; /* Color for the arrow */
+    font-size: 0.8em;
 }
-.sort-icon.asc::after {
-    content: ' ▲';
-}
-.sort-icon.desc::after {
-    content: ' ▼';
-}
-
 
 .leaderboard-table tbody tr {
     transition: background-color 0.2s ease;
 }
 
 .leaderboard-table tbody tr:nth-child(even) {
-  background-color: #252525; /* Alternate row background for readability */
+    background-color: var(--bg-color-table-row-even); /* Use variable */
 }
 
 .leaderboard-table tbody tr:hover {
-  background-color: #353535; /* Stronger hover effect */
+    background-color: var(--bg-color-table-row-hover); /* Use variable */
+}
+
+/* Driver Name Link */
+.driver-name-link {
+    cursor: pointer;
+    color: #7289da; /* Discord blue for links */
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.driver-name-link:hover {
+    color: #a3b8ec;
+    text-decoration: underline;
+}
+
+.leaderboard-table tr.expanded {
+    background-color: #404040; /* Darker background for expanded row */
+}
+
+.light-mode .leaderboard-table tr.expanded {
+    background-color: #dddddd; /* Lighter background for expanded row in light mode */
+}
+
+/* Nested Laps Table */
+.nested-laps-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.85em; /* Slightly smaller for nested table */
+    background-color: var(--bg-color-filter-elements); /* Use a common background */
+    border-radius: 8px;
+    overflow: hidden; /* Ensures rounded corners are visible */
+}
+
+.nested-laps-table th,
+.nested-laps-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color-table);
+}
+
+.nested-laps-table th {
+    background-color: var(--bg-color-table-header);
+    color: var(--text-color-f1-red);
+}
+
+.nested-laps-table tbody tr:last-child td {
+    border-bottom: none; /* No border for the last row */
+}
+
+.nested-laps-table tbody tr:nth-child(even) {
+    background-color: var(--bg-color-table-row-even);
+}
+.nested-laps-table tbody tr:hover {
+    background-color: var(--bg-color-table-row-hover);
+}
+
+
+/* --- Custom Dropdown Styling --- */
+.custom-dropdown-container {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle; /* Align with other form elements */
+}
+
+.custom-dropdown-container label {
+    margin-right: 15px; /* Adjust gap from label to dropdown */
+}
+
+.dropdown-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color-filter-elements);
+    color: var(--text-color-primary);
+    font-size: 1.05em;
+    cursor: pointer;
+    justify-content: space-between; /* Space out content and arrow */
+    min-width: 180px; /* Ensure a minimum width */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dropdown-header.open {
+    border-color: var(--text-color-f1-red);
+    box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.5);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.dropdown-header:hover {
+    border-color: #aaa;
+}
+
+.light-mode .dropdown-header:hover {
+    border-color: #777;
+}
+
+
+.guild-icon-header {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+.dropdown-arrow {
+    margin-left: 10px;
+    font-size: 0.8em;
+    color: var(--text-color-secondary);
+}
+
+.dropdown-list {
+    position: absolute;
+    top: 100%; /* Position right below the header */
+    left: 0;
+    right: 0; /* Make it take full width of header */
+    background-color: var(--bg-color-filter-elements);
+    border: 1px solid var(--border-color);
+    border-top: none; /* No top border, connects to header */
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px; /* Max height with scrollbar */
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's above other content */
+    box-shadow: 0 8px 25px var(--shadow-color);
+}
+
+.dropdown-list .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    font-size: 1em;
+}
+
+.dropdown-list .dropdown-item:hover {
+    background-color: var(--bg-color-table-row-hover);
+    color: var(--text-color-primary);
+}
+
+.dropdown-list .dropdown-item.selected {
+    background-color: #7289da; /* Discord blue for selected */
+    color: white;
+    font-weight: bold;
+}
+
+.dropdown-list .dropdown-item.selected:hover {
+    background-color: #677eb4; /* Darker Discord blue on hover */
+}
+
+.dropdown-list .dropdown-item.disabled {
+    color: var(--text-color-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.dropdown-list .guild-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
+
+    .app-container {
+        margin: 0; /* Remove side margins on smaller screens */
+        padding: 15px;
+        width: 100%; /* Take full width */
+        box-sizing: border-box; /* Include padding in width */
+    }
+
+    .app-header h1 {
+        font-size: 2.2em; /* Smaller font size for header */
+    }
+
+    .filter-section {
+        flex-direction: column; /* Stack filter items vertically */
+        align-items: stretch; /* Stretch items to full width */
+        gap: 10px;
+    }
+
+    .filter-section label {
+        text-align: left; /* Align labels left when stacked */
+        width: 100%;
+        margin-bottom: -5px; /* Reduce gap between label and input */
+    }
+
+    .filter-section select,
+    .discord-login-button,
+    .download-csv-button,
+    .dark-mode-toggle {
+        width: 100%; /* Make buttons and select full width */
+        box-sizing: border-box;
+        margin-left: 0 !important; /* Override margin-left: auto for toggle button */
+    }
+
+    .custom-dropdown-container {
+        width: 100%; /* Custom dropdown also takes full width */
+    }
+
+    .dropdown-header {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Table Responsiveness */
+    .leaderboard-table {
+        display: block; /* Allows table to act as a block element */
+        overflow-x: auto; /* Enable horizontal scrolling for the table */
+        white-space: nowrap; /* Keep table cells from wrapping */
+        width: 100%; /* Ensure it tries to take full width */
+    }
+
+    .leaderboard-table thead,
+    .leaderboard-table tbody,
+    .leaderboard-table th,
+    .leaderboard-table td,
+    .leaderboard-table tr {
+        display: block; /* Make table elements display as blocks */
+    }
+
+    .leaderboard-table thead tr {
+        position: absolute; /* Hide header visually but keep accessible */
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .leaderboard-table tr {
+        border: 1px solid var(--border-color-table);
+        margin-bottom: 15px; /* Space between "card" rows */
+        border-radius: 8px;
+        background-color: var(--bg-color-app-container);
+        box-shadow: 0 2px 5px var(--shadow-color);
+        padding: 10px;
+    }
+
+    .leaderboard-table td {
+        border: none; /* Remove individual cell borders */
+        position: relative;
+        padding-left: 50%; /* Space for the "label" before the value */
+        text-align: right; /* Align value to the right */
+    }
+
+    .leaderboard-table td::before {
+        /* This is where the magic happens: display column headers as labels */
+        content: attr(data-label); /* Use data-label attribute for content */
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: var(--text-color-secondary);
+    }
+
+    /* Hide the nested table headers on mobile */
+    .nested-laps-table thead {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .nested-laps-table td {
+        border-bottom: 1px solid var(--border-color-table); /* Re-add bottom border for nested table cells */
+    }
+
+    .nested-laps-table tr:last-child td {
+        border-bottom: none;
+    }
 }

@@ -1,7 +1,8 @@
 const { Client, Collection, GatewayIntentBits, ActivityType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables from .env file
+const axios = require('axios'); // For making HTTP requests to Discord API
 
 const express = require('express');
 const cors = require('cors');
@@ -190,10 +191,119 @@ function lapTimeToMs(lapTimeString) {
 
 
 // IMPORTANT: All /api routes MUST come before the app.use(express.static(...)) and app.get('*')
+
+// --- Discord OAuth Routes ---
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `http://localhost:${webPort}/`;
+
+// Add console logs to verify environment variables are loaded
+console.log('DISCORD_CLIENT_ID:', DISCORD_CLIENT_ID);
+console.log('DISCORD_REDIRECT_URI:', DISCORD_REDIRECT_URI);
+
+
+// Route to initiate Discord OAuth2 login
+app.get('/auth/discord', (req, res) => {
+    // Define the scopes you need.
+    // 'identify' for user info, 'guilds' for user's guilds.
+    // 'guilds' scope requires your bot to be in the guild to see it.
+    const scopes = ['identify', 'guilds'].join(' ');
+    // Ensure DISCORD_CLIENT_ID is not undefined here
+    if (!DISCORD_CLIENT_ID) {
+        // More descriptive error for debugging
+        console.error("Error: DISCORD_CLIENT_ID is undefined. Check your .env file and ensure it's loaded correctly.");
+        return res.status(500).send('Discord Client ID is not configured on the server. Please check server logs for details.');
+    }
+    const authorizeUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}`;
+    // NEW: Log the exact URL being sent to Discord for debugging
+    console.log('Attempting Discord OAuth redirect with URI:', authorizeUrl);
+    res.redirect(authorizeUrl);
+});
+
+// Route to handle Discord OAuth2 callback
+app.post('/auth/discord/callback', async (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        return res.status(400).json({ error: 'Missing authorization code.' });
+    }
+
+    try {
+        // Create URLSearchParams object directly
+        const params = new URLSearchParams({
+            client_id: DISCORD_CLIENT_ID,
+            client_secret: DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: DISCORD_REDIRECT_URI,
+            scope: 'identify guilds'
+        });
+
+        // Exchange authorization code for access token
+        const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, { // Pass params object directly
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded', // Crucial header for Discord API
+            }
+        });
+
+        const { access_token, token_type } = tokenResponse.data;
+
+        // Fetch user information
+        const userResponse = await axios.get('https://discord.com/api/users/@me', {
+            headers: {
+                authorization: `${token_type} ${access_token}`,
+            },
+        });
+        const discordUser = userResponse.data;
+
+        // Fetch user's guilds
+        const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
+            headers: {
+                authorization: `${token_type} ${access_token}`,
+            },
+        });
+        const userGuilds = guildsResponse.data;
+
+        // Fetch all guild IDs from your database that have a hotlap channel configured
+        const dbGuildsResult = await db.query('SELECT DISTINCT guild_id FROM guild_settings WHERE hotlap_channel_id IS NOT NULL;');
+        const configuredGuildIds = new Set(dbGuildsResult.rows.map(row => row.guild_id));
+
+        // Filter user's guilds to only include those that have a leaderboard configured
+        const filteredGuilds = userGuilds
+            .filter(guild => configuredGuildIds.has(guild.id))
+            .map(guild => ({
+                id: guild.id,
+                name: guild.name,
+                icon: guild.icon // Include icon hash
+            }));
+
+        // Respond with user info and filtered guilds
+        res.json({
+            user: {
+                id: discordUser.id,
+                username: discordUser.username,
+                discriminator: discordUser.discriminator,
+                avatar: discordUser.avatar,
+            },
+            guilds: filteredGuilds,
+        });
+
+    } catch (error) {
+        // Log the full error response from Axios for better debugging
+        console.error('Error during Discord OAuth callback:', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Failed to authenticate with Discord.' });
+    }
+});
+
+
 // API Endpoint to get unique track locations
 app.get('/api/tracks', async (req, res) => {
+    const guildId = req.query.guildId;
+    if (!guildId) {
+        return res.status(400).json({ error: 'Guild ID is required.' });
+    }
     try {
-        const result = await db.query('SELECT DISTINCT track_location_name FROM hotlaps ORDER BY track_location_name;');
+        const result = await db.query('SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 ORDER BY track_location_name;', [guildId]);
         res.json(result.rows.map(row => row.track_location_name));
     } catch (err) {
         console.error('❌ Error fetching tracks:', err);
@@ -206,12 +316,16 @@ app.get('/api/leaderboard', async (req, res) => {
     const trackName = req.query.track;
     const sortColumn = req.query.sortColumn || 'lap_time';
     const sortOrder = req.query.sortOrder || 'asc';
-    // Removed: const excludeInvalid = req.query.excludeInvalid === 'true'; // This parameter is no longer used
+    const guildId = req.query.guildId;
+
+    if (!guildId) {
+        return res.status(400).json({ error: 'Guild ID is required.' });
+    }
 
     const allowedSortColumns = new Set([
         'driver_name', 'team_name', 'lap_time', 's1_time', 's2_time',
         's3_time', 'submission_date', 'track_location_name', 'discord_tag',
-        'custom_setup' // Added custom_setup for sorting
+        'custom_setup'
     ]);
 
     if (!allowedSortColumns.has(sortColumn)) {
@@ -230,7 +344,6 @@ app.get('/api/leaderboard', async (req, res) => {
                 s1_time,
                 s2_time,
                 s3_time,
-                -- Removed: is_valid from here. The main leaderboard will show the fastest lap regardless of validity.
                 custom_setup,
                 track_location_name,
                 submission_date,
@@ -252,8 +365,7 @@ app.get('/api/leaderboard', async (req, res) => {
                         submission_date ASC
                 ) as rn
             FROM hotlaps
-            WHERE track_location_name ILIKE $1
-            -- Removed: AND is_valid = TRUE condition
+            WHERE track_location_name ILIKE $1 AND guild_id = $2
         )
         SELECT
             id,
@@ -263,7 +375,6 @@ app.get('/api/leaderboard', async (req, res) => {
             s1_time,
             s2_time,
             s3_time,
-            -- Removed: is_valid from here, as it's not needed for the main leaderboard display
             custom_setup,
             track_location_name,
             submission_date,
@@ -272,7 +383,7 @@ app.get('/api/leaderboard', async (req, res) => {
         FROM RankedLaps
         WHERE rn = 1
     `;
-    const params = [trackName];
+    const params = [trackName, guildId];
 
     let orderByClause = '';
     switch (sortColumn) {
@@ -293,7 +404,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 END ${orderDirection} NULLS LAST`;
             break;
         case 'submission_date':
-        case 'custom_setup': // Now allows sorting by custom_setup
+        case 'custom_setup':
             orderByClause = `${sortColumn} ${orderDirection}`;
             break;
         case 'discord_tag':
@@ -322,7 +433,11 @@ app.get('/api/leaderboard', async (req, res) => {
 // API Endpoint to download leaderboard as CSV
 app.get('/api/leaderboard/csv', async (req, res) => {
     const trackName = req.query.track;
-    // Removed: excludeInvalid parameter here as well
+    const guildId = req.query.guildId;
+
+    if (!guildId) {
+        return res.status(400).send('Guild ID is required.');
+    }
 
     let query = `
         WITH RankedLaps AS (
@@ -334,7 +449,6 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                 s1_time,
                 s2_time,
                 s3_time,
-                -- Removed: is_valid from here. CSV will also get the fastest lap regardless of validity.
                 custom_setup,
                 track_location_name,
                 submission_date,
@@ -356,8 +470,7 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                         submission_date ASC
                 ) as rn
             FROM hotlaps
-            WHERE track_location_name ILIKE $1
-            -- Removed: excludeInvalid condition: AND is_valid = TRUE
+            WHERE track_location_name ILIKE $1 AND guild_id = $2
         )
         SELECT
             discord_tag AS "Discord Tag",
@@ -368,7 +481,6 @@ app.get('/api/leaderboard/csv', async (req, res) => {
             s1_time AS "S1 Time",
             s2_time AS "S2 Time",
             s3_time AS "S3 Time",
-            -- Removed: "Valid Lap" column from CSV output
             CASE WHEN custom_setup THEN 'Yes' ELSE 'No' END AS "Custom Setup",
             submission_date AS "Submission Date"
         FROM RankedLaps
@@ -385,13 +497,13 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                 ELSE 999999999
             END ASC;
     `;
-    const params = [trackName];
+    const params = [trackName, guildId];
 
     try {
         const result = await db.query(query, params);
 
         if (result.rows.length === 0) {
-            return res.status(404).send('No data found for this track.');
+            return res.status(404).send('No data found for this track or guild.');
         }
 
         // CSV conversion logic
@@ -422,9 +534,10 @@ app.get('/api/leaderboard/csv', async (req, res) => {
 app.get('/api/driverLaps', async (req, res) => {
     const userId = req.query.userId;
     const trackName = req.query.track;
+    const guildId = req.query.guildId;
 
-    if (!userId || !trackName) {
-        return res.status(400).json({ error: 'User ID and track name are required.' });
+    if (!userId || !trackName || !guildId) {
+        return res.status(400).json({ error: 'User ID, track name, and Guild ID are required.' });
     }
 
     try {
@@ -437,14 +550,14 @@ app.get('/api/driverLaps', async (req, res) => {
                 s1_time,
                 s2_time,
                 s3_time,
-                is_valid, -- KEPT is_valid here for individual driver laps, as previously discussed.
+                is_valid,
                 custom_setup,
                 track_location_name,
                 submission_date,
                 user_id,
                 discord_tag
             FROM hotlaps
-            WHERE user_id = $1 AND track_location_name ILIKE $2
+            WHERE user_id = $1 AND track_location_name ILIKE $2 AND guild_id = $3
             ORDER BY
                 CASE
                     WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\\.[0-9]{3}$' THEN
@@ -456,7 +569,7 @@ app.get('/api/driverLaps', async (req, res) => {
                         SPLIT_PART(lap_time, '.', 2)::INT
                     ELSE 999999999
                 END ASC;`,
-            [userId, trackName]
+            [userId, trackName, guildId]
         );
         res.json(result.rows);
     } catch (err) {
