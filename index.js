@@ -582,18 +582,29 @@ app.get('/api/leaderboard/csv', async (req, res) => {
         }
 
         // CSV conversion logic
-        const header = Object.keys(result.rows[0]).map(key => `"${key.replace(/"/g, '""')}"`).join(',');
+        const header = Object.keys(result.rows[0]);
+        const timeColumns = ["Lap Time", "S1 Time", "S2 Time", "S3 Time"];
+        
+        const headerRow = header.map(colName => `"${colName.replace(/"/g, '""')}"`).join(',');
+
         const rows = result.rows.map(row => {
-            return Object.values(row).map(value => {
+            return header.map(colName => {
+                let value = row[colName];
                 if (value === null || value === undefined) return '';
+
+                // Force time values to be treated as text in Excel
+                if (timeColumns.includes(colName) && typeof value === 'string' && value.includes('.')) {
+                    return `=" ${value}"`;
+                }
+
                 if (value instanceof Date) {
-                    return `"${value.toISOString().split('T')[0]}"`;
+                    return `"${value.toISOString()}"`;
                 }
                 return `"${String(value).replace(/"/g, '""')}"`;
             }).join(',');
         });
 
-        const csv = [header, ...rows].join('\n');
+        const csv = [headerRow, ...rows].join('\n');
 
         res.header('Content-Type', 'text/csv');
         res.attachment(`${trackName.replace(/[^a-zA-Z0-9]/g, '_')}_leaderboard.csv`);

@@ -5,6 +5,7 @@
     font-weight: normal;
     font-style: normal;
 }
+
 @font-face {
     font-family: 'Formula1 Display';
     src: url('./assets/fonts/Formula1-Display-Bold.woff2') format('woff2');
@@ -29,7 +30,6 @@
     --border-color-strong: #555555;
     --shadow-color-dark: rgba(0, 0, 0, 0.7);
     --shadow-color-subtle: rgba(0, 0, 0, 0.4);
-    --svg-arrow-color: %23E0E0E0;
 }
 
 .light-mode {
@@ -46,11 +46,12 @@
     --border-color-strong: #999999;
     --shadow-color-dark: rgba(0, 0, 0, 0.15);
     --shadow-color-subtle: rgba(0, 0, 0, 0.08);
-    --svg-arrow-color: %23333333;
 }
 
 /* --- BASE & GLOBAL STYLES --- */
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
 
 body {
     font-family: 'Formula1 Display', 'system-ui', sans-serif;
@@ -75,400 +76,406 @@ body {
     background-color: var(--bg-color-app-container);
     border-radius: 12px;
     box-shadow: 0 10px 30px var(--shadow-color-dark);
-    transition: background-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 /* --- HEADER & USER INFO --- */
 .app-header {
     text-align: center;
-    margin-bottom: 40px;
-    padding-bottom: 20px;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
     border-bottom: 1px solid var(--border-color-subtle);
 }
+
 .app-header h1 {
-    font-size: 3.5em;
+    font-size: 3.2em;
     color: var(--color-f1-red);
-    text-transform: uppercase;
-    letter-spacing: 3px;
     margin-bottom: 10px;
-    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
 }
-.user-info, .guild-display-message {
+
+.user-info {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    font-size: 1.1em;
-    color: var(--color-secondary-text);
-    margin-top: 15px;
-    font-weight: normal;
-    flex-wrap: wrap;
-    text-align: center;
+    gap: 12px;
+    font-size: 1.15em;
+    color: var(--color-primary-text);
+    opacity: 0.9;
+    margin-top: 10px;
 }
-.user-info .discord-logout-button { margin-left: 15px; }
-.user-avatar, .guild-icon-display {
-    width: 36px;
-    height: 36px;
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--color-discord-blue);
-    box-shadow: 0 0 10px rgba(114, 137, 218, 0.6);
+}
+
+.discord-logout-button {
+    background: none;
+    border: 1px solid var(--border-color-strong);
+    color: var(--color-secondary-text);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.discord-logout-button:hover {
+    background-color: var(--bg-color-hover);
+    color: var(--color-f1-red);
+}
+
+/* --- CONTROLS SECTION (NEW) --- */
+.controls-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: var(--bg-color-surface);
+    border-radius: 8px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-group label {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--color-secondary-text);
+    text-transform: uppercase;
+    margin-left: 5px;
+}
+
+.control-group.actions {
+    margin-left: auto;
+    flex-direction: row;
+}
+
+.control-button {
+    background-color: var(--bg-color-app-container);
+    border: 1px solid var(--border-color-strong);
+    color: var(--color-primary-text);
+    padding: 10px 15px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-button:hover:not(:disabled) {
+    background-color: var(--bg-color-hover);
+    border-color: var(--color-f1-red);
+}
+
+.control-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* --- Search Input --- */
+.search-input {
+    background-color: var(--bg-color-app-container);
+    border: 1px solid var(--border-color-strong);
+    color: var(--color-primary-text);
+    padding: 11px 15px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1em;
+    min-width: 200px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-f1-red);
+}
+
+/* --- CUSTOM DROPDOWN --- */
+.custom-dropdown-container {
+    position: relative;
+    width: 220px;
+}
+
+.dropdown-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color-strong);
+    background-color: var(--bg-color-app-container);
+    color: var(--color-primary-text);
+    font-size: 1em;
+    cursor: pointer;
+    /* justify-content is removed to use flex-grow on the label instead */
+    transition: all 0.3s ease;
+}
+
+.dropdown-header.open {
+    border-color: var(--color-f1-red);
+}
+
+.dropdown-header.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.guild-icon-header {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
     flex-shrink: 0;
 }
 
-/* --- FILTER SECTION --- */
-.filter-section {
-    margin-bottom: 30px;
+/* New style for flag emojis */
+.dropdown-prefix {
+    font-size: 1.4em;
+    margin-right: 10px;
+    line-height: 1;
+}
+
+/* New style for the label to make it take up space */
+.dropdown-label {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Updated style for the arrow to position it correctly */
+.dropdown-arrow {
+    transition: transform 0.2s ease;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 20px;
     justify-content: center;
-    padding: 15px;
+    margin-left: 15px;
+    /* Controls spacing */
+    flex-shrink: 0;
+    /* Prevents arrow from shrinking */
+}
+
+
+.dropdown-header.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-list {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    right: 0;
     background-color: var(--bg-color-surface);
-    border-radius: 8px;
-    box-shadow: 0 4px 15px var(--shadow-color-subtle);
-}
-.filter-section label {
-    font-size: 1.1em;
-    color: var(--color-secondary-text);
-    font-weight: bold;
-    margin-right: 5px;
-}
-.filter-section select, .filter-section button {
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 1.05em;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    outline: none;
-    font-family: 'Formula1 Display', sans-serif;
     border: 1px solid var(--border-color-strong);
-}
-.filter-section select {
-    background-color: var(--bg-color-surface);
-    color: var(--color-primary-text);
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22" var(--svg-arrow-color) "%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E");
-    background-repeat: no-repeat;
-    background-position: right 15px center;
-    background-size: 14px auto;
-    padding-right: 40px;
-}
-.filter-section select:focus {
-    border-color: var(--color-f1-red);
-    box-shadow: 0 0 0 4px rgba(225, 6, 0, 0.4);
+    border-radius: 6px;
+    list-style: none;
+    padding: 5px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1000;
 }
 
-/* --- BUTTONS & INTERACTIVE ELEMENTS --- */
-.login-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.dropdown-list .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-radius: 4px;
+}
+
+.dropdown-list .dropdown-item:hover {
+    background-color: var(--bg-color-hover);
+}
+
+.dropdown-list .dropdown-item.selected {
+    background-color: var(--color-f1-red);
+    color: white;
+}
+
+.dropdown-list .guild-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+/* --- LEADERBOARD & LOGIN --- */
+.leaderboard-section {
+    overflow-x: auto;
+}
+
+.login-container {
+    text-align: center;
+    padding: 50px 20px;
+}
+
 .discord-login-button {
-    background: linear-gradient(135deg, #7289da, #677eb4);
-    color: white; border: none; display: flex; align-items: center; gap: 10px;
-    box-shadow: 0 6px 20px rgba(114, 137, 218, 0.4); text-transform: uppercase;
-    font-weight: bold; letter-spacing: 0.5px;
+    background: var(--color-discord-blue);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 1.1em;
+    border-radius: 6px;
+    cursor: pointer;
 }
-.discord-login-button:hover {
-    background: linear-gradient(135deg, #677eb4, #5c6ea2);
-    transform: translateY(-3px); box-shadow: 0 8px 25px rgba(114, 137, 218, 0.6);
-}
-.discord-login-button .discord-logo-icon { width: 24px; height: 24px; object-fit: contain; }
-.stay-logged-in-checkbox { display: flex; align-items: center; gap: 8px; color: var(--color-secondary-text); font-size: 0.95em; cursor: pointer; }
-.stay-logged-in-checkbox input[type="checkbox"] {
-    appearance: none; -webkit-appearance: none; width: 18px; height: 18px;
-    border: 1px solid var(--border-color-strong); border-radius: 4px; background-color: var(--bg-color-surface);
-    cursor: pointer; position: relative; transition: all 0.2s ease;
-}
-.stay-logged-in-checkbox input[type="checkbox"]:checked { background-color: var(--color-f1-red); border-color: var(--color-f1-red); }
-.stay-logged-in-checkbox input[type="checkbox"]:checked::after {
-    content: '✔'; display: block; color: white; font-size: 14px;
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-}
-.stay-logged-in-checkbox label { font-weight: normal; margin-right: 0; }
-.discord-logout-button {
-    background-color: #880808; color: white; border: none; padding: 8px 15px;
-    border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.3s ease;
-}
-.discord-logout-button:hover { background-color: #A02020; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
-.download-csv-button {
-    background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none;
-    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3); text-transform: uppercase;
-    font-weight: bold; letter-spacing: 0.5px;
-}
-.download-csv-button:hover:not(:disabled) { background: linear-gradient(135deg, #0056b3, #003d80); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0, 123, 255, 0.5); }
-.download-csv-button:disabled { background: #555; cursor: not-allowed; opacity: 0.6; box-shadow: none; transform: none; }
-.dark-mode-toggle {
-    background-color: var(--bg-color-table-header); color: var(--color-primary-text);
-    border: 1px solid var(--border-color-strong); box-shadow: 0 4px 10px var(--shadow-color-subtle);
-    margin-left: auto; font-weight: bold;
-}
-.dark-mode-toggle:hover { background-color: var(--bg-color-hover); transform: translateY(-2px); box-shadow: 0 6px 15px var(--shadow-color-subtle); }
 
-/* --- MESSAGES (LOADING/ERROR) --- */
-.loading-message, .error-message, .no-data-message {
-    text-align: center; padding: 40px; font-size: 1.4em; color: var(--color-secondary-text);
-    background-color: var(--bg-color-surface); border-radius: 10px; margin-top: 30px;
-    box-shadow: 0 4px 15px var(--shadow-color-subtle);
+.stay-logged-in-checkbox {
+    margin-top: 15px;
 }
-.error-message { color: #FF4747; font-weight: bold; }
 
-/* --- LEADERBOARD TABLES (DESKTOP) --- */
-.leaderboard-section { overflow-x: auto; margin-top: 30px; }
+/* --- Spinner --- */
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--border-color-strong);
+    border-top-color: var(--color-f1-red);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --- TABLE --- */
 .leaderboard-table {
-    width: 100%; min-width: 1000px; border-collapse: separate; border-spacing: 0;
-    font-size: 0.95em; border-radius: 10px; overflow: hidden;
-    box-shadow: 0 8px 25px var(--shadow-color-dark);
+    width: 100%;
+    border-collapse: separate; /* Keep separate for this technique to work best */
+    border-spacing: 0;
+    font-size: 0.95em;
+    border-radius: 8px;
+    overflow: hidden; /* This clips the corners of the cells */
 }
-.leaderboard-table th, .leaderboard-table td {
-    padding: 15px 25px; text-align: left;
-    border-bottom: 1px solid var(--border-color-subtle);
-    color: var(--color-primary-text);
+
+/* Remove all real borders from cells */
+.leaderboard-table th,
+.leaderboard-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border: none; /* REMOVE ALL BORDERS */
+    vertical-align: middle;
+}
+
+/* Create fake borders using inset box-shadow */
+.leaderboard-table td {
+    box-shadow: inset 0 -1px 0 var(--border-color-subtle);
 }
 .leaderboard-table th {
-    background-color: var(--bg-color-table-header); color: var(--color-f1-red);
-    text-transform: uppercase; font-weight: bold; cursor: pointer;
-    position: relative; user-select: none; white-space: nowrap;
-    border-bottom: 2px solid var(--color-f1-red);
+    background-color: var(--bg-color-table-header);
+    color: var(--color-f1-red);
+    text-transform: uppercase;
+    font-size: 0.9em;
+    box-shadow: inset 0 -2px 0 var(--color-f1-red); /* Header has a thicker red line */
 }
-.leaderboard-table td { white-space: normal; }
-@media (min-width: 769px) {
-    .leaderboard-table td.driver-name-link span {
-        display: inline-block; max-width: 180px; overflow: hidden;
-        text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
-    }
-}
-.leaderboard-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
-.leaderboard-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
-.leaderboard-table tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
-.leaderboard-table tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
-.leaderboard-table th:hover { background-color: var(--bg-color-hover); }
-.leaderboard-table th .sort-icon {
-    color: var(--color-primary-text); position: absolute; right: 15px;
-    top: 50%; transform: translateY(-50%); font-size: 0.9em;
-}
-.leaderboard-table tbody tr { transition: background-color 0.2s ease; }
-/* Remove main row cursor pointer for desktop as it does nothing */
-@media (min-width: 769px) {
-    .leaderboard-table > tbody > tr {
-        cursor: default;
-    }
-}
-.leaderboard-table tbody tr:nth-child(even) { background-color: var(--bg-color-table-row-even); }
-.leaderboard-table tbody tr:hover { background-color: var(--bg-color-hover); }
 
-/* --- EXPANDED ROW STYLES --- */
-.driver-name-link {
-    cursor: pointer; color: var(--color-discord-blue); font-weight: bold;
-    transition: color 0.2s ease; display: flex; align-items: center; gap: 5px;
-}
-.driver-name-link:hover { color: #A3B8EC; text-decoration: underline; }
-
-/* Remove the bottom border from the main row when its nested table is open */
+/* When a row is expanded, remove its bottom shadow */
 .leaderboard-table tbody tr.is-expanded td {
-    border-bottom: none;
+    box-shadow: none;
 }
 
-/* Style the additional lap rows to give them the "nested" look */
-.leaderboard-table tbody tr.additional-lap-row {
-    background-color: var(--bg-color-table-row-even);
-    font-size: 0.9em; /* Make text slightly smaller */
+/* For the first sub-lap row, add a top shadow to create the separator */
+.leaderboard-table tbody tr.is-expanded + .additional-lap-row td {
+    box-shadow: inset 0 1px 0 var(--border-color-subtle);
 }
-.leaderboard-table tbody tr.additional-lap-row td {
+
+.leaderboard-table th.sortable {
+    cursor: pointer;
+}
+
+.leaderboard-table th .sort-icon {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 5px;
+    transition: transform 0.2s;
+}
+
+.leaderboard-table .driver-name-link {
+    cursor: pointer;
+    color: var(--color-discord-blue);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+}
+
+.leaderboard-table .expand-arrow {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 5px;
+}
+
+.leaderboard-table .driver-name-link:hover {
+    text-decoration: underline;
+}
+
+.additional-lap-row td {
     color: var(--color-secondary-text);
+    background-color: var(--bg-color-table-row-even);
+    font-size: 0.9em;
 }
-.leaderboard-table tbody tr.additional-lap-row:hover {
-    background-color: var(--bg-color-table-row-expanded);
+
+/* All additional rows get a bottom shadow for separation */
+.additional-lap-row {
+    box-shadow: inset 0 -1px 0 var(--border-color-subtle);
 }
-.leaderboard-table tbody tr.additional-lap-row:last-child td:first-child { border-bottom-left-radius: 10px; }
-.leaderboard-table tbody tr.additional-lap-row:last-child td:last-child { border-bottom-right-radius: 10px; }
 
-
-/* --- CUSTOM DROPDOWN --- */
-.custom-dropdown-container { position: relative; display: inline-flex; align-items: center; vertical-align: middle; margin-right: 10px; }
-.custom-dropdown-container label { margin-right: 15px; flex-shrink: 0; }
-.dropdown-header {
-    display: flex; align-items: center; padding: 12px 20px; border-radius: 8px;
-    border: 1px solid var(--border-color-strong); background-color: var(--bg-color-surface);
-    color: var(--color-primary-text); font-size: 1.05em; cursor: pointer;
-    justify-content: space-between; min-width: 200px; flex-grow: 1; transition: all 0.3s ease;
+/* The very last row of the table should have no line */
+.leaderboard-table tr:last-child td {
+    box-shadow: none;
 }
-.dropdown-header.open { border-color: var(--color-f1-red); box-shadow: 0 0 0 4px rgba(225, 6, 0, 0.4); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.dropdown-header:hover { background-color: var(--bg-color-hover); }
-.guild-icon-header { width: 28px; height: 28px; border-radius: 50%; margin-right: 12px; object-fit: cover; flex-shrink: 0; }
-.dropdown-header span:first-of-type { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dropdown-arrow { margin-left: 10px; font-size: 0.9em; color: var(--color-secondary-text); transition: transform 0.2s ease; }
-.dropdown-header.open .dropdown-arrow { transform: rotate(180deg); }
-.dropdown-list {
-    position: absolute; top: 100%; left: 0; right: 0; background-color: var(--bg-color-surface);
-    border: 1px solid var(--border-color-strong); border-top: none; border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px; list-style: none; padding: 0; margin: 0;
-    max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 8px 25px var(--shadow-color-dark);
+
+.icon-check {
+    color: #4CAF50;
 }
-.dropdown-list .dropdown-item {
-    display: flex; align-items: center; padding: 12px 20px; cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease; font-size: 1em; color: var(--color-primary-text);
+
+.icon-x {
+    color: #F44336;
 }
-.dropdown-list .dropdown-item:hover { background-color: var(--bg-color-hover); color: var(--color-primary-text); }
-.dropdown-list .dropdown-item.selected { background-color: var(--color-discord-blue); color: white; font-weight: bold; }
-.dropdown-list .dropdown-item.disabled { color: var(--color-secondary-text); cursor: not-allowed; opacity: 0.7; }
-.dropdown-list .guild-icon { width: 28px; height: 28px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
 
+.no-data-message {
+    text-align: center;
+    padding: 40px;
+}
 
-/*
-================================================================================
-MOBILE STYLES (PROFESSIONAL & CLEAN REVISION)
-================================================================================
-*/
-@media (max-width: 768px) {
-    body {
-        padding: 10px;
-        align-items: stretch;
-        /* Add padding to the bottom to make space for the (now removed) taskbar */
-        padding-bottom: 80px; 
-    }
-    .app-container {
-        margin: 0;
-        padding: 15px;
-        border-radius: 8px;
-    }
-    .app-header {
-        margin-bottom: 25px;
-        padding-bottom: 15px;
-    }
-    .app-header h1 {
-        font-size: 2em;
-        letter-spacing: 1.5px;
-    }
-    .user-info, .guild-display-message {
-        font-size: 0.9em;
-        flex-direction: column;
-        gap: 5px;
-    }
-    .user-info .discord-logout-button {
-        margin-left: 0;
-        margin-top: 5px;
-    }
-    .filter-section {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 15px;
-        padding: 12px;
-    }
-    .filter-section label {
-        text-align: left;
-        width: auto;
-        margin-right: 0;
-        margin-bottom: -5px;
-        font-size: 1em;
-    }
-    .filter-section select, .discord-login-button, .download-csv-button,
-    .dark-mode-toggle, .custom-dropdown-container, .dropdown-header {
-        width: 100%;
-        box-sizing: border-box;
-        margin-left: 0 !important;
-    }
-    .login-container, .custom-dropdown-container {
-        width: 100%;
-        align-items: stretch;
-        flex-direction: column;
-        gap: 8px;
-        margin-right: 0;
-    }
+/* --- Pagination --- */
+.pagination {
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    padding: 20px 0 0 0;
+    gap: 5px;
+}
 
-    /* -- Table Structure -- */
-    .leaderboard-table, .leaderboard-table tbody {
-        display: block;
-        width: 100%;
-    }
-    .leaderboard-table {
-        min-width: unset;
-        box-shadow: none;
-        background-color: transparent;
-    }
-    .leaderboard-table thead {
-        display: none;
-    }
-    
-    /* -- Main Leaderboard Card -- */
-    .leaderboard-table > tbody > tr {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        margin-bottom: 15px;
-        border: 1px solid var(--border-color-subtle);
-        border-radius: 12px;
-        background-color: var(--bg-color-app-container);
-        box-shadow: 0 4px 12px var(--shadow-color-dark);
-        padding: 15px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: background-color 0.2s ease, box-shadow 0.2s ease;
-    }
-    .leaderboard-table > tbody > tr:hover {
-        background-color: var(--bg-color-surface);
-        box-shadow: 0 6px 16px var(--shadow-color-dark);
-    }
-    
-    .leaderboard-table td {
-        padding: 0;
-        border-bottom: none;
-        white-space: nowrap;
-        display: flex;
-        align-items: center;
-    }
-    .leaderboard-table td::before {
-        display: none;
-    }
+.page-item .page-link {
+    color: var(--color-primary-text);
+    background-color: var(--bg-color-surface);
+    border: 1px solid var(--border-color-strong);
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
 
-    /* Main Card: Compact View */
-    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(1) {
-        flex-basis: 15%; justify-content: center; font-size: 1.6em;
-        font-weight: 700; color: var(--color-f1-red); padding-right: 15px;
-    }
-    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(2) {
-        flex-basis: 50%; flex-grow: 1; justify-content: flex-start; font-size: 1.15em;
-        font-weight: bold; color: var(--color-primary-text); overflow: hidden; text-overflow: ellipsis;
-    }
-    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(3) {
-        flex-basis: 35%; justify-content: flex-end; font-size: 1.15em;
-        font-weight: 700; color: var(--color-primary-text);
-    }
-    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(n+4) {
-        display: none;
-    }
+.page-item .page-link:hover {
+    background-color: var(--bg-color-hover);
+    border-color: var(--color-f1-red);
+}
 
-    /* Main Card: Expanded View */
-    .leaderboard-table tr.card-expanded > td {
-        display: flex !important;
-        flex-basis: 100%; font-size: 1em; white-space: normal;
-        padding: 10px 5px; border-top: 1px solid var(--border-color-subtle);
-    }
-    .leaderboard-table tr.card-expanded > td:first-child {
-        border-top: none;
-    }
-    .leaderboard-table tr.card-expanded td::before {
-        display: block !important; content: attr(data-label); font-weight: normal;
-        color: var(--color-secondary-text); margin-right: 15px;
-        width: 100px; flex-shrink: 0;
-    }
-    .leaderboard-table tr.card-expanded .expand-arrow { display: none; }
-    .leaderboard-table tr.card-expanded td.driver-name-link { color: var(--color-primary-text); }
-    .leaderboard-table tr.card-expanded .nested-table-container {
-        padding: 0;
-    }
-
-    /* -- Additional Laps for Mobile -- */
-    .additional-lap-row {
-        /* On mobile, additional laps are part of the expanded card, not separate rows */
-        display: contents; 
-    }
-    .additional-lap-row td {
-        display: flex !important; flex-basis: 100%; font-size: 1em; white-space: normal;
-        padding: 10px 5px; border-top: 1px solid var(--border-color-subtle);
-    }
-     .additional-lap-row td::before {
-        display: block !important; content: attr(data-label); font-weight: normal;
-        color: var(--color-secondary-text); margin-right: 15px;
-        width: 100px; flex-shrink: 0;
-    }
+.page-item.active .page-link {
+    background-color: var(--color-f1-red);
+    color: white;
+    border-color: var(--color-f1-red);
 }
