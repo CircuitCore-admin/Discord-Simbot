@@ -51,11 +51,15 @@ function App() {
 
     const [selectedGuildId, setSelectedGuildId] = useState('');
 
-    // State for driver details expansion
+    // State for driver details expansion (for the nested table of all laps)
     const [expandedDriverId, setExpandedDriverId] = useState(null);
     const [expandedDriverLaps, setExpandedDriverLaps] = useState(null);
     const [loadingExpandedLaps, setLoadingExpandedLaps] = useState(false);
     const [expandedLapsError, setExpandedLapsError] = useState(null);
+
+    // State for main leaderboard card expansion on mobile
+    const [expandedCardUserId, setExpandedCardUserId] = useState(null);
+
 
     // State for custom guild dropdown visibility
     const [showGuildDropdown, setShowGuildDropdown] = useState(false);
@@ -78,7 +82,7 @@ function App() {
         'S3': 's3_time',
         'Driver': 'discord_tag',
         'Date': 'submission_date',
-        'Custom Setup': 'custom_setup'
+        'Custom Setup': 'custom_setup',
     };
 
     const handleSort = (columnName) => {
@@ -99,6 +103,7 @@ function App() {
             setLoading(true); // Set loading true at the start of initial data fetch
             setError(null);
             try {
+                // Use the new testing domain
                 const response = await fetch('https://bottesting.circuitcore.net/auth/me');
                 const data = await response.json();
 
@@ -119,6 +124,7 @@ function App() {
                         window.history.pushState({}, document.title, window.location.pathname);
 
                         try {
+                            // Use the new testing domain
                             const callbackResponse = await fetch('https://bottesting.circuitcore.net/auth/discord/callback', {
                                 method: 'POST',
                                 headers: {
@@ -174,11 +180,13 @@ function App() {
 
     const handleDiscordLogin = () => {
         // Append stayLoggedIn preference to the redirect URL
+        // Use the new testing domain
         window.location.href = `https://bottesting.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`;
     };
 
     const handleDiscordLogout = async () => {
         try {
+            // Use the new testing domain
             const response = await fetch('https://bottesting.circuitcore.net/auth/logout', {
                 method: 'POST',
                 headers: {
@@ -200,6 +208,8 @@ function App() {
             setExpandedDriverId(null);
             setExpandedDriverLaps(null);
             setExpandedLapsError(null);
+            setExpandedCardUserId(null); // Clear expanded card state
+
 
             // Optional: Redirect to homepage or refresh after logout
             // window.location.href = '/';
@@ -217,6 +227,7 @@ function App() {
             setExpandedDriverId(null);
             setExpandedDriverLaps(null);
             setExpandedLapsError(null);
+            setExpandedCardUserId(null); // Clear expanded card state
         }
     };
 
@@ -233,6 +244,7 @@ function App() {
             try {
                 setLoading(true); // Set loading true when fetching tracks (if not already true from initial auth check)
                 setError(null);
+                // Use the new testing domain
                 const response = await fetch(`https://bottesting.circuitcore.net/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
                 if (!response.ok) {
                     // Check for unauthorized status explicitly
@@ -277,6 +289,7 @@ function App() {
             setLoading(true);
             setError(null);
             try {
+                // Use the new testing domain
                 const response = await fetch(
                     `https://bottesting.circuitcore.net/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`
                 );
@@ -306,10 +319,11 @@ function App() {
 
     const handleTrackChange = (event) => {
         setSelectedTrack(event.target.value);
-        // Collapse expanded driver details when track changes
+        // Collapse expanded driver details and card when track changes
         setExpandedDriverId(null);
         setExpandedDriverLaps(null);
         setExpandedLapsError(null);
+        setExpandedCardUserId(null); // Collapse expanded card state
     };
 
     // Handle selection from custom guild dropdown
@@ -320,6 +334,7 @@ function App() {
         setExpandedDriverId(null); // Also collapse on guild change
         setExpandedDriverLaps(null); // Also collapse on guild change
         setExpandedLapsError(null); // Also collapse on guild change
+        setExpandedCardUserId(null); // Collapse expanded card state
         setShowGuildDropdown(false); // Close dropdown after selection
     };
 
@@ -330,11 +345,15 @@ function App() {
         return '';
     };
 
-    // Function to fetch a specific driver's *all* laps for a track
-    const toggleDriverLaps = async (userId, trackName) => {
+    // Function to toggle a specific driver's *all* laps for a track (nested table)
+    // This is triggered by clicking on the driver's name within the card
+    const toggleDriverLaps = async (userId, trackName, event) => {
+        // Stop propagation to prevent the parent <tr>'s onClick (card expansion) from firing
+        event.stopPropagation();
+
         if (expandedDriverId === userId) {
-            setExpandedDriverId(null);
-            setExpandedDriverLaps(null);
+            setExpandedDriverId(null); // Collapse if already expanded
+            setExpandedDriverLaps(null); // Clear laps too
             setExpandedLapsError(null);
             return;
         }
@@ -344,12 +363,13 @@ function App() {
             return;
         }
 
-        setExpandedDriverId(userId);
+        setExpandedDriverId(userId); // Expand this driver
         setLoadingExpandedLaps(true);
         setExpandedLapsError(null);
-        setExpandedDriverLaps(null);
+        setExpandedDriverLaps(null); // Clear previous laps
 
         try {
+            // Use the new testing domain
             const response = await fetch(
                 `https://bottesting.circuitcore.net/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`
             );
@@ -383,6 +403,7 @@ function App() {
         }
         setDownloadingCSV(true); // Set loading state for CSV
         try {
+            // Use the new testing domain
             const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?track=${encodeURIComponent(selectedTrack)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) {
                 // Check for unauthorized status explicitly
@@ -562,7 +583,6 @@ function App() {
                                             <thead>
                                                 <tr>
                                                     <th>Rank</th>
-                                                    <th>Track</th>
                                                     <th className="sortable" onClick={() => handleSort('Driver')}>
                                                         Driver <span className="sort-icon">{getSortIcon('discord_tag')}</span>
                                                     </th>
@@ -589,18 +609,25 @@ function App() {
                                             <tbody>
                                                 {leaderboardData.map((entry, index) => (
                                                     <React.Fragment key={entry.user_id}>
-                                                        <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
+                                                        {/* Main leaderboard row. Click this to expand/collapse card details on mobile. */}
+                                                        {/* Add 'card-expanded' class when expandedCardUserId matches */}
+                                                        <tr
+                                                            className={`${expandedDriverId === entry.user_id ? 'expanded-nested-table' : ''} ${expandedCardUserId === entry.user_id ? 'card-expanded' : ''}`}
+                                                            onClick={() => setExpandedCardUserId(prevId => prevId === entry.user_id ? null : entry.user_id)}
+                                                        >
                                                             <td data-label="Rank">{index + 1}</td>
-                                                            <td data-label="Track">{entry.track_location_name}</td>
                                                             <td
                                                                 data-label="Driver"
-                                                                className="driver-name-link"
-                                                                onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
-                                                                title={`Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track`} /* Tooltip for full name */
+                                                                className={`driver-name-link ${expandedDriverId === entry.user_id ? 'nested-expanded' : ''}`}
+                                                                // This onClick handles the NESTED TABLE expansion
+                                                                onClick={(event) => toggleDriverLaps(entry.user_id, entry.track_location_name, event)}
+                                                                title={`Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track`}
                                                             >
-                                                                <span title={entry.discord_tag || entry.driver_name}> {/* Inner span for truncation and tooltip */}
+                                                                <span title={entry.discord_tag || entry.driver_name}>
                                                                     {entry.discord_tag || entry.driver_name}
-                                                                </span> {expandedDriverId === entry.user_id ? '▲' : '▼'}
+                                                                </span>
+                                                                {/* Arrow for nested table expansion */}
+                                                                <span className="expand-arrow">{expandedDriverId === entry.user_id ? '▲' : '▼'}</span>
                                                             </td>
                                                             <td data-label="Lap Time">{entry.lap_time}</td>
                                                             <td data-label="S1">{entry.s1_time}</td>
@@ -609,9 +636,11 @@ function App() {
                                                             <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
                                                             <td data-label="Date">{formatDateTime(entry.submission_date)}</td>
                                                         </tr>
+                                                        {/* This row contains the nested table of all laps, still expands on driver name click */}
                                                         {expandedDriverId === entry.user_id && (
                                                             <tr>
-                                                                <td colSpan="9">
+                                                                {/* colSpan is 8 (Rank, Driver, Lap Time, S1, S2, S3, Custom Setup, Date) */}
+                                                                <td colSpan="8">
                                                                     {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
                                                                     {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
                                                                     {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
@@ -622,7 +651,6 @@ function App() {
                                                                                     <th>S1</th>
                                                                                     <th>S2</th>
                                                                                     <th>S3</th>
-                                                                                    <th>Valid</th>
                                                                                     <th>Custom Setup</th>
                                                                                     <th>Date</th>
                                                                                 </tr>
@@ -634,7 +662,6 @@ function App() {
                                                                                         <td data-label="S1">{lap.s1_time}</td>
                                                                                         <td data-label="S2">{lap.s2_time}</td>
                                                                                         <td data-label="S3">{lap.s3_time}</td>
-                                                                                        <td data-label="Valid">{lap.is_valid ? '✅ Yes' : '❌ No'}</td>
                                                                                         <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
                                                                                         <td data-label="Date">{formatDateTime(lap.submission_date)}</td>
                                                                                     </tr>

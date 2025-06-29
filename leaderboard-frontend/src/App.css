@@ -389,7 +389,7 @@ body {
 
 .leaderboard-table {
     width: 100%; /* Take full width of its container by default */
-    min-width: 1200px; /* Increased minimum width for the table */
+    min-width: 1000px; /* Adjusted: Smaller min-width for desktop table after removing "Track" column */
     border-collapse: separate; /* Allows border-radius on cells */
     border-spacing: 0; /* Remove default cell spacing */
     font-size: 0.95em;
@@ -467,6 +467,7 @@ body {
 
 .leaderboard-table tbody tr {
     transition: background-color 0.2s ease;
+    cursor: pointer; /* Indicate rows are clickable */
 }
 
 .leaderboard-table tbody tr:nth-child(even) {
@@ -477,9 +478,9 @@ body {
     background-color: var(--bg-color-hover);
 }
 
-/* Driver Name Link */
+/* Driver Name Link (for nested table expansion) */
 .driver-name-link {
-    cursor: pointer;
+    cursor: pointer; /* Keep pointer for nested expansion */
     color: var(--color-discord-blue);
     font-weight: bold;
     transition: color 0.2s ease;
@@ -493,12 +494,12 @@ body {
     text-decoration: underline;
 }
 
-/* Expanded Row for Driver Laps */
-.leaderboard-table tr.expanded {
+/* Expanded Row for Driver Laps (for nested table of all laps) */
+.leaderboard-table tr.expanded-nested-table {
     background-color: var(--bg-color-table-row-expanded); /* Darker background for expanded row */
 }
 
-.leaderboard-table tr.expanded:hover {
+.leaderboard-table tr.expanded-nested-table:hover {
     background-color: var(--bg-color-table-row-expanded); /* Keep consistent on hover */
 }
 
@@ -650,10 +651,6 @@ body {
     font-weight: bold;
 }
 
-.dropdown-list .dropdown-item.selected:hover {
-    background-color: #677eb4;
-}
-
 .dropdown-list .dropdown-item.disabled {
     color: var(--color-secondary-text);
     cursor: not-allowed;
@@ -667,57 +664,56 @@ body {
     margin-right: 12px;
     object-fit: cover;
 }
-
+/* leaderboard-frontend/src/App.css */
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
     body {
-        padding: 10px; /* Reduced padding for very small screens */
-        align-items: stretch; /* Stretch body content vertically */
+        padding: 10px;
+        align-items: stretch;
     }
 
     .app-container {
         margin: 0;
-        padding: 15px; /* Slightly more padding than before on mobile */
-        border-radius: 8px; /* Smaller border-radius for mobile */
-        box-shadow: 0 3px 15px var(--shadow-color-dark); /* Less pronounced shadow */
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 3px 15px var(--shadow-color-dark);
     }
 
     .app-header {
-        margin-bottom: 25px; /* Reduced margin */
+        margin-bottom: 25px;
         padding-bottom: 15px;
     }
 
     .app-header h1 {
-        font-size: 2em; /* Adjusted for better mobile fit */
+        font-size: 2em;
         letter-spacing: 1.5px;
     }
 
     .user-info,
     .guild-display-message {
-        font-size: 0.9em; /* Smaller font size for mobile info */
-        flex-direction: column; /* Stack user info vertically */
-        gap: 5px; /* Smaller gap */
+        font-size: 0.9em;
+        flex-direction: column;
+        gap: 5px;
     }
     .user-info .discord-logout-button {
-        margin-left: 0; /* Remove left margin on mobile */
-        margin-top: 5px; /* Add top margin */
+        margin-left: 0;
+        margin-top: 5px;
     }
-
 
     .filter-section {
         flex-direction: column;
-        align-items: stretch; /* Stretch items to fill container */
-        gap: 15px; /* Slightly reduced gap for tighter layout */
+        align-items: stretch;
+        gap: 15px;
         padding: 12px;
     }
 
     .filter-section label {
         text-align: left;
-        width: auto; /* Let it size naturally */
-        margin-right: 0; /* Remove any right margin */
-        margin-bottom: -5px; /* Bring label closer to select/input */
-        font-size: 1em; /* Adjust label font size */
+        width: auto;
+        margin-right: 0;
+        margin-bottom: -5px;
+        font-size: 1em;
     }
 
     .filter-section select,
@@ -728,141 +724,208 @@ body {
     .dropdown-header {
         width: 100%;
         box-sizing: border-box;
-        margin-left: 0 !important; /* Override auto margin for toggle button */
+        margin-left: 0 !important;
     }
 
     .login-container {
-        width: 100%; /* Ensure login container takes full width on mobile */
+        width: 100%;
         align-items: center;
     }
 
     .custom-dropdown-container {
-        flex-direction: column; /* Stack label and dropdown */
+        flex-direction: column;
         align-items: flex-start;
-        gap: 8px; /* Space between label and dropdown */
+        gap: 8px;
         margin-right: 0;
     }
     .custom-dropdown-container label {
         margin-right: 0;
     }
 
-
-    /* Table Responsiveness (Card View) */
+    /* Table Responsiveness (New Hybrid Card View) */
     .leaderboard-table {
-        display: block; /* Make the table behave like a block element */
-        min-width: unset; /* Remove minimum width for mobile to allow proper stacking */
-        overflow-x: auto; /* Provides horizontal scrollbar if needed, but should be rare */
-        border-radius: 8px; /* Slightly smaller radius for cards */
-        box-shadow: none; /* Remove outer table shadow for card view */
-        background-color: transparent; /* Make table background transparent */
+        display: block;
+        min-width: unset;
+        border-radius: 8px;
+        box-shadow: none;
+        background-color: transparent;
     }
 
     .leaderboard-table thead {
-        display: none; /* Hide table headers completely on mobile */
+        display: none;
     }
 
     .leaderboard-table tbody {
-        display: block; /* Make tbody behave like a block element */
+        display: block;
         width: 100%;
     }
 
     .leaderboard-table tr {
-        display: block; /* Each row becomes a card */
-        margin-bottom: 15px; /* Space between "card" rows */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 15px;
         border: 1px solid var(--border-color-subtle);
         border-radius: 8px;
-        background-color: var(--bg-color-app-container); /* Each card uses app container background */
-        box-shadow: 0 3px 10px var(--shadow-color-dark); /* Shadow for each card */
-        padding: 12px; /* Padding inside each card */
-        overflow: hidden; /* Ensure content respects border-radius */
+        background-color: var(--bg-color-app-container);
+        box-shadow: 0 3px 10px var(--shadow-color-dark);
+        padding: 10px;
+        overflow: hidden;
+        cursor: pointer;
     }
 
     .leaderboard-table tr:last-child {
-        margin-bottom: 0; /* No margin after the very last card */
+        margin-bottom: 0;
+    }
+
+    .leaderboard-table td:nth-child(4),
+    .leaderboard-table td:nth-child(5),
+    .leaderboard-table td:nth-child(6),
+    .leaderboard-table td:nth-child(7),
+    .leaderboard-table td:nth-child(8) {
+        display: none;
     }
 
     .leaderboard-table td {
-        display: flex; /* Flexbox for label and value in each td */
-        justify-content: space-between; /* Push label to left, value to right */
+        display: flex;
         align-items: center;
-        padding: 6px 0; /* Vertical padding, no horizontal as handled by card padding */
-        border-bottom: 1px dashed var(--border-color-subtle); /* Dashed separator between fields */
-        white-space: normal; /* Allow text to wrap within the field */
-        font-size: 0.9em; /* Smaller font for table data */
-    }
-
-    .leaderboard-table td:last-child {
-        border-bottom: none; /* No border for the last item in a card */
+        padding: 5px;
+        border-bottom: none;
+        white-space: nowrap;
     }
 
     .leaderboard-table td::before {
-        content: attr(data-label); /* Use data-label attribute for content */
+        display: none;
+    }
+
+    /* --- Main visible row styling (Rank, Driver, Lap Time) --- */
+    .leaderboard-table td:nth-child(1) {
+        flex-basis: 12%;
+        justify-content: flex-start;
+        font-size: 1.4em;
+        font-weight: 700;
+        color: var(--color-f1-red);
+    }
+    .leaderboard-table td:nth-child(2) {
+        flex-basis: 55%;
+        flex-grow: 1;
+        justify-content: flex-start;
+        font-size: 1.1em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .leaderboard-table td:nth-child(3) {
+        flex-basis: 33%;
+        justify-content: flex-end;
+        font-size: 1.1em;
+        font-weight: 700;
+    }
+
+    /* --- Expanded card styling --- */
+    .leaderboard-table tr.card-expanded > td:nth-child(4) {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px dashed var(--border-color-subtle);
+    }
+
+    .leaderboard-table tr.card-expanded td:nth-child(n+4) {
+        display: flex !important;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        padding: 6px 5px;
+        font-size: 1em;
+        white-space: normal;
+    }
+
+    .leaderboard-table tr.card-expanded td:nth-child(n+4)::before {
+        display: block !important;
+        content: attr(data-label);
         font-weight: bold;
         color: var(--color-secondary-text);
-        flex-shrink: 0; /* Prevent label from shrinking */
-        margin-right: 15px; /* Space between label and value */
-        text-align: left;
-        width: auto; /* Allow label width to adjust */
+        margin-right: 15px;
+        width: 110px;
+        flex-shrink: 0;
     }
-
-    /* Adjust the special driver-name-link td to ensure arrow is still visible */
+    
     .leaderboard-table td.driver-name-link {
-        flex-wrap: nowrap; /* Prevent driver name and arrow from wrapping */
-        justify-content: flex-start; /* Align name and arrow to start */
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        cursor: pointer;
     }
-    .leaderboard-table td.driver-name-link::before {
-        order: -1; /* Place label first */
+    .leaderboard-table td.driver-name-link .expand-arrow {
+        margin-left: auto;
+        font-size: 0.9em;
+        color: var(--color-discord-blue);
+        transition: transform 0.2s ease;
     }
-    .leaderboard-table td.driver-name-link span { /* Target the driver name text */
-        margin-right: 5px; /* Space between name and arrow */
-        /* On mobile, allow driver name to wrap if it's very long in card view */
-        white-space: normal;
-        max-width: none; /* Remove desktop max-width constraint */
+    .leaderboard-table td.driver-name-link.nested-expanded .expand-arrow {
+        transform: rotate(180deg);
     }
 
 
-    /* Nested Laps Table on Mobile */
+    /* Nested Laps Table */
     .nested-laps-table {
         width: 100%;
-        margin: 15px 0 0 0; /* Align within parent card */
+        margin: 15px 0 0 0;
         border-radius: 6px;
         box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.1);
+        display: flex; /* Changed */
+        flex-direction: column; /* Changed */
+        gap: 10px; /* Changed */
     }
 
     .nested-laps-table thead {
-        display: none; /* Hide nested header on mobile */
+        display: none;
     }
 
     .nested-laps-table tbody {
-        display: block;
-        width: 100%;
+        display: contents; /* Changed */
     }
 
     .nested-laps-table tr {
-        display: block;
+        display: flex; /* Changed */
+        flex-wrap: wrap; /* Changed */
+        align-items: center; /* Changed */
         border: 1px solid var(--border-color-subtle);
         border-radius: 6px;
-        background-color: var(--bg-color-table-row-even); /* Nested card background */
-        margin-bottom: 10px; /* Space between nested cards */
+        background-color: var(--bg-color-table-row-even);
+        margin-bottom: 0; /* Changed */
         box-shadow: 0 1px 5px var(--shadow-color-subtle);
         padding: 10px;
     }
-    .nested-laps-table tr:last-child {
-        margin-bottom: 0; /* No margin after last nested card */
-    }
-
 
     .nested-laps-table td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 0;
-        border-bottom: 1px dashed var(--border-color-subtle);
-        white-space: normal;
-        font-size: 0.85em; /* Slightly smaller font for nested table data */
+        display: flex; /* Changed */
+        align-items: center; /* Changed */
+        flex-basis: 50%; /* Changed: Each item takes half the width */
+        justify-content: flex-start; /* Changed */
+        padding: 5px; /* Changed */
+        border-bottom: none; /* Changed */
+        white-space: nowrap;
+        font-size: 0.9em; /* Changed */
+    }
+    
+    /* Lap Time in nested table (make it prominent) */
+    .nested-laps-table td:nth-child(1) {
+        flex-basis: 100%; /* Changed: Make lap time take full width */
+        font-size: 1.2em;
+        font-weight: bold;
+        color: var(--color-f1-red);
+        margin-bottom: 5px; /* Add space below the main lap time */
     }
 
-    .nested-laps-table td:last-child {
-        border-bottom: none;
+    /* Sector times and other data */
+    .nested-laps-table td:nth-child(n+2)::before {
+        content: attr(data-label); /* New: Add labels */
+        font-weight: bold;
+        color: var(--color-secondary-text);
+        margin-right: 8px;
+        display: inline;
+    }
+
+    /* Hide the date and setup columns in the compact nested view to save space */
+    .nested-laps-table td:nth-child(5), /* Custom Setup */
+    .nested-laps-table td:nth-child(6) { /* Date */
+        display: none;
     }
 }
