@@ -60,6 +60,9 @@ function App() {
     // State for main leaderboard card expansion on mobile
     const [expandedCardUserId, setExpandedCardUserId] = useState(null);
 
+    // New state for expanding individual laps in the nested table
+    const [expandedLapId, setExpandedLapId] = useState(null);
+
 
     // State for custom guild dropdown visibility
     const [showGuildDropdown, setShowGuildDropdown] = useState(false);
@@ -324,6 +327,7 @@ function App() {
         setExpandedDriverLaps(null);
         setExpandedLapsError(null);
         setExpandedCardUserId(null); // Collapse expanded card state
+        setExpandedLapId(null); // Collapse individual laps too
     };
 
     // Handle selection from custom guild dropdown
@@ -335,6 +339,7 @@ function App() {
         setExpandedDriverLaps(null); // Also collapse on guild change
         setExpandedLapsError(null); // Also collapse on guild change
         setExpandedCardUserId(null); // Collapse expanded card state
+        setExpandedLapId(null); // Collapse individual laps too
         setShowGuildDropdown(false); // Close dropdown after selection
     };
 
@@ -346,10 +351,10 @@ function App() {
     };
 
     // Function to toggle a specific driver's *all* laps for a track (nested table)
-    // This is triggered by clicking on the driver's name within the card
     const toggleDriverLaps = async (userId, trackName, event) => {
         // Stop propagation to prevent the parent <tr>'s onClick (card expansion) from firing
         event.stopPropagation();
+        setExpandedLapId(null); // Reset individual lap expansion when changing driver
 
         if (expandedDriverId === userId) {
             setExpandedDriverId(null); // Collapse if already expanded
@@ -445,10 +450,9 @@ function App() {
 
 
     return (
-        <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}> {/* Apply dark/light mode class */}
+        <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
             <header className="app-header">
                 <h1>F1 Hotlap Leaderboard</h1>
-                {/* Display user info if authenticated, otherwise login button */}
                 {isAuthenticated && discordUser && (
                     <p className="user-info">
                         <img src={getUserAvatarUrl(discordUser.id, discordUser.avatar)} alt="User Avatar" className="user-avatar" onError={(e) => e.target.src = 'https://discord.com/assets/f9bb9c4af2b15d3126f001fe48c6680a.png'} />
@@ -456,7 +460,6 @@ function App() {
                         <button onClick={handleDiscordLogout} className="discord-logout-button">Logout</button>
                     </p>
                 )}
-                {/* Display current guild if selected */}
                 {selectedGuildId && (
                     <p className="guild-display-message">
                         {currentSelectedGuildIcon && <img src={getGuildIconUrl(selectedGuildId, currentSelectedGuildIcon)} alt="Guild Icon" className="guild-icon-display" onError={(e) => e.target.src = 'https://cdn.discordapp.com/embed/avatars/0.png'} />}
@@ -466,7 +469,7 @@ function App() {
             </header>
 
             <div className="filter-section">
-                {loading && !isAuthenticated ? ( // Show loading message only for initial auth/guild data fetch
+                {loading && !isAuthenticated ? (
                     <p className="loading-message">Loading authentication and server data...</p>
                 ) : (
                     !isAuthenticated ? (
@@ -487,7 +490,6 @@ function App() {
                         </div>
                     ) : (
                         <>
-                            {/* Custom Server Dropdown */}
                             <div className="custom-dropdown-container" ref={dropdownRef}>
                                 <label htmlFor="guild-select-custom">Select Server:</label>
                                 <div
@@ -562,8 +564,7 @@ function App() {
             </div>
 
             <div className="leaderboard-section">
-                {/* Note: Leaderboard table content should go here */}
-                {loading && isAuthenticated ? ( // Show loading message for leaderboard data after auth
+                {loading && !leaderboardData.length ? (
                     <p className="loading-message">Loading leaderboard data...</p>
                 ) : (
                     !isAuthenticated ? (
@@ -575,8 +576,8 @@ function App() {
                             ) : (
                                 <>
                                     {error && <p className="error-message">{error}</p>}
-                                    {!error && leaderboardData.length === 0 && (
-                                        <p className="no-data-message">No hotlap data available for {selectedTrack || 'the selected track'} in this guild.</p>
+                                    {!error && leaderboardData.length === 0 && selectedTrack &&(
+                                        <p className="no-data-message">No hotlap data available for {selectedTrack} in this guild.</p>
                                     )}
                                     {!error && leaderboardData.length > 0 && (
                                         <table className="leaderboard-table">
@@ -609,24 +610,28 @@ function App() {
                                             <tbody>
                                                 {leaderboardData.map((entry, index) => (
                                                     <React.Fragment key={entry.user_id}>
-                                                        {/* Main leaderboard row. Click this to expand/collapse card details on mobile. */}
-                                                        {/* Add 'card-expanded' class when expandedCardUserId matches */}
+                                                        {/* Main leaderboard row */}
                                                         <tr
-                                                            className={`${expandedDriverId === entry.user_id ? 'expanded-nested-table' : ''} ${expandedCardUserId === entry.user_id ? 'card-expanded' : ''}`}
-                                                            onClick={() => setExpandedCardUserId(prevId => prevId === entry.user_id ? null : entry.user_id)}
+                                                            className={expandedCardUserId === entry.user_id ? 'card-expanded' : ''}
+                                                            onClick={() => {
+                                                                const isAlreadyExpanded = expandedCardUserId === entry.user_id;
+                                                                setExpandedCardUserId(isAlreadyExpanded ? null : entry.user_id);
+                                                                if (isAlreadyExpanded) {
+                                                                    setExpandedDriverId(null);
+                                                                    setExpandedLapId(null);
+                                                                }
+                                                            }}
                                                         >
                                                             <td data-label="Rank">{index + 1}</td>
                                                             <td
                                                                 data-label="Driver"
                                                                 className={`driver-name-link ${expandedDriverId === entry.user_id ? 'nested-expanded' : ''}`}
-                                                                // This onClick handles the NESTED TABLE expansion
                                                                 onClick={(event) => toggleDriverLaps(entry.user_id, entry.track_location_name, event)}
                                                                 title={`Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track`}
                                                             >
                                                                 <span title={entry.discord_tag || entry.driver_name}>
                                                                     {entry.discord_tag || entry.driver_name}
                                                                 </span>
-                                                                {/* Arrow for nested table expansion */}
                                                                 <span className="expand-arrow">{expandedDriverId === entry.user_id ? '▲' : '▼'}</span>
                                                             </td>
                                                             <td data-label="Lap Time">{entry.lap_time}</td>
@@ -636,28 +641,24 @@ function App() {
                                                             <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
                                                             <td data-label="Date">{formatDateTime(entry.submission_date)}</td>
                                                         </tr>
-                                                        {/* This row contains the nested table of all laps, still expands on driver name click */}
+                                                        {/* This row contains the nested table of all laps */}
                                                         {expandedDriverId === entry.user_id && (
                                                             <tr>
-                                                                {/* colSpan is 8 (Rank, Driver, Lap Time, S1, S2, S3, Custom Setup, Date) */}
                                                                 <td colSpan="8">
                                                                     {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
                                                                     {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
                                                                     {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
                                                                         <table className="nested-laps-table">
-                                                                            <thead>
-                                                                                <tr>
-                                                                                    <th>Lap Time</th>
-                                                                                    <th>S1</th>
-                                                                                    <th>S2</th>
-                                                                                    <th>S3</th>
-                                                                                    <th>Custom Setup</th>
-                                                                                    <th>Date</th>
-                                                                                </tr>
-                                                                            </thead>
                                                                             <tbody>
-                                                                                {expandedDriverLaps.map((lap, lapIndex) => (
-                                                                                    <tr key={lap.id || lapIndex}>
+                                                                                {expandedDriverLaps.map((lap) => (
+                                                                                    <tr
+                                                                                        key={lap.id}
+                                                                                        className={expandedLapId === lap.id ? 'lap-expanded' : ''}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            setExpandedLapId(prevId => prevId === lap.id ? null : lap.id);
+                                                                                        }}
+                                                                                    >
                                                                                         <td data-label="Lap Time">{lap.lap_time}</td>
                                                                                         <td data-label="S1">{lap.s1_time}</td>
                                                                                         <td data-label="S2">{lap.s2_time}</td>

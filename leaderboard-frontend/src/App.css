@@ -1,13 +1,4 @@
 /* leaderboard-frontend/src/App.css */
-
-/*
-    To enable the F1 fonts:
-    1. Obtain the font files (Formula1-Display-Regular.woff2 and Formula1-Display-Bold.woff2).
-       These are proprietary fonts and usually need to be licensed.
-    2. Place these .woff2 files in the 'leaderboard-frontend/src/assets/fonts/' directory.
-       You might need to create the 'assets' and 'fonts' subdirectories if they don't exist.
-    3. Uncomment the @font-face rules below.
-*/
 @font-face {
     font-family: 'Formula1 Display';
     src: url('./assets/fonts/Formula1-Display-Regular.woff2') format('woff2');
@@ -21,38 +12,29 @@
     font-style: normal;
 }
 
-/* --- Dark Mode and Light Mode Variables --- */
-/* Default to Dark Mode variables */
+/* --- THEME VARIABLES --- */
 :root {
-    --color-primary-text: #E0E0E0; /* Softer white for general text */
+    --color-primary-text: #E0E0E0;
     --color-secondary-text: #BBBBBB;
-    --color-f1-red: #E10600; /* F1 red accent */
-    --color-discord-blue: #7289DA; /* Discord brand color */
-
-    --bg-color-body: #0F0F0F; /* Very dark background for depth */
-    --bg-color-app-container: #1A1A1A; /* Slightly lighter for main content */
-    --bg-color-surface: #262626; /* For cards, dropdowns, inputs */
-    --bg-color-table-header: #333333; /* Darker header for contrast */
-    --bg-color-table-row-even: #2C2C2C; /* Alternating row */
-    --bg-color-table-row-expanded: #3A3A3A; /* Expanded driver laps row */
-    --bg-color-hover: #4A4A4A; /* General hover state for interactives */
-
-    --border-color-subtle: #3A3A3A; /* Light border for separation */
-    --border-color-strong: #555555; /* Stronger border for focus */
-    --shadow-color-dark: rgba(0, 0, 0, 0.7); /* Deep shadow */
-    --shadow-color-subtle: rgba(0, 0, 0, 0.4); /* Lighter shadow */
-
-    /* SVG encoded colors for select/dropdown arrows */
+    --color-f1-red: #E10600;
+    --color-discord-blue: #7289DA;
+    --bg-color-body: #0F0F0F;
+    --bg-color-app-container: #1A1A1A;
+    --bg-color-surface: #262626;
+    --bg-color-table-header: #333333;
+    --bg-color-table-row-even: #2C2C2C;
+    --bg-color-table-row-expanded: #3A3A3A;
+    --bg-color-hover: #4A4A4A;
+    --border-color-subtle: #3A3A3A;
+    --border-color-strong: #555555;
+    --shadow-color-dark: rgba(0, 0, 0, 0.7);
+    --shadow-color-subtle: rgba(0, 0, 0, 0.4);
     --svg-arrow-color: %23E0E0E0;
 }
 
-/* Light Mode variables - applied when .light-mode class is present on app-container */
 .light-mode {
     --color-primary-text: #333333;
     --color-secondary-text: #555555;
-    --color-f1-red: #E10600;
-    --color-discord-blue: #7289DA;
-
     --bg-color-body: #F5F5F5;
     --bg-color-app-container: #FFFFFF;
     --bg-color-surface: #E8E8E8;
@@ -60,22 +42,18 @@
     --bg-color-table-row-even: #FAFAFA;
     --bg-color-table-row-expanded: #E0E0E0;
     --bg-color-hover: #D0D0D0;
-
     --border-color-subtle: #CCCCCC;
     --border-color-strong: #999999;
     --shadow-color-dark: rgba(0, 0, 0, 0.15);
     --shadow-color-subtle: rgba(0, 0, 0, 0.08);
-
     --svg-arrow-color: %23333333;
 }
 
-/* Base Styles */
-* {
-    box-sizing: border-box;
-}
+/* --- BASE & GLOBAL STYLES --- */
+* { box-sizing: border-box; }
 
 body {
-    font-family: 'Formula1 Display', sans-serif;
+    font-family: 'Formula1 Display', 'system-ui', sans-serif;
     background-color: var(--bg-color-body);
     color: var(--color-primary-text);
     margin: 0;
@@ -84,614 +62,291 @@ body {
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
-    transition: background-color 0.4s ease, color 0.4s ease; /* Smooth mode transition */
-    font-size: 16px; /* Base font size */
-    overflow-x: hidden; /* Prevent horizontal scrollbar on body */
+    transition: background-color 0.4s ease, color 0.4s ease;
+    font-size: 16px;
+    overflow-x: hidden;
 }
 
 .app-container {
-    width: 100%; /* Will take full width up to max-width */
-    max-width: 1600px; /* Increased max width for larger screens */
-    margin: 0 auto; /* Center the container */
-    padding: 30px; /* Increased padding inside */
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 30px;
     background-color: var(--bg-color-app-container);
     border-radius: 12px;
-    box-shadow: 0 10px 30px var(--shadow-color-dark); /* More pronounced shadow */
+    box-shadow: 0 10px 30px var(--shadow-color-dark);
     transition: background-color 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* Header Section */
+/* --- HEADER & USER INFO --- */
 .app-header {
     text-align: center;
     margin-bottom: 40px;
-    padding-bottom: 20px; /* Padding below header text */
-    border-bottom: 1px solid var(--border-color-subtle); /* Subtle separator */
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color-subtle);
 }
-
 .app-header h1 {
-    font-size: 3.5em; /* Larger, more impactful heading */
+    font-size: 3.5em;
     color: var(--color-f1-red);
     text-transform: uppercase;
-    letter-spacing: 3px; /* Increased letter spacing */
+    letter-spacing: 3px;
     margin-bottom: 10px;
-    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6); /* Deeper text shadow */
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.6);
 }
-
-.user-info,
-.guild-display-message {
+.user-info, .guild-display-message {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     font-size: 1.1em;
     color: var(--color-secondary-text);
-    margin-top: 15px; /* Spacing below main title */
+    margin-top: 15px;
     font-weight: normal;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    flex-wrap: wrap;
     text-align: center;
 }
-.user-info .discord-logout-button {
-    margin-left: 15px; /* Adjust spacing for logout button */
-}
-
-.user-avatar,
-.guild-icon-display {
-    width: 36px; /* Slightly larger avatars/icons */
+.user-info .discord-logout-button { margin-left: 15px; }
+.user-avatar, .guild-icon-display {
+    width: 36px;
     height: 36px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--color-discord-blue); /* Consistent border */
-    box-shadow: 0 0 10px rgba(114, 137, 218, 0.6); /* Enhanced glow */
-    flex-shrink: 0; /* Prevent shrinking */
+    border: 2px solid var(--color-discord-blue);
+    box-shadow: 0 0 10px rgba(114, 137, 218, 0.6);
+    flex-shrink: 0;
 }
 
-/* Filter Section */
+/* --- FILTER SECTION --- */
 .filter-section {
     margin-bottom: 30px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 20px; /* Increased gap between elements */
-    justify-content: center; /* Center items for better mobile layout */
+    gap: 20px;
+    justify-content: center;
     padding: 15px;
-    background-color: var(--bg-color-surface); /* Distinct background */
+    background-color: var(--bg-color-surface);
     border-radius: 8px;
     box-shadow: 0 4px 15px var(--shadow-color-subtle);
 }
-
 .filter-section label {
     font-size: 1.1em;
     color: var(--color-secondary-text);
     font-weight: bold;
-    margin-right: 5px; /* Small gap to input */
+    margin-right: 5px;
 }
-
-/* Inputs, Selects, Buttons - General Styling */
-.filter-section select,
-.filter-section button {
-    padding: 12px 20px; /* More generous padding */
-    border-radius: 8px; /* Consistent rounded corners */
+.filter-section select, .filter-section button {
+    padding: 12px 20px;
+    border-radius: 8px;
     font-size: 1.05em;
     cursor: pointer;
-    transition: all 0.3s ease; /* Smooth transitions for all states */
+    transition: all 0.3s ease;
     outline: none;
     font-family: 'Formula1 Display', sans-serif;
-}
-
-/* Select Specific Styling */
-.filter-section select {
     border: 1px solid var(--border-color-strong);
-    background-color: var(--bg-color-surface); /* Uses surface background from variables */
-    color: var(--color-primary-text); /* Uses primary text color from variables */
+}
+.filter-section select {
+    background-color: var(--bg-color-surface);
+    color: var(--color-primary-text);
     appearance: none;
-    /* Dynamically set SVG arrow based on mode */
     background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22" var(--svg-arrow-color) "%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.3%2074.5a17.6%2017.6%200%200%200-25%2023.3l130%20129.9a17.6%2017.6%200%200%200%2025%200l130-129.9a17.6%2017.6%200%200%200-12.9-23.3z%22%2F%3E%3C%2Fsvg%3E");
     background-repeat: no-repeat;
     background-position: right 15px center;
     background-size: 14px auto;
-    padding-right: 40px; /* Space for the custom arrow */
+    padding-right: 40px;
 }
-
 .filter-section select:focus {
     border-color: var(--color-f1-red);
     box-shadow: 0 0 0 4px rgba(225, 6, 0, 0.4);
 }
 
-/* Login Container for button and checkbox */
-.login-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px; /* Space between button and checkbox */
-}
-
-/* Discord Login Button */
+/* --- BUTTONS & INTERACTIVE ELEMENTS --- */
+.login-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .discord-login-button {
-    background: linear-gradient(135deg, #7289da, #677eb4); /* Gradient */
-    color: white;
-    border: none;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 6px 20px rgba(114, 137, 218, 0.4); /* Glow effect */
-    text-transform: uppercase;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #7289da, #677eb4);
+    color: white; border: none; display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 6px 20px rgba(114, 137, 218, 0.4); text-transform: uppercase;
+    font-weight: bold; letter-spacing: 0.5px;
 }
-
 .discord-login-button:hover {
     background: linear-gradient(135deg, #677eb4, #5c6ea2);
-    transform: translateY(-3px); /* Lift effect */
-    box-shadow: 0 8px 25px rgba(114, 137, 218, 0.6);
+    transform: translateY(-3px); box-shadow: 0 8px 25px rgba(114, 137, 218, 0.6);
 }
-.discord-login-button:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 10px rgba(114, 137, 218, 0.4);
-}
-
-/* Styling for the Discord logo image within the button */
-.discord-login-button .discord-logo-icon {
-    width: 24px; /* Maintain desired size */
-    height: 24px;
-    object-fit: contain; /* Ensure the image fits without cropping */
-    filter: invert(1); /* Invert colors for visibility on dark background, if needed for the specific logo */
-}
-
-/* Stay Logged In Checkbox Styling */
-.stay-logged-in-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--color-secondary-text);
-    font-size: 0.95em;
-    cursor: pointer;
-}
-
+.discord-login-button .discord-logo-icon { width: 24px; height: 24px; object-fit: contain; }
+.stay-logged-in-checkbox { display: flex; align-items: center; gap: 8px; color: var(--color-secondary-text); font-size: 0.95em; cursor: pointer; }
 .stay-logged-in-checkbox input[type="checkbox"] {
-    appearance: none; /* Hide default checkbox */
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border: 1px solid var(--border-color-strong);
-    border-radius: 4px;
-    background-color: var(--bg-color-surface);
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
+    appearance: none; -webkit-appearance: none; width: 18px; height: 18px;
+    border: 1px solid var(--border-color-strong); border-radius: 4px; background-color: var(--bg-color-surface);
+    cursor: pointer; position: relative; transition: all 0.2s ease;
 }
-
-.stay-logged-in-checkbox input[type="checkbox"]:checked {
-    background-color: var(--color-f1-red);
-    border-color: var(--color-f1-red);
-}
-
-.stay-logged-in-checkbox input[type="checkbox"]:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.4);
-}
-
+.stay-logged-in-checkbox input[type="checkbox"]:checked { background-color: var(--color-f1-red); border-color: var(--color-f1-red); }
 .stay-logged-in-checkbox input[type="checkbox"]:checked::after {
-    content: '✔'; /* Checkmark */
-    display: block;
-    color: white;
-    font-size: 14px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    content: '✔'; display: block; color: white; font-size: 14px;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
-
-.stay-logged-in-checkbox label {
-    font-weight: normal; /* Override filter-section label bold */
-    margin-right: 0;
-}
-
-
-/* Discord Logout Button */
+.stay-logged-in-checkbox label { font-weight: normal; margin-right: 0; }
 .discord-logout-button {
-    background-color: #880808; /* Darker red for logout */
-    color: white;
-    border: none;
-    padding: 8px 15px; /* Smaller padding */
-    border-radius: 6px; /* Slightly less rounded */
-    font-size: 0.9em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    background-color: #880808; color: white; border: none; padding: 8px 15px;
+    border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.3s ease;
 }
-
-.discord-logout-button:hover {
-    background-color: #A02020;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.discord-logout-button:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
-}
-
-
-/* CSV Download Button */
+.discord-logout-button:hover { background-color: #A02020; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); }
 .download-csv-button {
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
-    text-transform: uppercase;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none;
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3); text-transform: uppercase;
+    font-weight: bold; letter-spacing: 0.5px;
 }
-
-.download-csv-button:hover:not(:disabled) {
-    background: linear-gradient(135deg, #0056b3, #003d80);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.5);
-}
-
-.download-csv-button:active:not(:disabled) {
-    transform: translateY(0);
-    box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
-}
-
-.download-csv-button:disabled {
-    background: #555;
-    cursor: not-allowed;
-    opacity: 0.6;
-    box-shadow: none;
-    transform: none;
-}
-
-/* Dark Mode Toggle Button */
+.download-csv-button:hover:not(:disabled) { background: linear-gradient(135deg, #0056b3, #003d80); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0, 123, 255, 0.5); }
+.download-csv-button:disabled { background: #555; cursor: not-allowed; opacity: 0.6; box-shadow: none; transform: none; }
 .dark-mode-toggle {
-    background-color: var(--bg-color-table-header); /* Use a neutral darker tone */
-    color: var(--color-primary-text);
-    border: 1px solid var(--border-color-strong);
-    box-shadow: 0 4px 10px var(--shadow-color-subtle);
-    margin-left: auto; /* Pushes it to the right within flex container */
-    font-weight: bold;
+    background-color: var(--bg-color-table-header); color: var(--color-primary-text);
+    border: 1px solid var(--border-color-strong); box-shadow: 0 4px 10px var(--shadow-color-subtle);
+    margin-left: auto; font-weight: bold;
 }
+.dark-mode-toggle:hover { background-color: var(--bg-color-hover); transform: translateY(-2px); box-shadow: 0 6px 15px var(--shadow-color-subtle); }
 
-.dark-mode-toggle:hover {
-    background-color: var(--bg-color-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px var(--shadow-color-subtle);
-}
-.dark-mode-toggle:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 5px var(--shadow-color-subtle);
-}
-
-
-/* Messages (Loading, Error, No Data) */
-.loading-message,
-.error-message,
-.no-data-message {
-    text-align: center;
-    padding: 40px; /* More generous padding */
-    font-size: 1.4em; /* Larger, more visible */
-    color: var(--color-secondary-text);
-    background-color: var(--bg-color-surface);
-    border-radius: 10px;
-    margin-top: 30px;
+/* --- MESSAGES (LOADING/ERROR) --- */
+.loading-message, .error-message, .no-data-message {
+    text-align: center; padding: 40px; font-size: 1.4em; color: var(--color-secondary-text);
+    background-color: var(--bg-color-surface); border-radius: 10px; margin-top: 30px;
     box-shadow: 0 4px 15px var(--shadow-color-subtle);
 }
+.error-message { color: #FF4747; font-weight: bold; }
 
-.error-message {
-    color: #FF4747; /* Bright red for errors */
-    font-weight: bold;
-}
-
-/* Leaderboard Table */
-.leaderboard-section {
-    overflow-x: auto; /* Provides horizontal scrollbar if content overflows, but only for this section */
-    margin-top: 30px;
-}
-
+/* --- LEADERBOARD TABLES (DESKTOP) --- */
+.leaderboard-section { overflow-x: auto; margin-top: 30px; }
 .leaderboard-table {
-    width: 100%; /* Take full width of its container by default */
-    min-width: 1000px; /* Adjusted: Smaller min-width for desktop table after removing "Track" column */
-    border-collapse: separate; /* Allows border-radius on cells */
-    border-spacing: 0; /* Remove default cell spacing */
-    font-size: 0.95em;
-    border-radius: 10px; /* Apply border-radius to the whole table */
-    overflow: hidden; /* Ensures child elements respect border-radius */
-    box-shadow: 0 8px 25px var(--shadow-color-dark); /* Table-wide shadow */
-}
-
-.leaderboard-table th,
-.leaderboard-table td {
-    padding: 15px 25px; /* Increased horizontal padding for wider columns */
-    text-align: left;
-    border-bottom: 1px solid var(--border-color-subtle);
-    color: var(--color-primary-text); /* Explicitly set text color for readability */
-}
-
-.leaderboard-table th {
-    background-color: var(--bg-color-table-header);
-    color: var(--color-f1-red);
-    text-transform: uppercase;
-    font-weight: bold;
-    cursor: pointer;
-    position: relative;
-    user-select: none;
-    border-bottom: 2px solid var(--color-f1-red); /* Stronger bottom border for header */
-    white-space: nowrap; /* Keep headers on a single line */
-}
-
-/* Default table data cells to allow wrapping */
-.leaderboard-table td {
-    white-space: normal; /* Allow text to wrap within cells by default */
-}
-
-/* Specific styling for driver name column to truncate and show tooltip on desktop */
-@media (min-width: 769px) { /* Apply only on wider screens */
-    .leaderboard-table td.driver-name-link span { /* Target the inner span */
-        display: inline-block; /* Essential for text-overflow to work with text */
-        max-width: 180px; /* Adjust as needed - gives space for arrow and padding */
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap; /* Keep driver name on a single line for truncation */
-        vertical-align: middle; /* Align with arrow */
-    }
-}
-
-
-/* Ensure top-left and top-right corners are rounded on the header */
-.leaderboard-table thead tr:first-child th:first-child {
-    border-top-left-radius: 10px;
-}
-.leaderboard-table thead tr:first-child th:last-child {
-    border-top-right-radius: 10px;
-}
-/* Ensure bottom-left and bottom-right corners are rounded on the last row */
-.leaderboard-table tbody tr:last-child td:first-child {
-    border-bottom-left-radius: 10px;
-}
-.leaderboard-table tbody tr:last-child td:last-child {
-    border-bottom-right-radius: 10px;
-}
-
-
-.leaderboard-table th:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.leaderboard-table th .sort-icon {
-    color: var(--color-primary-text);
-    position: absolute;
-    right: 15px; /* Adjust position */
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.9em; /* Slightly larger sort icon */
-}
-
-.leaderboard-table tbody tr {
-    transition: background-color 0.2s ease;
-    cursor: pointer; /* Indicate rows are clickable */
-}
-
-.leaderboard-table tbody tr:nth-child(even) {
-    background-color: var(--bg-color-table-row-even);
-}
-
-.leaderboard-table tbody tr:hover {
-    background-color: var(--bg-color-hover);
-}
-
-/* Driver Name Link (for nested table expansion) */
-.driver-name-link {
-    cursor: pointer; /* Keep pointer for nested expansion */
-    color: var(--color-discord-blue);
-    font-weight: bold;
-    transition: color 0.2s ease;
-    display: flex; /* Make it a flex container to align text and arrow */
-    align-items: center; /* Vertically align items */
-    gap: 5px; /* Space between name span and arrow */
-}
-
-.driver-name-link:hover {
-    color: #A3B8EC; /* Lighter shade of Discord blue */
-    text-decoration: underline;
-}
-
-/* Expanded Row for Driver Laps (for nested table of all laps) */
-.leaderboard-table tr.expanded-nested-table {
-    background-color: var(--bg-color-table-row-expanded); /* Darker background for expanded row */
-}
-
-.leaderboard-table tr.expanded-nested-table:hover {
-    background-color: var(--bg-color-table-row-expanded); /* Keep consistent on hover */
-}
-
-
-/* Nested Laps Table */
-.nested-laps-table {
-    width: calc(100% - 40px); /* Adjust width to account for padding of parent td */
-    margin: 15px auto; /* Center with margins */
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.88em;
-    background-color: var(--bg-color-surface); /* Consistent surface background */
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2); /* Inner shadow for nested table */
-}
-
-.nested-laps-table th,
-.nested-laps-table td {
-    padding: 10px 15px;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color-subtle);
-    color: var(--color-primary-text); /* Explicitly set text color for readability */
-}
-
-.nested-laps-table th {
-    background-color: var(--bg-color-table-header);
-    color: var(--color-f1-red);
-    border-bottom: 1px solid var(--border-color-strong); /* Stronger border for nested header */
-}
-
-.nested-laps-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.nested-laps-table tbody tr:nth-child(even) {
-    background-color: var(--bg-color-table-row-even);
-}
-.nested-laps-table tbody tr:hover {
-    background-color: var(--bg-color-hover);
-}
-
-
-/* --- Custom Dropdown Styling --- */
-.custom-dropdown-container {
-    position: relative;
-    display: inline-flex; /* Use inline-flex to align label and dropdown */
-    align-items: center;
-    vertical-align: middle;
-    margin-right: 10px; /* Space from other elements */
-}
-
-.custom-dropdown-container label {
-    margin-right: 15px; /* Space between label and dropdown header */
-    flex-shrink: 0; /* Prevent label from shrinking */
-}
-
-.dropdown-header {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px; /* Consistent with other inputs */
-    border-radius: 8px;
-    border: 1px solid var(--border-color-strong);
-    background-color: var(--bg-color-surface); /* Uses surface background from variables */
-    color: var(--color-primary-text); /* Uses primary text color from variables */
-    font-size: 1.05em;
-    cursor: pointer;
-    justify-content: space-between;
-    min-width: 200px; /* Ensure sufficient width */
-    flex-grow: 1; /* Allow it to grow in flex container */
-    transition: all 0.3s ease;
-}
-
-.dropdown-header.open {
-    border-color: var(--color-f1-red);
-    box-shadow: 0 0 0 4px rgba(225, 6, 0, 0.4);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.dropdown-header:hover {
-    background-color: var(--bg-color-hover);
-}
-
-.guild-icon-header {
-    width: 28px; /* Slightly larger icon in header */
-    height: 28px;
-    border-radius: 50%;
-    margin-right: 12px;
-    object-fit: cover;
-    flex-shrink: 0; /* Prevent icon from shrinking */
-}
-
-.dropdown-header span:first-of-type { /* Target the text inside the header */
-    flex-grow: 1; /* Allow text to take available space */
-    overflow: hidden;
-    text-overflow: ellipsis; /* Truncate long names */
-    white-space: nowrap;
-}
-
-.dropdown-arrow {
-    margin-left: 10px;
-    font-size: 0.9em;
-    color: var(--color-secondary-text);
-    transition: transform 0.2s ease;
-}
-
-.dropdown-header.open .dropdown-arrow {
-    transform: rotate(180deg); /* Rotate arrow when open */
-}
-
-.dropdown-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-color-surface); /* Uses surface background from variables */
-    border: 1px solid var(--border-color-strong);
-    border-top: none;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 250px; /* Slightly more height */
-    overflow-y: auto;
-    z-index: 1000;
+    width: 100%; min-width: 1000px; border-collapse: separate; border-spacing: 0;
+    font-size: 0.95em; border-radius: 10px; overflow: hidden;
     box-shadow: 0 8px 25px var(--shadow-color-dark);
 }
-
-.dropdown-list .dropdown-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    font-size: 1em;
-    color: var(--color-primary-text); /* Uses primary text color from variables */
-}
-
-.dropdown-list .dropdown-item:hover {
-    background-color: var(--bg-color-hover);
+.leaderboard-table th, .leaderboard-table td {
+    padding: 15px 25px; text-align: left;
+    border-bottom: 1px solid var(--border-color-subtle);
     color: var(--color-primary-text);
 }
-
-.dropdown-list .dropdown-item.selected {
-    background-color: var(--color-discord-blue);
-    color: white;
-    font-weight: bold;
+.leaderboard-table th {
+    background-color: var(--bg-color-table-header); color: var(--color-f1-red);
+    text-transform: uppercase; font-weight: bold; cursor: pointer;
+    position: relative; user-select: none; white-space: nowrap;
+    border-bottom: 2px solid var(--color-f1-red);
+}
+.leaderboard-table td { white-space: normal; }
+@media (min-width: 769px) {
+    .leaderboard-table td.driver-name-link span {
+        display: inline-block; max-width: 180px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap; vertical-align: middle;
+    }
+}
+.leaderboard-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+.leaderboard-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+.leaderboard-table tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+.leaderboard-table tbody tr:last-child td:last-child { border-bottom-right-radius: 10px; }
+.leaderboard-table th:hover { background-color: var(--bg-color-hover); }
+.leaderboard-table th .sort-icon {
+    color: var(--color-primary-text); position: absolute; right: 15px;
+    top: 50%; transform: translateY(-50%); font-size: 0.9em;
+}
+.leaderboard-table tbody tr { transition: background-color 0.2s ease; }
+/* Remove main row cursor pointer for desktop as it does nothing */
+@media (min-width: 769px) {
+    .leaderboard-table > tbody > tr {
+        cursor: default;
+    }
+}
+.leaderboard-table tbody tr:nth-child(even) { background-color: var(--bg-color-table-row-even); }
+.leaderboard-table tbody tr:hover { background-color: var(--bg-color-hover); }
+.driver-name-link {
+    cursor: pointer; color: var(--color-discord-blue); font-weight: bold;
+    transition: color 0.2s ease; display: flex; align-items: center; gap: 5px;
+}
+.driver-name-link:hover { color: #A3B8EC; text-decoration: underline; }
+.leaderboard-table tr.expanded-nested-table > td {
+    padding: 0;
+}
+.leaderboard-table tr.expanded-nested-table:hover {
+    background-color: var(--bg-color-app-container); /* Keep consistent on hover */
 }
 
-.dropdown-list .dropdown-item.disabled {
+
+/* --- NESTED TABLE (DESKTOP) --- */
+.nested-laps-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.nested-laps-table td {
+    /* Padding will be inherited from the main table's cells, ensuring alignment */
+    border-top: 1px solid var(--border-color-subtle);
     color: var(--color-secondary-text);
-    cursor: not-allowed;
-    opacity: 0.7;
+}
+.nested-laps-table tr:hover td {
+    background-color: var(--bg-color-table-row-expanded);
+}
+.nested-laps-table .spacer-cell {
+    padding: 0;
+    border-top: none; /* No top border for spacers */
+}
+.nested-laps-table tr:first-child td {
+    border-top: 1px solid var(--border-color-strong); /* Stronger separator for first nested row */
 }
 
-.dropdown-list .guild-icon {
-    width: 28px; /* Consistent icon size in list */
-    height: 28px;
-    border-radius: 50%;
-    margin-right: 12px;
-    object-fit: cover;
-}
-/* leaderboard-frontend/src/App.css */
 
-/* --- Responsive Adjustments --- */
+/* --- CUSTOM DROPDOWN --- */
+.custom-dropdown-container { position: relative; display: inline-flex; align-items: center; vertical-align: middle; margin-right: 10px; }
+.custom-dropdown-container label { margin-right: 15px; flex-shrink: 0; }
+.dropdown-header {
+    display: flex; align-items: center; padding: 12px 20px; border-radius: 8px;
+    border: 1px solid var(--border-color-strong); background-color: var(--bg-color-surface);
+    color: var(--color-primary-text); font-size: 1.05em; cursor: pointer;
+    justify-content: space-between; min-width: 200px; flex-grow: 1; transition: all 0.3s ease;
+}
+.dropdown-header.open { border-color: var(--color-f1-red); box-shadow: 0 0 0 4px rgba(225, 6, 0, 0.4); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.dropdown-header:hover { background-color: var(--bg-color-hover); }
+.guild-icon-header { width: 28px; height: 28px; border-radius: 50%; margin-right: 12px; object-fit: cover; flex-shrink: 0; }
+.dropdown-header span:first-of-type { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown-arrow { margin-left: 10px; font-size: 0.9em; color: var(--color-secondary-text); transition: transform 0.2s ease; }
+.dropdown-header.open .dropdown-arrow { transform: rotate(180deg); }
+.dropdown-list {
+    position: absolute; top: 100%; left: 0; right: 0; background-color: var(--bg-color-surface);
+    border: 1px solid var(--border-color-strong); border-top: none; border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px; list-style: none; padding: 0; margin: 0;
+    max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 8px 25px var(--shadow-color-dark);
+}
+.dropdown-list .dropdown-item {
+    display: flex; align-items: center; padding: 12px 20px; cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease; font-size: 1em; color: var(--color-primary-text);
+}
+.dropdown-list .dropdown-item:hover { background-color: var(--bg-color-hover); color: var(--color-primary-text); }
+.dropdown-list .dropdown-item.selected { background-color: var(--color-discord-blue); color: white; font-weight: bold; }
+.dropdown-list .dropdown-item.disabled { color: var(--color-secondary-text); cursor: not-allowed; opacity: 0.7; }
+.dropdown-list .guild-icon { width: 28px; height: 28px; border-radius: 50%; margin-right: 12px; object-fit: cover; }
+
+
+/*
+================================================================================
+MOBILE STYLES (PROFESSIONAL & CLEAN REVISION)
+================================================================================
+*/
 @media (max-width: 768px) {
     body {
         padding: 10px;
         align-items: stretch;
     }
-
     .app-container {
         margin: 0;
         padding: 15px;
         border-radius: 8px;
-        box-shadow: 0 3px 15px var(--shadow-color-dark);
     }
-
     .app-header {
         margin-bottom: 25px;
         padding-bottom: 15px;
     }
-
     .app-header h1 {
         font-size: 2em;
         letter-spacing: 1.5px;
     }
-
-    .user-info,
-    .guild-display-message {
+    .user-info, .guild-display-message {
         font-size: 0.9em;
         flex-direction: column;
         gap: 5px;
@@ -700,14 +355,12 @@ body {
         margin-left: 0;
         margin-top: 5px;
     }
-
     .filter-section {
         flex-direction: column;
         align-items: stretch;
         gap: 15px;
         padding: 12px;
     }
-
     .filter-section label {
         text-align: left;
         width: auto;
@@ -715,217 +368,156 @@ body {
         margin-bottom: -5px;
         font-size: 1em;
     }
-
-    .filter-section select,
-    .discord-login-button,
-    .download-csv-button,
-    .dark-mode-toggle,
-    .custom-dropdown-container,
-    .dropdown-header {
+    .filter-section select, .discord-login-button, .download-csv-button,
+    .dark-mode-toggle, .custom-dropdown-container, .dropdown-header {
         width: 100%;
         box-sizing: border-box;
         margin-left: 0 !important;
     }
-
-    .login-container {
+    .login-container, .custom-dropdown-container {
         width: 100%;
-        align-items: center;
-    }
-
-    .custom-dropdown-container {
+        align-items: stretch;
         flex-direction: column;
-        align-items: flex-start;
         gap: 8px;
         margin-right: 0;
     }
-    .custom-dropdown-container label {
-        margin-right: 0;
-    }
 
-    /* Table Responsiveness (New Hybrid Card View) */
-    .leaderboard-table {
-        display: block;
-        min-width: unset;
-        border-radius: 8px;
-        box-shadow: none;
-        background-color: transparent;
-    }
-
-    .leaderboard-table thead {
-        display: none;
-    }
-
-    .leaderboard-table tbody {
+    /* -- Table Structure -- */
+    .leaderboard-table, .leaderboard-table tbody {
         display: block;
         width: 100%;
     }
-
-    .leaderboard-table tr {
+    .leaderboard-table {
+        min-width: unset;
+        box-shadow: none;
+        background-color: transparent;
+    }
+    .leaderboard-table thead {
+        display: none;
+    }
+    
+    /* -- Main Leaderboard Card -- */
+    .leaderboard-table > tbody > tr {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         margin-bottom: 15px;
         border: 1px solid var(--border-color-subtle);
-        border-radius: 8px;
+        border-radius: 12px;
         background-color: var(--bg-color-app-container);
-        box-shadow: 0 3px 10px var(--shadow-color-dark);
-        padding: 10px;
+        box-shadow: 0 4px 12px var(--shadow-color-dark);
+        padding: 15px;
         overflow: hidden;
         cursor: pointer;
+        transition: background-color 0.2s ease, box-shadow 0.2s ease;
     }
-
-    .leaderboard-table tr:last-child {
-        margin-bottom: 0;
+    .leaderboard-table > tbody > tr:hover {
+        background-color: var(--bg-color-surface);
+        box-shadow: 0 6px 16px var(--shadow-color-dark);
     }
-
-    .leaderboard-table td:nth-child(4),
-    .leaderboard-table td:nth-child(5),
-    .leaderboard-table td:nth-child(6),
-    .leaderboard-table td:nth-child(7),
-    .leaderboard-table td:nth-child(8) {
-        display: none;
-    }
-
+    
     .leaderboard-table td {
-        display: flex;
-        align-items: center;
-        padding: 5px;
+        padding: 0;
         border-bottom: none;
         white-space: nowrap;
+        display: flex;
+        align-items: center;
     }
-
     .leaderboard-table td::before {
         display: none;
     }
 
-    /* --- Main visible row styling (Rank, Driver, Lap Time) --- */
-    .leaderboard-table td:nth-child(1) {
-        flex-basis: 12%;
-        justify-content: flex-start;
-        font-size: 1.4em;
-        font-weight: 700;
-        color: var(--color-f1-red);
+    /* Main Card: Compact View */
+    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(1) {
+        flex-basis: 15%; justify-content: center; font-size: 1.6em;
+        font-weight: 700; color: var(--color-f1-red); padding-right: 15px;
     }
-    .leaderboard-table td:nth-child(2) {
-        flex-basis: 55%;
-        flex-grow: 1;
-        justify-content: flex-start;
-        font-size: 1.1em;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(2) {
+        flex-basis: 50%; flex-grow: 1; justify-content: flex-start; font-size: 1.15em;
+        font-weight: bold; color: var(--color-primary-text); overflow: hidden; text-overflow: ellipsis;
     }
-    .leaderboard-table td:nth-child(3) {
-        flex-basis: 33%;
-        justify-content: flex-end;
-        font-size: 1.1em;
-        font-weight: 700;
+    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(3) {
+        flex-basis: 35%; justify-content: flex-end; font-size: 1.15em;
+        font-weight: 700; color: var(--color-primary-text);
     }
-
-    /* --- Expanded card styling --- */
-    .leaderboard-table tr.card-expanded > td:nth-child(4) {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px dashed var(--border-color-subtle);
-    }
-
-    .leaderboard-table tr.card-expanded td:nth-child(n+4) {
-        display: flex !important;
-        flex-basis: 100%;
-        justify-content: flex-start;
-        padding: 6px 5px;
-        font-size: 1em;
-        white-space: normal;
-    }
-
-    .leaderboard-table tr.card-expanded td:nth-child(n+4)::before {
-        display: block !important;
-        content: attr(data-label);
-        font-weight: bold;
-        color: var(--color-secondary-text);
-        margin-right: 15px;
-        width: 110px;
-        flex-shrink: 0;
-    }
-    
-    .leaderboard-table td.driver-name-link {
-        flex-wrap: nowrap;
-        justify-content: flex-start;
-        cursor: pointer;
-    }
-    .leaderboard-table td.driver-name-link .expand-arrow {
-        margin-left: auto;
-        font-size: 0.9em;
-        color: var(--color-discord-blue);
-        transition: transform 0.2s ease;
-    }
-    .leaderboard-table td.driver-name-link.nested-expanded .expand-arrow {
-        transform: rotate(180deg);
-    }
-
-
-    /* Nested Laps Table */
-    .nested-laps-table {
-        width: 100%;
-        margin: 15px 0 0 0;
-        border-radius: 6px;
-        box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.1);
-        display: flex; /* Changed */
-        flex-direction: column; /* Changed */
-        gap: 10px; /* Changed */
-    }
-
-    .nested-laps-table thead {
+    .leaderboard-table > tbody > tr:not(.card-expanded) > td:nth-child(n+4) {
         display: none;
     }
 
-    .nested-laps-table tbody {
-        display: contents; /* Changed */
+    /* Main Card: Expanded View */
+    .leaderboard-table tr.card-expanded > td {
+        display: flex !important;
+        flex-basis: 100%; font-size: 1em; white-space: normal;
+        padding: 10px 5px; border-top: 1px solid var(--border-color-subtle);
+    }
+    .leaderboard-table tr.card-expanded > td:first-child {
+        border-top: none;
+    }
+    .leaderboard-table tr.card-expanded td::before {
+        display: block !important; content: attr(data-label); font-weight: normal;
+        color: var(--color-secondary-text); margin-right: 15px;
+        width: 100px; flex-shrink: 0;
+    }
+    .leaderboard-table tr.card-expanded .expand-arrow { display: none; }
+    .leaderboard-table tr.card-expanded td.driver-name-link { color: var(--color-primary-text); }
+    .leaderboard-table tr.card-expanded .nested-table-container {
+        padding: 0;
     }
 
-    .nested-laps-table tr {
-        display: flex; /* Changed */
-        flex-wrap: wrap; /* Changed */
-        align-items: center; /* Changed */
-        border: 1px solid var(--border-color-subtle);
-        border-radius: 6px;
-        background-color: var(--bg-color-table-row-even);
-        margin-bottom: 0; /* Changed */
-        box-shadow: 0 1px 5px var(--shadow-color-subtle);
+    /* -- Nested Laps Table -- */
+    .nested-laps-table {
+        width: 100%; margin: 0; display: flex;
+        flex-direction: column; gap: 8px;
         padding: 10px;
     }
-
-    .nested-laps-table td {
-        display: flex; /* Changed */
-        align-items: center; /* Changed */
-        flex-basis: 50%; /* Changed: Each item takes half the width */
-        justify-content: flex-start; /* Changed */
-        padding: 5px; /* Changed */
-        border-bottom: none; /* Changed */
-        white-space: nowrap;
-        font-size: 0.9em; /* Changed */
+    .nested-laps-table thead, .nested-laps-table tbody {
+        display: contents;
     }
+    .nested-laps-table tr {
+        display: flex; flex-wrap: wrap; align-items: center;
+        border-radius: 6px; background-color: var(--bg-color-table-row-even);
+        padding: 8px 12px; cursor: pointer; transition: background-color 0.2s ease;
+    }
+    .nested-laps-table tr:hover { background-color: var(--bg-color-surface); }
+    .nested-laps-table td { padding: 2px 0; }
     
-    /* Lap Time in nested table (make it prominent) */
-    .nested-laps-table td:nth-child(1) {
-        flex-basis: 100%; /* Changed: Make lap time take full width */
-        font-size: 1.2em;
-        font-weight: bold;
-        color: var(--color-f1-red);
-        margin-bottom: 5px; /* Add space below the main lap time */
+    /* Nested Lap: Compact View */
+    .nested-laps-table tr:not(.lap-expanded) td:nth-child(1) {
+        flex-basis: 50%; flex-grow: 1; font-weight: bold;
+        color: var(--color-primary-text); font-size: 1em;
     }
-
-    /* Sector times and other data */
-    .nested-laps-table td:nth-child(n+2)::before {
-        content: attr(data-label); /* New: Add labels */
-        font-weight: bold;
+    .nested-laps-table tr:not(.lap-expanded) td:nth-child(6) {
+        justify-content: flex-end; font-size: 0.8em;
         color: var(--color-secondary-text);
-        margin-right: 8px;
-        display: inline;
+    }
+    .nested-laps-table tr:not(.lap-expanded) td:nth-child(n+2):not(:nth-child(6)) {
+        display: none;
     }
 
-    /* Hide the date and setup columns in the compact nested view to save space */
-    .nested-laps-table td:nth-child(5), /* Custom Setup */
-    .nested-laps-table td:nth-child(6) { /* Date */
+    /* Nested Lap: Expanded View */
+    .nested-laps-table tr.lap-expanded {
+        background-color: var(--bg-color-surface); padding-bottom: 12px;
+    }
+    .nested-laps-table tr.lap-expanded td:nth-child(1) {
+        color: var(--color-primary-text);
+        flex-basis: 100%;
+        margin-bottom: 8px;
+        font-size: 1.05em;
+        font-weight: bold;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color-subtle);
+    }
+    .nested-laps-table tr.lap-expanded td:nth-child(6) {
         display: none;
+    }
+    .nested-laps-table tr.lap-expanded td:nth-child(n+2):not(:nth-child(6)) {
+        display: flex; flex-basis: 50%; font-size: 0.9em; padding: 3px 0;
+    }
+    .nested-laps-table tr.lap-expanded td:nth-child(n+2)::before {
+        display: block; content: attr(data-label); font-weight: normal;
+        color: var(--color-secondary-text); width: 45px;
+    }
+    .nested-laps-table tr.lap-expanded td:nth-child(5)::before {
+        width: 110px;
     }
 }

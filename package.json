@@ -25,9 +25,11 @@
     "node-fetch": "^3.3.2",
     "openai": "^5.8.2",
     "pg": "^8.13.1",
-    "tesseract.js": "^6.0.1"
+    "tesseract.js": "^6.0.1",
+    "watch:build": "onchange 'src/**/*' -- npm run build"
+
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.10"
   }
 }
