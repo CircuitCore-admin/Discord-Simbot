@@ -26,7 +26,11 @@ function App() {
         'S1': 's1_time',
         'S2': 's2_time',
         'S3': 's3_time',
-        'Driver': 'driver_name',
+        // 'Driver' will now sort by discord_tag as that's what's displayed in the clickable column.
+        // The backend query in index.js can still sort by 'driver_name' or 'discord_tag'
+        // based on how you configure the API request. For now, we'll keep 'driver_name' as a
+        // mapping, but understand the displayed value is discord_tag.
+        'Driver': 'discord_tag', // Changed to sort by discord_tag for consistency with display
         'Team': 'team_name',
         'Date': 'submission_date',
         'Valid': 'is_valid',
@@ -74,6 +78,7 @@ function App() {
             setLoading(true);
             setError(null);
             try {
+                // Ensure the backend can handle sorting by 'discord_tag'
                 const response = await fetch(
                     `http://localhost:3000/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&excludeInvalid=${excludeInvalidLaps}`
                 );
@@ -107,7 +112,7 @@ function App() {
         return '';
     };
 
-    // New: Function to fetch a specific driver's *all* laps for a track
+    // Function to fetch a specific driver's *all* laps for a track
     const toggleDriverLaps = async (userId, trackName) => {
         if (expandedDriverId === userId) {
             setExpandedDriverId(null); // Collapse if already expanded
@@ -183,8 +188,9 @@ function App() {
                                 <th>Rank</th>
                                 <th>Track</th>
                                 <th className="sortable" onClick={() => handleSort('Driver')}>
-                                    Driver {getSortIcon('driver_name')}
+                                    Driver {getSortIcon('discord_tag')} {/* Sort by discord_tag */}
                                 </th>
+                                {/* REMOVED: Discord Tag column */}
                                 <th className="sortable" onClick={() => handleSort('Team')}>
                                     Team {getSortIcon('team_name')}
                                 </th>
@@ -213,7 +219,7 @@ function App() {
                         </thead>
                         <tbody>
                             {leaderboardData.map((entry, index) => (
-                                <React.Fragment key={entry.user_id}> {/* Use user_id as key for Fragment */}
+                                <React.Fragment key={entry.user_id}>
                                     <tr className={expandedDriverId === entry.user_id ? 'expanded' : ''}>
                                         <td>{index + 1}</td>
                                         <td>{entry.track_location_name}</td>
@@ -222,8 +228,10 @@ function App() {
                                             onClick={() => toggleDriverLaps(entry.user_id, entry.track_location_name)}
                                             title="Click to see all laps for this driver on this track"
                                         >
-                                            {entry.driver_name} {expandedDriverId === entry.user_id ? '▲' : '▼'} {/* Show expand/collapse icon */}
+                                            {/* Display discord_tag in the primary Driver column */}
+                                            {entry.discord_tag || entry.driver_name} {expandedDriverId === entry.user_id ? '▲' : '▼'}
                                         </td>
+                                        {/* REMOVED: The extra td for discord_tag */}
                                         <td>{entry.team_name}</td>
                                         <td>{entry.lap_time}</td>
                                         <td>{entry.s1_time}</td>
@@ -235,7 +243,7 @@ function App() {
                                     </tr>
                                     {expandedDriverId === entry.user_id && (
                                         <tr>
-                                            <td colSpan="11"> {/* Span all columns */}
+                                            <td colSpan="11"> {/* UPDATED COLSPAN back to 11 */}
                                                 {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
                                                 {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
                                                 {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
@@ -253,7 +261,7 @@ function App() {
                                                         </thead>
                                                         <tbody>
                                                             {expandedDriverLaps.map((lap, lapIndex) => (
-                                                                <tr key={lap.id || lapIndex}> {/* Use lap.id as key if available, fallback to index */}
+                                                                <tr key={lap.id || lapIndex}>
                                                                     <td>{lap.lap_time}</td>
                                                                     <td>{lap.s1_time}</td>
                                                                     <td>{lap.s2_time}</td>

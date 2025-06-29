@@ -1,14 +1,22 @@
 const { REST, Routes } = require('discord.js');
-require('dotenv').config();
+require('dotenv').config(); // Make sure this is at the very top to load environment variables first
 const fs = require('fs');
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
     try {
-        console.log('🧹 Clearing all commands...');
-        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: [] });
-        console.log('✅ Successfully cleared commands.');
+        const clientId = process.env.CLIENT_ID; // Get CLIENT_ID from .env
+
+        if (!clientId) {
+            console.error('❌ CLIENT_ID not found in .env file. Global commands cannot be deployed without it.');
+            return;
+        }
+
+        console.log('🧹 Clearing all GLOBAL commands...');
+        // Use Routes.applicationCommands for global commands
+        await rest.put(Routes.applicationCommands(clientId), { body: [] });
+        console.log('✅ Successfully cleared GLOBAL commands.');
 
         const commands = [
             {
@@ -23,7 +31,6 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                     },
                 ],
             },
-            // NEW COMMAND:
             {
                 name: 'set_hotlap_channel',
                 description: 'Sets the channel where hotlap screenshots will be automatically analyzed.',
@@ -36,7 +43,8 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                         channel_types: [0], // 0 is GuildText
                     },
                 ],
-                // default_member_permissions: String(PermissionFlagsBits.ManageGuild), // Use String for bitfield
+                // You can add default_member_permissions if needed, but it's commented out in your original
+                // default_member_permissions: String(PermissionFlagsBits.ManageGuild),
             },
             {
                 name: 'leaderboard',
@@ -172,7 +180,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
             {
                 name: 'upload_drivers',
                 description: 'Upload a CSV file to add multiple drivers to the database',
-                default_member_permissions: 0,
+                default_member_permissions: 0, // This permission bit means it's available to everyone by default. Set to 8 for Administrator if you want only admins.
                 options: [
                     {
                         name: 'file',
@@ -186,28 +194,10 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 name: 'list_drivers',
                 description: 'List all registered drivers in the database',
             },
-            // {
-            //     name: 'driver_info',
-            //     description: 'Get details about a specific driver or auto-register them if not fully registered',
-            //     options: [
-            //         {
-            //             name: 'user',
-            //             type: 6, // USER type
-            //             description: 'Mention the Discord user',
-            //             required: false,
-            //         },
-            //         {
-            //             name: 'driver_name',
-            //             type: 3, // STRING type
-            //             description: 'Search by Driver Real Name',
-            //             required: false,
-            //         }
-            //     ],
-            // },
             {
                 name: 'add_track',
                 description: 'Add a new track to the database',
-                default_member_permissions: 0,
+                default_member_permissions: 0, // Same as above, 0 means everyone, 8 for Administrator
                 options: [
                     {
                         name: 'track_id',
@@ -235,14 +225,13 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                     }
                 ],
             }
-
-
         ];
 
-        console.log('🔄 Redeploying commands...');
-        await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands });
-        console.log('✅ Commands re-registered successfully.');
+        console.log(`🔄 Redeploying ${commands.length} GLOBAL commands...`);
+        // Use Routes.applicationCommands for global commands
+        await rest.put(Routes.applicationCommands(clientId), { body: commands });
+        console.log('✅ GLOBAL commands re-registered successfully.');
     } catch (error) {
-        console.error('❌ Failed to deploy commands:', error);
+        console.error('❌ Failed to deploy GLOBAL commands:', error);
     }
 })();

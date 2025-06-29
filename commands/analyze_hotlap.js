@@ -23,6 +23,14 @@ module.exports = {
             if (analysisResult.status === 'incomplete') {
                 return interaction.editReply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing ALL required sections and columns (Track Location, Driver, Team, Time, S1, S2, S3, PEN., Custom Setup, Assists).`);
             } else if (analysisResult.status === 'complete') {
+                // Reject invalid laps here, before processing further
+                if (!analysisResult.is_valid) {
+                    const trackLocationName = analysisResult.track_location_name || 'Unknown Track';
+                    const lapTime = analysisResult.lap_time || 'N/A';
+                    return interaction.editReply(`❌ Lap Rejected: The fastest lap (${lapTime}) on ${trackLocationName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
+                }
+
+                // If the lap is valid, proceed with the original logic:
                 // Extract data for database insertion
                 const guildId = interaction.guildId;
                 const channelId = interaction.channelId;
@@ -30,13 +38,13 @@ module.exports = {
                 const userId = interaction.user.id;
                 const discordTag = interaction.user.tag; // Get the Discord tag here
 
-                const driverName = analysisResult.driver_name;
+                const driverName = analysisResult.driver_name; // Keep AI-extracted driver name for DB
                 const teamName = analysisResult.team_name;
                 const lapTime = analysisResult.lap_time;
                 const s1Time = analysisResult.s1_time;
                 const s2Time = analysisResult.s2_time;
                 const s3Time = analysisResult.s3_time;
-                const isValid = analysisResult.is_valid; // This will be true/false
+                const isValid = analysisResult.is_valid;
                 // Convert custom_setup string ("Yes"/"No") to boolean
                 const customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
                 const trackLocationName = analysisResult.track_location_name;
@@ -46,19 +54,21 @@ module.exports = {
                 let replyContent = `📊 Hotlap Analysis for your image:\n`;
                 replyContent += `Top Lap Time: ${lapTime}\n`;
                 replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
-                replyContent += `Driver: ${driverName}\n`;
+                // --- CHANGED: Use discordTag for display ---
+                replyContent += `Driver: ${discordTag}\n`;
+                // --- END CHANGED ---
                 replyContent += `Team: ${teamName}\n`;
                 replyContent += `Track: ${trackLocationName}\n`;
                 replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-                replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`; // Display boolean
-                replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`; // Add notes based on validity
+                replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`;
+                replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
 
-                // Insert into the database - UPDATED COLUMNS AND PARAMETERS
+                // Insert into the database (driver_name is still included as extracted by AI)
                 await db.query(
                     `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, discord_tag, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                     [
-                        guildId, channelId, messageId, userId, discordTag, // Added discordTag
+                        guildId, channelId, messageId, userId, discordTag,
                         driverName, teamName, lapTime,
                         s1Time, s2Time, s3Time, isValid,
                         customSetupBoolean, // Use converted boolean value

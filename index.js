@@ -48,7 +48,7 @@ client.once('ready', () => {
         status: 'online',
         activities: [
             {
-                name: 'over WGC',
+                name: 'over simracers',
                 type: ActivityType.Watching,
             }
         ],
@@ -93,20 +93,28 @@ client.on('messageCreate', async message => {
                 if (analysisResult.status === 'incomplete') {
                     await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing ALL required sections and columns (Track Location, Driver, Team, Time, S1, S2, S3, PEN., Custom Setup, Assists).`);
                 } else if (analysisResult.status === 'complete') {
+                    // Reject invalid laps and stop processing
+                    if (!analysisResult.is_valid) {
+                        const trackLocationName = analysisResult.track_location_name || 'Unknown Track';
+                        const lapTime = analysisResult.lap_time || 'N/A';
+                        await message.reply(`❌ Lap Rejected: The fastest lap (${lapTime}) on ${trackLocationName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
+                        return; // Stop processing further for this message
+                    }
+
+                    // If the lap is valid, proceed with database insertion and detailed reply
                     const guildId = message.guildId;
                     const channelId = message.channelId;
                     const messageId = message.id;
                     const userId = message.author.id;
                     const discordTag = message.author.tag; // For username#discriminator
 
-                    const driverName = analysisResult.driver_name;
+                    const driverName = analysisResult.driver_name; // Keep AI-extracted driver name for DB
                     const teamName = analysisResult.team_name;
                     const lapTime = analysisResult.lap_time;
                     const s1Time = analysisResult.s1_time;
                     const s2Time = analysisResult.s2_time;
                     const s3Time = analysisResult.s3_time;
                     const isValid = analysisResult.is_valid;
-                    // Convert custom_setup string ("Yes"/"No") to boolean
                     const customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
                     const trackLocationName = analysisResult.track_location_name;
                     const submissionDate = new Date();
@@ -114,23 +122,25 @@ client.on('messageCreate', async message => {
                     let replyContent = `📊 Hotlap Analysis for your image:\n`;
                     replyContent += `Top Lap Time: ${lapTime}\n`;
                     replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
-                    replyContent += `Driver: ${driverName}\n`;
+                    // --- CHANGED: Use discordTag for display ---
+                    replyContent += `Driver: ${discordTag}\n`;
+                    // --- END CHANGED ---
                     replyContent += `Team: ${teamName}\n`;
                     replyContent += `Track: ${trackLocationName}\n`;
                     replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-                    replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`; // Display converted boolean
+                    replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`;
                     replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
 
-                    // Corrected parameter order for db.query
+                    // Insert into the database (driver_name is still included as extracted by AI)
                     await db.query(
                         `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, discord_tag, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
                         [
-                            guildId, channelId, messageId, userId, discordTag, // Correct: $5 is discordTag
+                            guildId, channelId, messageId, userId, discordTag,
                             driverName, teamName, lapTime,
                             s1Time, s2Time, s3Time, isValid,
-                            customSetupBoolean, // Correct: $12 is customSetup (boolean)
-                            trackLocationName, submissionDate // Correct: $13 is trackLocationName, $14 is submissionDate
+                            customSetupBoolean,
+                            trackLocationName, submissionDate
                         ]
                     );
 
@@ -161,7 +171,6 @@ app.use(cors());
 app.use(express.json());
 
 // Helper function to convert lap time string (e.g., "1:23.456") to milliseconds
-// Used for internal sorting in SQL, not directly exposed via API now
 function lapTimeToMs(lapTimeString) {
     if (!lapTimeString || lapTimeString === 'N/A') return null;
     const parts = lapTimeString.split(':');
@@ -181,6 +190,7 @@ function lapTimeToMs(lapTimeString) {
     }
     return null;
 }
+
 
 // API Endpoint to get unique track locations
 app.get('/api/tracks', async (req, res) => {
@@ -202,7 +212,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
     const allowedSortColumns = new Set([
         'driver_name', 'team_name', 'lap_time', 's1_time', 's2_time',
-        's3_time', 'is_valid', 'submission_date', 'track_location_name'
+        's3_time', 'is_valid', 'submission_date', 'track_location_name', 'discord_tag' // Added discord_tag here
     ]);
 
     if (!allowedSortColumns.has(sortColumn)) {
@@ -293,8 +303,13 @@ app.get('/api/leaderboard', async (req, res) => {
             break;
         case 'custom_setup':
             // Ensure proper boolean casting for sorting if column is text 'Yes'/'No'
-            // If custom_setup is already boolean, this cast is harmless but good to be explicit
             orderByClause = `${sortColumn} ${orderDirection}`;
+            break;
+        case 'discord_tag': // Added case for sorting by discord_tag
+        case 'driver_name': // Keeping this in case it's still needed for other sorts
+        case 'team_name':
+        case 'track_location_name':
+            orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`;
             break;
         default:
             orderByClause = `${sortColumn} COLLATE "C" ${orderDirection}`;

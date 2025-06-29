@@ -69,16 +69,16 @@ async function analyzeImage(imageUrl) {
 **If the screenshot is COMPLETE (based on PHASE 1 success):**
 \`\`\`json
 {
-  "status": "complete",
-  "track_location_name": "[EXTRACTED_TRACK_LOCATION_NAME]",
-  "driver_name": "[EXTRACTED_DRIVER_NAME]",
-  "team_name": "[EXTRACTED_TEAM_NAME]",
-  "lap_time": "[EXTRACTED_LAP_TIME_E.G._1:49.631]",
-  "s1_time": "[EXTRACTED_S1_TIME]",
-  "s2_time": "[EXTRACTED_S2_TIME]",
-  "s3_time": "[EXTRACTED_S3_TIME]",
-  "is_valid": [true/false],
-  "custom_setup": "[Yes/No]"
+    "status": "complete",
+    "track_location_name": "[EXTRACTED_TRACK_LOCATION_NAME]",
+    "driver_name": "[EXTRACTED_DRIVER_NAME]",
+    "team_name": "[EXTRACTED_TEAM_NAME]",
+    "lap_time": "[EXTRACTED_LAP_TIME_E.G._1:49.631]",
+    "s1_time": "[EXTRACTED_S1_TIME]",
+    "s2_time": "[EXTRACTED_S2_TIME]",
+    "s3_time": "[EXTRACTED_S3_TIME]",
+    "is_valid": [true/false],
+    "custom_setup": "[Yes/No]"
 }
 \`\`\`
 `;
