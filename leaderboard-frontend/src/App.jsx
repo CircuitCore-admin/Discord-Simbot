@@ -353,7 +353,8 @@ function App() {
     // Function to toggle a specific driver's *all* laps for a track (nested table)
     const toggleDriverLaps = async (userId, trackName, event) => {
         // Stop propagation to prevent the parent <tr>'s onClick (card expansion) from firing
-        event.stopPropagation();
+        if (event) event.stopPropagation();
+
         setExpandedLapId(null); // Reset individual lap expansion when changing driver
 
         if (expandedDriverId === userId) {
@@ -467,7 +468,7 @@ function App() {
                     </p>
                 )}
             </header>
-
+            
             <div className="filter-section">
                 {loading && !isAuthenticated ? (
                     <p className="loading-message">Loading authentication and server data...</p>
@@ -562,7 +563,7 @@ function App() {
                     {isDarkMode ? '🌞 Light Mode' : '🌙 Dark Mode'}
                 </button>
             </div>
-
+            
             <div className="leaderboard-section">
                 {loading && !leaderboardData.length ? (
                     <p className="loading-message">Loading leaderboard data...</p>
@@ -612,27 +613,35 @@ function App() {
                                                     <React.Fragment key={entry.user_id}>
                                                         {/* Main leaderboard row */}
                                                         <tr
-                                                            className={expandedCardUserId === entry.user_id ? 'card-expanded' : ''}
-                                                            onClick={() => {
+                                                            className={`${expandedCardUserId === entry.user_id ? 'card-expanded' : ''} ${expandedDriverId === entry.user_id ? 'is-expanded' : ''}`}
+                                                            // Conditionally handle click for mobile card view based on lap_count
+                                                            onClick={entry.lap_count > 1 ? () => {
                                                                 const isAlreadyExpanded = expandedCardUserId === entry.user_id;
                                                                 setExpandedCardUserId(isAlreadyExpanded ? null : entry.user_id);
-                                                                if (isAlreadyExpanded) {
+                                                                
+                                                                if (!isAlreadyExpanded) {
+                                                                    toggleDriverLaps(entry.user_id, entry.track_location_name);
+                                                                } else {
                                                                     setExpandedDriverId(null);
                                                                     setExpandedLapId(null);
                                                                 }
-                                                            }}
+                                                            } : undefined}
                                                         >
                                                             <td data-label="Rank">{index + 1}</td>
                                                             <td
                                                                 data-label="Driver"
-                                                                className={`driver-name-link ${expandedDriverId === entry.user_id ? 'nested-expanded' : ''}`}
-                                                                onClick={(event) => toggleDriverLaps(entry.user_id, entry.track_location_name, event)}
-                                                                title={`Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track`}
+                                                                // Conditionally add styling and click handler based on lap_count
+                                                                className={entry.lap_count > 1 ? `driver-name-link ${expandedDriverId === entry.user_id ? 'nested-expanded' : ''}` : ''}
+                                                                onClick={entry.lap_count > 1 ? (event) => toggleDriverLaps(entry.user_id, entry.track_location_name, event) : undefined}
+                                                                title={entry.lap_count > 1 ? `Click to see all laps for ${entry.discord_tag || entry.driver_name} on this track` : (entry.discord_tag || entry.driver_name)}
                                                             >
                                                                 <span title={entry.discord_tag || entry.driver_name}>
                                                                     {entry.discord_tag || entry.driver_name}
                                                                 </span>
-                                                                <span className="expand-arrow">{expandedDriverId === entry.user_id ? '▲' : '▼'}</span>
+                                                                {/* Conditionally render the expand arrow */}
+                                                                {entry.lap_count > 1 && (
+                                                                    <span className="expand-arrow">{expandedDriverId === entry.user_id ? '▲' : '▼'}</span>
+                                                                )}
                                                             </td>
                                                             <td data-label="Lap Time">{entry.lap_time}</td>
                                                             <td data-label="S1">{entry.s1_time}</td>
@@ -641,38 +650,33 @@ function App() {
                                                             <td data-label="Custom Setup">{String(entry.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
                                                             <td data-label="Date">{formatDateTime(entry.submission_date)}</td>
                                                         </tr>
-                                                        {/* This row contains the nested table of all laps */}
-                                                        {expandedDriverId === entry.user_id && (
-                                                            <tr>
-                                                                <td colSpan="8">
-                                                                    {loadingExpandedLaps && <p className="loading-message">Loading driver's laps...</p>}
-                                                                    {expandedLapsError && <p className="error-message">{expandedLapsError}</p>}
-                                                                    {!loadingExpandedLaps && !expandedLapsError && expandedDriverLaps && expandedDriverLaps.length > 0 ? (
-                                                                        <table className="nested-laps-table">
-                                                                            <tbody>
-                                                                                {expandedDriverLaps.map((lap) => (
-                                                                                    <tr
-                                                                                        key={lap.id}
-                                                                                        className={expandedLapId === lap.id ? 'lap-expanded' : ''}
-                                                                                        onClick={(e) => {
-                                                                                            e.stopPropagation();
-                                                                                            setExpandedLapId(prevId => prevId === lap.id ? null : lap.id);
-                                                                                        }}
-                                                                                    >
-                                                                                        <td data-label="Lap Time">{lap.lap_time}</td>
-                                                                                        <td data-label="S1">{lap.s1_time}</td>
-                                                                                        <td data-label="S2">{lap.s2_time}</td>
-                                                                                        <td data-label="S3">{lap.s3_time}</td>
-                                                                                        <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
-                                                                                        <td data-label="Date">{formatDateTime(lap.submission_date)}</td>
-                                                                                    </tr>
-                                                                                ))}
-                                                                            </tbody>
-                                                                        </table>
-                                                                    ) : (
-                                                                        !loadingExpandedLaps && !expandedLapsError && <p className="no-data-message">No additional lap data found for this driver on this track.</p>
-                                                                    )}
-                                                                </td>
+                                                        
+                                                        {/* Render additional laps as direct rows in the main table */}
+                                                        {expandedDriverId === entry.user_id && expandedDriverLaps && (
+                                                            expandedDriverLaps
+                                                                .filter(lap => lap.submission_date !== entry.submission_date)
+                                                                .map(lap => (
+                                                                    <tr key={lap.id} className="additional-lap-row">
+                                                                        <td></td>{/* Spacer for Rank */}
+                                                                        <td></td>{/* Spacer for Driver */}
+                                                                        <td data-label="Lap Time">{lap.lap_time}</td>
+                                                                        <td data-label="S1">{lap.s1_time}</td>
+                                                                        <td data-label="S2">{lap.s2_time}</td>
+                                                                        <td data-label="S3">{lap.s3_time}</td>
+                                                                        <td data-label="Custom Setup">{String(lap.custom_setup) === 'true' ? '✅ Yes' : '❌ No'}</td>
+                                                                        <td data-label="Date">{formatDateTime(lap.submission_date)}</td>
+                                                                    </tr>
+                                                                ))
+                                                        )}
+                                                        {/* Display loading/error messages for the expanded laps */}
+                                                        {expandedDriverId === entry.user_id && loadingExpandedLaps && (
+                                                            <tr className="additional-lap-row">
+                                                                <td colSpan="8"><p className="loading-message" style={{margin: 0, padding: '15px'}}>Loading driver's laps...</p></td>
+                                                            </tr>
+                                                        )}
+                                                        {expandedDriverId === entry.user_id && expandedLapsError && (
+                                                             <tr className="additional-lap-row">
+                                                                <td colSpan="8"><p className="error-message" style={{margin: 0, padding: '15px'}}>{expandedLapsError}</p></td>
                                                             </tr>
                                                         )}
                                                     </React.Fragment>

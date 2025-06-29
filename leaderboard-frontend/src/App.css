@@ -255,41 +255,32 @@ body {
 }
 .leaderboard-table tbody tr:nth-child(even) { background-color: var(--bg-color-table-row-even); }
 .leaderboard-table tbody tr:hover { background-color: var(--bg-color-hover); }
+
+/* --- EXPANDED ROW STYLES --- */
 .driver-name-link {
     cursor: pointer; color: var(--color-discord-blue); font-weight: bold;
     transition: color 0.2s ease; display: flex; align-items: center; gap: 5px;
 }
 .driver-name-link:hover { color: #A3B8EC; text-decoration: underline; }
-.leaderboard-table tr.expanded-nested-table > td {
-    padding: 0;
-}
-.leaderboard-table tr.expanded-nested-table:hover {
-    background-color: var(--bg-color-app-container); /* Keep consistent on hover */
-}
 
-
-/* --- NESTED TABLE (DESKTOP) --- */
-.nested-laps-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9em;
+/* Remove the bottom border from the main row when its nested table is open */
+.leaderboard-table tbody tr.is-expanded td {
+    border-bottom: none;
 }
 
-.nested-laps-table td {
-    /* Padding will be inherited from the main table's cells, ensuring alignment */
-    border-top: 1px solid var(--border-color-subtle);
+/* Style the additional lap rows to give them the "nested" look */
+.leaderboard-table tbody tr.additional-lap-row {
+    background-color: var(--bg-color-table-row-even);
+    font-size: 0.9em; /* Make text slightly smaller */
+}
+.leaderboard-table tbody tr.additional-lap-row td {
     color: var(--color-secondary-text);
 }
-.nested-laps-table tr:hover td {
+.leaderboard-table tbody tr.additional-lap-row:hover {
     background-color: var(--bg-color-table-row-expanded);
 }
-.nested-laps-table .spacer-cell {
-    padding: 0;
-    border-top: none; /* No top border for spacers */
-}
-.nested-laps-table tr:first-child td {
-    border-top: 1px solid var(--border-color-strong); /* Stronger separator for first nested row */
-}
+.leaderboard-table tbody tr.additional-lap-row:last-child td:first-child { border-bottom-left-radius: 10px; }
+.leaderboard-table tbody tr.additional-lap-row:last-child td:last-child { border-bottom-right-radius: 10px; }
 
 
 /* --- CUSTOM DROPDOWN --- */
@@ -332,6 +323,8 @@ MOBILE STYLES (PROFESSIONAL & CLEAN REVISION)
     body {
         padding: 10px;
         align-items: stretch;
+        /* Add padding to the bottom to make space for the (now removed) taskbar */
+        padding-bottom: 80px; 
     }
     .app-container {
         margin: 0;
@@ -464,60 +457,18 @@ MOBILE STYLES (PROFESSIONAL & CLEAN REVISION)
         padding: 0;
     }
 
-    /* -- Nested Laps Table -- */
-    .nested-laps-table {
-        width: 100%; margin: 0; display: flex;
-        flex-direction: column; gap: 8px;
-        padding: 10px;
+    /* -- Additional Laps for Mobile -- */
+    .additional-lap-row {
+        /* On mobile, additional laps are part of the expanded card, not separate rows */
+        display: contents; 
     }
-    .nested-laps-table thead, .nested-laps-table tbody {
-        display: contents;
+    .additional-lap-row td {
+        display: flex !important; flex-basis: 100%; font-size: 1em; white-space: normal;
+        padding: 10px 5px; border-top: 1px solid var(--border-color-subtle);
     }
-    .nested-laps-table tr {
-        display: flex; flex-wrap: wrap; align-items: center;
-        border-radius: 6px; background-color: var(--bg-color-table-row-even);
-        padding: 8px 12px; cursor: pointer; transition: background-color 0.2s ease;
-    }
-    .nested-laps-table tr:hover { background-color: var(--bg-color-surface); }
-    .nested-laps-table td { padding: 2px 0; }
-    
-    /* Nested Lap: Compact View */
-    .nested-laps-table tr:not(.lap-expanded) td:nth-child(1) {
-        flex-basis: 50%; flex-grow: 1; font-weight: bold;
-        color: var(--color-primary-text); font-size: 1em;
-    }
-    .nested-laps-table tr:not(.lap-expanded) td:nth-child(6) {
-        justify-content: flex-end; font-size: 0.8em;
-        color: var(--color-secondary-text);
-    }
-    .nested-laps-table tr:not(.lap-expanded) td:nth-child(n+2):not(:nth-child(6)) {
-        display: none;
-    }
-
-    /* Nested Lap: Expanded View */
-    .nested-laps-table tr.lap-expanded {
-        background-color: var(--bg-color-surface); padding-bottom: 12px;
-    }
-    .nested-laps-table tr.lap-expanded td:nth-child(1) {
-        color: var(--color-primary-text);
-        flex-basis: 100%;
-        margin-bottom: 8px;
-        font-size: 1.05em;
-        font-weight: bold;
-        padding-bottom: 8px;
-        border-bottom: 1px solid var(--border-color-subtle);
-    }
-    .nested-laps-table tr.lap-expanded td:nth-child(6) {
-        display: none;
-    }
-    .nested-laps-table tr.lap-expanded td:nth-child(n+2):not(:nth-child(6)) {
-        display: flex; flex-basis: 50%; font-size: 0.9em; padding: 3px 0;
-    }
-    .nested-laps-table tr.lap-expanded td:nth-child(n+2)::before {
-        display: block; content: attr(data-label); font-weight: normal;
-        color: var(--color-secondary-text); width: 45px;
-    }
-    .nested-laps-table tr.lap-expanded td:nth-child(5)::before {
-        width: 110px;
+     .additional-lap-row td::before {
+        display: block !important; content: attr(data-label); font-weight: normal;
+        color: var(--color-secondary-text); margin-right: 15px;
+        width: 100px; flex-shrink: 0;
     }
 }

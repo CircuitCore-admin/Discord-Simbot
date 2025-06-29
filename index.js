@@ -427,7 +427,8 @@ app.get('/api/leaderboard', async (req, res) => {
                             ELSE 999999999
                         END ASC,
                         submission_date ASC
-                ) as rn
+                ) as rn,
+                COUNT(*) OVER (PARTITION BY user_id, track_location_name) as lap_count
             FROM hotlaps
             WHERE track_location_name ILIKE $1 AND guild_id = $2
         )
@@ -443,7 +444,8 @@ app.get('/api/leaderboard', async (req, res) => {
             track_location_name,
             submission_date,
             user_id,
-            discord_tag
+            discord_tag,
+            lap_count
         FROM RankedLaps
         WHERE rn = 1
     `;
