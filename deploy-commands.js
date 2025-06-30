@@ -4,8 +4,8 @@ const fs = require('fs');
 
 // --- Environment Variable Checks ---
 const discordToken = process.env.DISCORD_TOKEN;
-const clientId = process.env.DISCORD_CLIENT_ID; // Ensure this matches your .env variable name
-const guildId = process.env.DISCORD_GUILD_ID; // Uncomment and set in .env for guild-specific testing
+const clientId = process.env.DISCORD_CLIENT_ID;
+const guildId = process.env.DISCORD_GUILD_ID; // This will be used for optional guild-specific deployment
 
 if (!discordToken) {
     console.error('❌ DISCORD_TOKEN not found in .env file. Please ensure it is set.');
@@ -15,11 +15,6 @@ if (!clientId) {
     console.error('❌ DISCORD_CLIENT_ID not found in .env file. Global commands cannot be deployed without it.');
     process.exit(1); // Exit if critical env var is missing
 }
-// if (!guildId) {
-//     console.warn('⚠️ DISCORD_GUILD_ID not found in .env file. Guild-specific commands cannot be deployed. Deploying globally.');
-//     // Don't exit, as global deployment might still be desired
-// }
-
 
 const rest = new REST({ version: '10' }).setToken(discordToken);
 
@@ -50,7 +45,6 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         channel_types: [0], // 0 is GuildText
                     },
                 ],
-                // Restore default_member_permissions to require Manage Channels permission
                 default_member_permissions: PermissionFlagsBits.ManageChannels.toString(),
                 setDMPermission: false, // Command cannot be used in DMs
             },
@@ -74,8 +68,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 ],
             },
             // The following commands were present in your previous deploy-commands.js.
-            // I'm keeping them commented out for brevity, but you should uncomment
-            // and include them if they are part of your bot's functionality.
+            // Uncomment them if they are part of your bot's functionality.
             // {
             //     name: 'results',
             //     description: 'View results from a specific session',
@@ -249,29 +242,35 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
         await rest.put(Routes.applicationCommands(clientId), { body: [] });
         console.log('✅ Successfully cleared GLOBAL commands.');
 
+        // Add a small delay for Discord API to process clearing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         console.log(`🔄 Redeploying ${commands.length} GLOBAL commands...`);
         await rest.put(Routes.applicationCommands(clientId), { body: commands });
         console.log('✅ GLOBAL commands re-registered successfully.');
 
-        // --- GUILD-SPECIFIC COMMAND DEPLOYMENT (For quicker testing) ---
-        // Uncomment the lines below AND uncomment 'const guildId = process.env.DISCORD_GUILD_ID;' above
-        // and set DISCORD_GUILD_ID in your .env file to your test server's ID.
-        // This will deploy commands only to that specific guild, making them appear almost instantly.
-        // Remember to comment this back out and use global deployment for your final bot.
-
+        // --- GUILD-SPECIFIC COMMAND DEPLOYMENT (For quicker testing during development) ---
+        // This section will only run if DISCORD_GUILD_ID is set in your .env file
         if (guildId) {
-            console.log(`🧹 Clearing all GUILD commands for guild ${guildId}...`);
+            console.log(`\n--- Guild-Specific Deployment for Guild ID: ${guildId} ---`);
+            console.log(`🧹 Clearing existing GUILD commands for guild ${guildId}...`);
             await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
             console.log('✅ Successfully cleared GUILD commands.');
+
+            // Add a small delay for Discord API to process clearing
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             console.log(`🔄 Redeploying ${commands.length} GUILD commands for guild ${guildId}...`);
             await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
             console.log('✅ GUILD commands re-registered successfully.');
         } else {
-            console.log('Skipping GUILD command deployment as DISCORD_GUILD_ID is not set.');
+            console.log('\nSkipping GUILD command deployment as DISCORD_GUILD_ID is not set in .env.');
         }
 
     } catch (error) {
         console.error('❌ Failed to deploy commands:', error);
+        if (error.response) {
+            console.error('Discord API Error Response:', error.response.data);
+        }
     }
 })();

@@ -24,7 +24,7 @@ const XIcon = () => (
 
 const DownloadIcon = () => (
      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 1 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
     </svg>
 );
@@ -138,8 +138,9 @@ const Pagination = ({ itemsPerPage, totalItems, paginate, currentPage }) => {
 };
 
 function App() {
+    // Initialize states from localStorage or default values
     const [tracks, setTracks] = useState([]);
-    const [selectedTrack, setSelectedTrack] = useState('');
+    const [selectedTrack, setSelectedTrack] = useState(() => localStorage.getItem('selectedTrack') || '');
     const [leaderboardData, setLeaderboardData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -150,7 +151,7 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [discordUser, setDiscordUser] = useState(null);
     const [userGuilds, setUserGuilds] = useState([]);
-    const [selectedGuildId, setSelectedGuildId] = useState('');
+    const [selectedGuildId, setSelectedGuildId] = useState(() => localStorage.getItem('selectedGuildId') || '');
 
     const [expandedDriverId, setExpandedDriverId] = useState(null);
     const [expandedDriverLaps, setExpandedDriverLaps] = useState(null);
@@ -168,6 +169,16 @@ function App() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(25);
+
+    // Effect to save selectedGuildId to localStorage
+    useEffect(() => {
+        localStorage.setItem('selectedGuildId', selectedGuildId);
+    }, [selectedGuildId]);
+
+    // Effect to save selectedTrack to localStorage
+    useEffect(() => {
+        localStorage.setItem('selectedTrack', selectedTrack);
+    }, [selectedTrack]);
 
     const sortableColumnsMap = {
         'Lap Time': 'lap_time', 'S1': 's1_time', 'S2': 's2_time', 'S3': 's3_time',
@@ -207,8 +218,14 @@ function App() {
                     setIsAuthenticated(true);
                     setDiscordUser(data.user);
                     setUserGuilds(data.guilds);
-                    if (data.guilds.length > 0) {
+                    // If a guild was saved in localStorage, ensure it's still available
+                    const storedGuildId = localStorage.getItem('selectedGuildId');
+                    if (storedGuildId && data.guilds.some(guild => guild.id === storedGuildId)) {
+                        setSelectedGuildId(storedGuildId);
+                    } else if (data.guilds.length > 0) {
                         setSelectedGuildId(data.guilds[0].id);
+                    } else {
+                        setSelectedGuildId(''); // No guilds available
                     }
                 } else {
                     const params = new URLSearchParams(window.location.search);
@@ -225,13 +242,17 @@ function App() {
                         setIsAuthenticated(true);
                         setDiscordUser(callbackData.user);
                         setUserGuilds(callbackData.guilds);
+                        // After successful OAuth, prioritize the first guild if nothing was saved
                         if (callbackData.guilds.length > 0) {
                             setSelectedGuildId(callbackData.guilds[0].id);
+                        } else {
+                            setSelectedGuildId('');
                         }
                     }
                 }
             } catch (e) {
                 setError("Failed to connect to authentication server.");
+                console.error("Auth error:", e);
             } finally {
                 setLoading(false);
             }
@@ -247,12 +268,19 @@ function App() {
                 if (!response.ok) throw new Error('Failed to fetch tracks');
                 const data = await response.json();
                 setTracks(data);
-                if (!data.includes(selectedTrack) && data.length > 0) {
+                // If a track was saved in localStorage, ensure it's still available for the selected guild
+                const storedTrack = localStorage.getItem('selectedTrack');
+                if (storedTrack && data.includes(storedTrack)) {
+                    setSelectedTrack(storedTrack);
+                } else if (data.length > 0) {
                     setSelectedTrack(data[0]);
-                } else if (data.length === 0) {
-                    setSelectedTrack('');
+                } else {
+                    setSelectedTrack(''); // No tracks for this guild
                 }
-            } catch (e) { setError("Failed to load tracks."); }
+            } catch (e) { 
+                setError("Failed to load tracks."); 
+                console.error("Tracks error:", e);
+            }
         };
         fetchTracks();
     }, [isAuthenticated, selectedGuildId]);
@@ -268,6 +296,7 @@ function App() {
                 setLeaderboardData(data);
             } catch (e) {
                 setError("Failed to load leaderboard data.");
+                console.error("Leaderboard error:", e);
             } finally {
                 setLoading(false);
             }
@@ -284,7 +313,7 @@ function App() {
 
     const handleCustomGuildSelect = (guildId) => {
         setSelectedGuildId(guildId);
-        setSelectedTrack('');
+        setSelectedTrack(''); // Reset track when guild changes
         setLeaderboardData([]);
         setExpandedDriverId(null);
         setExpandedDriverLaps(null);
@@ -356,6 +385,8 @@ function App() {
                 setExpandedDriverLaps(null);
                 setCurrentPage(1);
                 setError(null);
+                localStorage.removeItem('selectedGuildId'); // Clear stored data
+                localStorage.removeItem('selectedTrack'); // Clear stored data
             } else {
                 console.error('Logout failed:', response.statusText);
                 setError('Failed to log out.');
