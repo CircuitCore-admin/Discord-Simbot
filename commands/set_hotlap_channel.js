@@ -1,5 +1,5 @@
 // commands/set_hotlap_channel.js
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js'); // Import MessageFlags
 const db = require('../services/database');
 
 module.exports = {
@@ -15,11 +15,22 @@ module.exports = {
         .setDMPermission(false), // Command cannot be used in DMs
 
     async execute(interaction) {
+        // Define the allowed user ID
+        const allowedUserId = '296221250785771520'; // Your Discord User ID
+
+        // Check if the interaction user's ID matches the allowed user ID
+        if (interaction.user.id !== allowedUserId) {
+            return interaction.reply({
+                content: '🚫 You do not have permission to use this command.',
+                flags: MessageFlags.Ephemeral // Changed from ephemeral: true
+            });
+        }
+
         const channel = interaction.options.getChannel('channel');
         const guildId = interaction.guildId;
 
         if (!guildId) {
-            return interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
+            return interaction.reply({ content: 'This command can only be used in a server.', flags: MessageFlags.Ephemeral }); // Changed from ephemeral: true
         }
 
         try {
@@ -32,13 +43,13 @@ module.exports = {
 
             await interaction.reply({
                 content: `✅ The hotlap submission channel for this server has been set to ${channel}!`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral // Changed from ephemeral: true
             });
         } catch (error) {
             console.error('❌ Error setting hotlap channel:', error);
             await interaction.reply({
                 content: 'There was an error trying to set the hotlap channel. Please try again.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral // Changed from ephemeral: true
             });
         }
     },
