@@ -8,79 +8,95 @@ async function analyzeImage(imageUrl) {
         const imageBase64 = Buffer.from(response.data).toString('base64');
 
         // *** UPDATED PROMPT FOR TRACK LOCATION EXTRACTION ***
-        const prompt = `You are an F1 game leaderboard analysis AI. Your task is to process a single screenshot and extract specific data in JSON format. You MUST follow these instructions precisely.
+        const prompt = `You are an F1 game leaderboard analysis AI. Your task is to process a single screenshot and output EXACTLY ONE of the two JSON formats described at the end. No other text, no explanations.
 
-**===== PHASE 1: SCREENSHOT COMPLETENESS VALIDATION =====**
+===== PHASE 1: SCREENSHOT COMPLETENESS VALIDATION =====
 
-* **Your ABSOLUTE FIRST PRIORITY is to determine if the screenshot is a COMPLETE F1 hotlap leaderboard.**
-* A screenshot is considered **COMPLETE** ONLY IF it clearly and unambiguously displays **ALL** of the following exact UI elements/column headers:
-    1.  The **Track Location Name** at the top-left (e.g., "BELGIUM - TIME TRIAL").
-    2.  The main "FASTEST LAP" section, which MUST visibly include **ALL** of these specific column headers, exactly as they appear (case-insensitive, but match visual style):
-        * "DRIVER"
-        * "TEAM"
-        * "TIME"
-        * "S1"
-        * "S2"
-        * "S3"
-        * "PEN."
-    3.  Below the main leaderboard table, the distinct UI elements for **"CUSTOM SETUP"** and **"ASSISTS"**. These must be clearly visible.
+Your ABSOLUTE FIRST PRIORITY is to determine if the screenshot is a COMPLETE F1 hotlap leaderboard.
 
-* **CRITICAL RULE for PHASE 1:**
-    * If **ANY ONE** of the above listed elements/column headers (Track Location, DRIVER, TEAM, TIME, S1, S2, S3, PEN., CUSTOM SETUP, ASSISTS) is **missing, cropped, obscured, illegible, or not clearly distinct and present**, then the screenshot is **INCOMPLETE.**
-    * **If the screenshot is INCOMPLETE, you MUST IMMEDIATELY and ONLY output this EXACT JSON string:**
-        \`\`\`json
-        {"status": "incomplete", "message": "Hotlap Submission Denied: Incomplete picture"}
-        \`\`\`
-        *AND YOU MUST STOP ALL FURTHER ANALYSIS.*
+A screenshot is considered COMPLETE ONLY IF it clearly and unambiguously displays ALL of the following:
 
-**===== PHASE 2: LAP DATA EXTRACTION (ONLY IF SCREENSHOT IS COMPLETE) =====**
+1) Track Location Name near the top-left (e.g., "BELGIUM - TIME TRIAL", "TEXAS - TIME TRIAL").
+   - Only the presence matters here; exact casing is not important.
 
-* **If and ONLY if you have confidently determined the screenshot is COMPLETE (all required elements from PHASE 1 are clearly visible), then proceed with data extraction.**
-* **Extract the Track Location Name:** Locate the text at the top-left (e.g., "BELGIUM - TIME TRIAL"). **ONLY extract the main track name portion, excluding any suffixes like " - TIME TRIAL" or " - QUALIFYING". For example, if it says "BELGIUM - TIME TRIAL", extract "BELGIUM". If it says "SAUDI ARABIA - TIME TRIAL", extract "SAUDI ARABIA".**
-* **Identify the TOP-MOST DISPLAYED LAP TIME:**
-    * Locate the section clearly titled "FASTEST LAP".
-    * Find the very first (top-most) row of data under this section, this is usually also hightlighted compared to other laps..
-    * From *only this top row*, extract:
-        * **Driver Name:** The text under the "DRIVER" column.
-        * **Team Name:** The text under the "TEAM" column.
-        * **Lap Time:** The full lap time under the "TIME" column (e.g., "1:49.631").
-        * **S1 Time:** The time under the "S1" column.
-        * **S2 Time:** The time under the "S2" column.
-        * **S3 Time:** The time under the "S3" column.
-        * **Custom Setup:** "Yes" or "No" under "CUSTOM SETUP".
-* **Determine Validity for THIS TARGET LAP ONLY (Extreme Caution on Penalties):**
-    * Focus *EXCLUSIVELY* on the single cell DIRECTLY under the "PEN." column for the TOP ROW only that aligns precisely with the **TOP-MOST LAP TIME'S ROW** you just identified.
-    * **DEFAULT ASSUMPTION: The lap is VALID.** A penalty will *only* be marked if a very specific, obvious, and *graphical* penalty icon is present.
-    * **INVALID LAP CRITERIA (ONLY IF OVERWHELMINGLY PRESENT):**
-        * This cell MUST contain a **VERY CLEARLY VISIBLE, DISTINCT, and OBVIOUS GRAPHICAL SYMBOL** representing a penalty.
-        * Examples: a Black / white box, a solid black/white checkered flag, a prominent red "X", a "⚠️" (warning) symbol, or any small, sharp, and intentional penalty graphic.
-        * It MUST be a *symbol*, *not* just a dark spot, a slight discoloration, or background texture.
-        * **DO NOT MISINTERPRET as a penalty:** Any empty space, subtle shading, light variations, minor background textures, faint lines, dots, general UI background elements that are NOT a clear penalty icon, slight shadows, faint reflections, or blurry/indistinct marks.
-        * If there is *ANY* doubt, *ANY* ambiguity, or if the graphic is not undeniably a penalty icon, you **MUST** mark the lap as VALID.
-    * **VALID LAP CRITERIA:** If the "PEN." cell for the top-most displayed lap is **visibly empty, blank, or lacks any *obvious, explicit penalty icon*** as described above, then the lap is **VALID**. This is the default state.
+2) The main "FASTEST LAP" section with a header row that includes ALL of these column headers (case-insensitive):
+   - "DRIVER"
+   - "TEAM"
+   - "TIME"
+   - "S1"
+   - "S2"
+   - "S3"
+   - "PEN." (Accept both "PEN." and "PEN" as valid)
+   - "CUSTOM SETUP"
+   - "ASSISTS"
+   Notes:
+   - Extra columns like "GAP" MAY be present and do not affect completeness.
+   - "CUSTOM SETUP" and "ASSISTS" being present as columns in the FASTEST LAP table is sufficient. They do NOT also need to appear below the table.
 
-**===== YOUR FINAL RESPONSE (CRITICAL - Output ONLY one of these two EXACT JSON formats. NO other text, NO explanations, NO deviations) =====**
-
-**If the screenshot is INCOMPLETE (based on PHASE 1 failure):**
-\`\`\`json
+CRITICAL RULE for PHASE 1:
+- If ANY ONE of the required items above is missing, cropped, obscured, illegible, or not clearly present, the screenshot is INCOMPLETE.
+- If the screenshot is INCOMPLETE, you MUST immediately output ONLY the EXACT JSON below and STOP:
 {"status": "incomplete", "message": "Hotlap Submission Denied: Incomplete picture"}
-\`\`\`
 
-**If the screenshot is COMPLETE (based on PHASE 1 success):**
-\`\`\`json
+===== PHASE 2: LAP DATA EXTRACTION (ONLY IF SCREENSHOT IS COMPLETE) =====
+
+Proceed ONLY if Phase 1 passed.
+
+1) Extract Track Location Name:
+   - Find the text near the top-left like "TEXAS - TIME TRIAL".
+   - Return ONLY the main track/location portion (before " - TIME TRIAL", " - QUALIFYING", " - GRAND PRIX", etc.).
+   - Examples:
+     - "BELGIUM - TIME TRIAL" => "BELGIUM"
+     - "SAUDI ARABIA - TIME TRIAL" => "SAUDI ARABIA"
+
+2) Identify the TOP-MOST DISPLAYED LAP in the "FASTEST LAP" section:
+   - Use the very first data row directly under the "FASTEST LAP" header.
+   - This row is often highlighted compared to others.
+
+3) From ONLY this top row, extract:
+   - Driver Name (from "DRIVER")
+   - Team Name (from "TEAM")
+   - Lap Time (from "TIME", e.g., "1:49.631")
+   - S1 Time (from "S1")
+   - S2 Time (from "S2")
+   - S3 Time (from "S3")
+   - Custom Setup (from "CUSTOM SETUP", return "Yes" or "No")
+
+4) Determine Validity for THIS TOP ROW ONLY (Penalty check):
+   - Focus EXCLUSIVELY on the single cell in the "PEN." column that aligns with the top-most row identified above.
+   - Ignore EVERYTHING outside that single cell:
+     - Ignore icons in any other rows (including "SESSION BEST LAP TIMES").
+     - Ignore icons in other columns (e.g., "ASSISTS").
+     - Ignore general UI textures, shadows, reflections, and background shapes.
+
+   DEFAULT: The lap is VALID (is_valid = true).
+
+   Mark the lap INVALID (is_valid = false) ONLY IF ALL of the following are true:
+   - Inside that specific top-row "PEN." cell there is a VERY CLEAR, DISTINCT, and UNAMBIGUOUS penalty icon/symbol.
+   - Examples of qualifying symbols: a solid red "X", a yellow warning triangle, a distinct checkered/flag-like penalty square, or any sharp and intentional penalty glyph.
+   - It must be an explicit symbol. Do NOT treat faint marks, minor shading, dots, lines, reflections, or generic UI textures as penalties.
+
+   HARD REQUIREMENT BEFORE OUTPUTTING is_valid:false:
+   - Perform a final re-check of that ONE cell only. If you are NOT 100% certain you see a true penalty symbol in that cell, you MUST set is_valid to true.
+
+===== FINAL OUTPUT (OUTPUT EXACTLY ONE OF THE FOLLOWING, NO OTHER TEXT) =====
+
+If the screenshot is INCOMPLETE (Phase 1 failed):
+{"status": "incomplete", "message": "Hotlap Submission Denied: Incomplete picture"}
+
+If the screenshot is COMPLETE (Phase 1 passed), output this JSON with extracted values:
 {
-    "status": "complete",
-    "track_location_name": "[EXTRACTED_TRACK_LOCATION_NAME]",
-    "driver_name": "[EXTRACTED_DRIVER_NAME]",
-    "team_name": "[EXTRACTED_TEAM_NAME]",
-    "lap_time": "[EXTRACTED_LAP_TIME_E.G._1:49.631]",
-    "s1_time": "[EXTRACTED_S1_TIME]",
-    "s2_time": "[EXTRACTED_S2_TIME]",
-    "s3_time": "[EXTRACTED_S3_TIME]",
-    "is_valid": [true/false],
-    "custom_setup": "[Yes/No]"
+  "status": "complete",
+  "track_location_name": "[EXTRACTED_TRACK_LOCATION_NAME]",
+  "driver_name": "[EXTRACTED_DRIVER_NAME]",
+  "team_name": "[EXTRACTED_TEAM_NAME]",
+  "lap_time": "[EXTRACTED_LAP_TIME_E.G._1:49.631]",
+  "s1_time": "[EXTRACTED_S1_TIME]",
+  "s2_time": "[EXTRACTED_S2_TIME]",
+  "s3_time": "[EXTRACTED_S3_TIME]",
+  "is_valid": [true/false],
+  "custom_setup": "[Yes/No]"
 }
-\`\`\`
 `;
 
         const result = await model.generateContent({

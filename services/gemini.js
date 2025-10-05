@@ -9,8 +9,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.0-flash', // You can choose 'gemini-pro-vision' or other suitable models for images
   generationConfig: {
-    temperature: 0.4,       // Controls randomness of the output
+    temperature: 0,       // Controls randomness of the output
     maxOutputTokens: 512,   // Maximum number of tokens in the response
+    topP: 0,            // Nucleus sampling parameter
+    topK: 1,             // Top-K sampling parameter
   },
 });
 
