@@ -92,7 +92,7 @@ client.on('messageCreate', async message => {
                 const analysisResult = await analyzeImage(imageAttachment.url);
 
                 if (analysisResult.status === 'incomplete') {
-                    await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing ALL required sections and columns (Track Location, Driver, Team, Time, S1, S2, S3, PEN., Custom Setup, Assists).`);
+                    await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing the whole screen.`);
                 } else if (analysisResult.status === 'complete') {
                     // Reject invalid laps and stop processing
                     if (!analysisResult.is_valid) {
@@ -211,7 +211,7 @@ function lapTimeToMs(lapTimeString) {
 // --- Discord OAuth Routes ---
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `https://bottesting.circuitcore.net/`;
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || `https://f1-hotlaps.circuitcore.net/`;
 
 // Route to initiate Discord OAuth2 login
 app.get('/auth/discord', (req, res) => {
@@ -231,7 +231,7 @@ app.get('/auth/discord', (req, res) => {
     }
 
     const authorizeUrl = `https://discord.com/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(DISCORD_REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}`;
-    console.log('Attempting Discord OAuth redirect with URI:', authorizeUrl);
+    // console.log('Attempting Discord OAuth redirect with URI:', authorizeUrl);
     res.redirect(authorizeUrl);
 });
 

@@ -7,7 +7,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Get the Generative Model instance
 const model = genAI.getGenerativeModel({
-  model: 'gemini-1.5-flash', // You can choose 'gemini-pro-vision' or other suitable models for images
+  model: 'gemini-2.0-flash', // You can choose 'gemini-pro-vision' or other suitable models for images
   generationConfig: {
     temperature: 0.4,       // Controls randomness of the output
     maxOutputTokens: 512,   // Maximum number of tokens in the response

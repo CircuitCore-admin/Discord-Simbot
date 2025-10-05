@@ -212,7 +212,7 @@ function App() {
         const checkAuthStatus = async () => {
             setLoading(true);
             try {
-                const response = await fetch('https://bottesting.circuitcore.net/auth/me');
+                const response = await fetch('https://f1-hotlaps.circuitcore.net/auth/me');
                 const data = await response.json();
                 if (data.isAuthenticated) {
                     setIsAuthenticated(true);
@@ -232,7 +232,7 @@ function App() {
                     const code = params.get('code');
                     if (code) {
                         window.history.pushState({}, document.title, window.location.pathname);
-                        const callbackResponse = await fetch('https://bottesting.circuitcore.net/auth/discord/callback', {
+                        const callbackResponse = await fetch('https://f1-hotlaps.circuitcore.net/auth/discord/callback', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ code }),
@@ -264,7 +264,7 @@ function App() {
         if (!isAuthenticated || !selectedGuildId) { setTracks([]); return; }
         const fetchTracks = async () => {
             try {
-                const response = await fetch(`https://bottesting.circuitcore.net/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
+                const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/tracks?guildId=${encodeURIComponent(selectedGuildId)}`);
                 if (!response.ok) throw new Error('Failed to fetch tracks');
                 const data = await response.json();
                 setTracks(data);
@@ -290,7 +290,7 @@ function App() {
         setLoading(true);
         const fetchLeaderboard = async () => {
             try {
-                const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`);
+                const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/leaderboard?track=${encodeURIComponent(selectedTrack)}&sortColumn=${sortColumn}&sortOrder=${sortOrder}&guildId=${encodeURIComponent(selectedGuildId)}`);
                 if (!response.ok) throw new Error('Failed to fetch leaderboard');
                 const data = await response.json();
                 setLeaderboardData(data);
@@ -329,7 +329,7 @@ function App() {
         setExpandedDriverId(userId);
         setLoadingExpandedLaps(true);
         try {
-            const response = await fetch(`https://bottesting.circuitcore.net/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) throw new Error("Failed to fetch driver's laps");
             const data = await response.json();
             setExpandedDriverLaps(data);
@@ -367,11 +367,11 @@ function App() {
     const currentLeaderboardItems = filteredLeaderboard.slice(indexOfFirstItem, indexOfLastItem);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    const handleDiscordLogin = () => { window.location.href = `https://bottesting.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`; };
+    const handleDiscordLogin = () => { window.location.href = `https://f1-hotlaps.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`; };
     
     const handleDiscordLogout = async () => {
         try {
-            const response = await fetch('https://bottesting.circuitcore.net/auth/logout', {
+            const response = await fetch('https://f1-hotlaps.circuitcore.net/auth/logout', {
                 method: 'POST',
             });
             if (response.ok) {
@@ -409,7 +409,7 @@ function App() {
                 endDate: endDate,
             }).toString();
 
-            const response = await fetch(`https://bottesting.circuitcore.net/api/leaderboard/csv?${params}`);
+            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/leaderboard/csv?${params}`);
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Failed to download CSV: ${errorText}`);

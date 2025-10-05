@@ -39,7 +39,7 @@ async function analyzeImage(imageUrl) {
 * **Extract the Track Location Name:** Locate the text at the top-left (e.g., "BELGIUM - TIME TRIAL"). **ONLY extract the main track name portion, excluding any suffixes like " - TIME TRIAL" or " - QUALIFYING". For example, if it says "BELGIUM - TIME TRIAL", extract "BELGIUM". If it says "SAUDI ARABIA - TIME TRIAL", extract "SAUDI ARABIA".**
 * **Identify the TOP-MOST DISPLAYED LAP TIME:**
     * Locate the section clearly titled "FASTEST LAP".
-    * Find the very first (top-most) row of data under this section.
+    * Find the very first (top-most) row of data under this section, this is usually also hightlighted compared to other laps..
     * From *only this top row*, extract:
         * **Driver Name:** The text under the "DRIVER" column.
         * **Team Name:** The text under the "TEAM" column.
@@ -49,11 +49,11 @@ async function analyzeImage(imageUrl) {
         * **S3 Time:** The time under the "S3" column.
         * **Custom Setup:** "Yes" or "No" under "CUSTOM SETUP".
 * **Determine Validity for THIS TARGET LAP ONLY (Extreme Caution on Penalties):**
-    * Focus *EXCLUSIVELY* on the single cell directly under the "PEN." column that aligns precisely with the **TOP-MOST LAP TIME'S ROW** you just identified.
+    * Focus *EXCLUSIVELY* on the single cell DIRECTLY under the "PEN." column for the TOP ROW only that aligns precisely with the **TOP-MOST LAP TIME'S ROW** you just identified.
     * **DEFAULT ASSUMPTION: The lap is VALID.** A penalty will *only* be marked if a very specific, obvious, and *graphical* penalty icon is present.
     * **INVALID LAP CRITERIA (ONLY IF OVERWHELMINGLY PRESENT):**
-        * This cell MUST contain a **CLEARLY VISIBLE, DISTINCT, and OBVIOUS GRAPHICAL SYMBOL** representing a penalty.
-        * Examples: a solid black/white checkered flag, a prominent red "X", a "⚠️" (warning) symbol, or any small, sharp, and intentional penalty graphic.
+        * This cell MUST contain a **VERY CLEARLY VISIBLE, DISTINCT, and OBVIOUS GRAPHICAL SYMBOL** representing a penalty.
+        * Examples: a Black / white box, a solid black/white checkered flag, a prominent red "X", a "⚠️" (warning) symbol, or any small, sharp, and intentional penalty graphic.
         * It MUST be a *symbol*, *not* just a dark spot, a slight discoloration, or background texture.
         * **DO NOT MISINTERPRET as a penalty:** Any empty space, subtle shading, light variations, minor background textures, faint lines, dots, general UI background elements that are NOT a clear penalty icon, slight shadows, faint reflections, or blurry/indistinct marks.
         * If there is *ANY* doubt, *ANY* ambiguity, or if the graphic is not undeniably a penalty icon, you **MUST** mark the lap as VALID.
