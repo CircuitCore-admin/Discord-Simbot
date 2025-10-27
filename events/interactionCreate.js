@@ -35,7 +35,61 @@ module.exports = {
             }
         } else if (interaction.isModalSubmit()) {
             // Handle modal submissions for edit hotlap
-            if (interaction.customId.startsWith('edit-hotlap-')) {
+            // Check for second modal first (more specific pattern)
+            if (interaction.customId.startsWith('edit-hotlap-2-')) {
+                try {
+                    // Parse customId to get record ID and first modal data
+                    const parts = interaction.customId.split('-');
+                    const recordId = parts[3];
+                    const encodedData = parts.slice(4).join('-');
+                    
+                    // Decode first modal data
+                    const firstModalData = JSON.parse(Buffer.from(encodedData, 'base64').toString());
+
+                    // Get values from second modal
+                    const s3Time = interaction.fields.getTextInputValue('s3_time');
+                    const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
+                    const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
+                    const trackLocationName = interaction.fields.getTextInputValue('track_location_name');
+
+                    // Convert boolean strings to actual booleans
+                    const isValid = isValidStr === 'true';
+                    const customSetup = customSetupStr === 'true';
+
+                    // Update the database
+                    await db.query(
+                        `UPDATE hotlaps 
+                         SET driver_name = $1, team_name = $2, lap_time = $3, 
+                             s1_time = $4, s2_time = $5, s3_time = $6, 
+                             is_valid = $7, custom_setup = $8, track_location_name = $9
+                         WHERE id = $10`,
+                        [
+                            firstModalData.driver_name,
+                            firstModalData.team_name,
+                            firstModalData.lap_time,
+                            firstModalData.s1_time,
+                            firstModalData.s2_time,
+                            s3Time,
+                            isValid,
+                            customSetup,
+                            trackLocationName,
+                            recordId
+                        ]
+                    );
+
+                    await interaction.reply({
+                        content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
+                        ephemeral: true
+                    });
+
+                } catch (error) {
+                    console.error('❌ Error handling second modal submission:', error);
+                    return interaction.reply({
+                        content: '⚠️ An error occurred while saving your changes. Please try again.',
+                        ephemeral: true
+                    });
+                }
+            } else if (interaction.customId.startsWith('edit-hotlap-')) {
                 try {
                     const recordId = interaction.customId.replace('edit-hotlap-', '');
                     
@@ -118,59 +172,6 @@ module.exports = {
                     console.error('❌ Error handling first modal submission:', error);
                     return interaction.reply({
                         content: '⚠️ An error occurred while processing your edit. Please try again.',
-                        ephemeral: true
-                    });
-                }
-            } else if (interaction.customId.startsWith('edit-hotlap-2-')) {
-                try {
-                    // Parse customId to get record ID and first modal data
-                    const parts = interaction.customId.split('-');
-                    const recordId = parts[3];
-                    const encodedData = parts.slice(4).join('-');
-                    
-                    // Decode first modal data
-                    const firstModalData = JSON.parse(Buffer.from(encodedData, 'base64').toString());
-
-                    // Get values from second modal
-                    const s3Time = interaction.fields.getTextInputValue('s3_time');
-                    const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
-                    const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
-                    const trackLocationName = interaction.fields.getTextInputValue('track_location_name');
-
-                    // Convert boolean strings to actual booleans
-                    const isValid = isValidStr === 'true';
-                    const customSetup = customSetupStr === 'true';
-
-                    // Update the database
-                    await db.query(
-                        `UPDATE hotlaps 
-                         SET driver_name = $1, team_name = $2, lap_time = $3, 
-                             s1_time = $4, s2_time = $5, s3_time = $6, 
-                             is_valid = $7, custom_setup = $8, track_location_name = $9
-                         WHERE id = $10`,
-                        [
-                            firstModalData.driver_name,
-                            firstModalData.team_name,
-                            firstModalData.lap_time,
-                            firstModalData.s1_time,
-                            firstModalData.s2_time,
-                            s3Time,
-                            isValid,
-                            customSetup,
-                            trackLocationName,
-                            recordId
-                        ]
-                    );
-
-                    await interaction.reply({
-                        content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
-                        ephemeral: true
-                    });
-
-                } catch (error) {
-                    console.error('❌ Error handling second modal submission:', error);
-                    return interaction.reply({
-                        content: '⚠️ An error occurred while saving your changes. Please try again.',
                         ephemeral: true
                     });
                 }
