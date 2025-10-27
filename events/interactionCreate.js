@@ -84,10 +84,18 @@ module.exports = {
 
                 } catch (error) {
                     console.error('❌ Error handling second modal submission:', error);
-                    return interaction.reply({
-                        content: '⚠️ An error occurred while saving your changes. Please try again.',
-                        ephemeral: true
-                    });
+                    // Check if we already replied, if not reply, otherwise followUp
+                    if (!interaction.replied && !interaction.deferred) {
+                        return interaction.reply({
+                            content: '⚠️ An error occurred while saving your changes. Please try again.',
+                            ephemeral: true
+                        });
+                    } else {
+                        return interaction.followUp({
+                            content: '⚠️ An error occurred while saving your changes. Please try again.',
+                            ephemeral: true
+                        });
+                    }
                 }
             } else if (interaction.customId.startsWith('edit-hotlap-')) {
                 try {
@@ -166,14 +174,23 @@ module.exports = {
                     // Update customId to include encoded data
                     modal2.setCustomId(`edit-hotlap-2-${recordId}-${encodedData}`);
 
+                    // Show the second modal
                     await interaction.showModal(modal2);
 
                 } catch (error) {
                     console.error('❌ Error handling first modal submission:', error);
-                    return interaction.reply({
-                        content: '⚠️ An error occurred while processing your edit. Please try again.',
-                        ephemeral: true
-                    });
+                    // Try to reply if we haven't shown the modal yet
+                    try {
+                        if (!interaction.replied && !interaction.deferred) {
+                            return interaction.reply({
+                                content: '⚠️ An error occurred while processing your edit. Please try again.',
+                                ephemeral: true
+                            });
+                        }
+                    } catch (replyError) {
+                        // If we can't reply (e.g., modal was already shown), just log the error
+                        console.error('❌ Could not send error message to user:', replyError);
+                    }
                 }
             }
         }
