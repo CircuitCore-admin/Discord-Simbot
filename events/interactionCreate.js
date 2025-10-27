@@ -46,23 +46,22 @@ module.exports = {
                     // Decode first modal data
                     const firstModalData = JSON.parse(Buffer.from(encodedData, 'base64').toString());
 
-                    // Get values from second modal
+                    // Get values from second modal (only 3 fields now)
                     const s3Time = interaction.fields.getTextInputValue('s3_time');
                     const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
                     const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
-                    const trackLocationName = interaction.fields.getTextInputValue('track_location_name');
 
                     // Convert boolean strings to actual booleans
                     const isValid = isValidStr === 'true';
                     const customSetup = customSetupStr === 'true';
 
-                    // Update the database
+                    // Update the database (without track_location_name)
                     await db.query(
                         `UPDATE hotlaps 
                          SET driver_name = $1, team_name = $2, lap_time = $3, 
                              s1_time = $4, s2_time = $5, s3_time = $6, 
-                             is_valid = $7, custom_setup = $8, track_location_name = $9
-                         WHERE id = $10`,
+                             is_valid = $7, custom_setup = $8
+                         WHERE id = $9`,
                         [
                             firstModalData.driver_name,
                             firstModalData.team_name,
@@ -72,7 +71,6 @@ module.exports = {
                             s3Time,
                             isValid,
                             customSetup,
-                            trackLocationName,
                             recordId
                         ]
                     );
@@ -120,7 +118,7 @@ module.exports = {
 
                     const record = result.rows[0];
 
-                    // Create second modal for remaining fields
+                    // Create second modal for remaining 3 fields (removed track_location_name)
                     const modal2 = new ModalBuilder()
                         .setCustomId(`edit-hotlap-2-${recordId}`)
                         .setTitle('Edit Lap (Part 2/2)');
@@ -146,19 +144,11 @@ module.exports = {
                         .setValue(record.custom_setup ? 'true' : 'false')
                         .setRequired(true);
 
-                    const trackLocationInput = new TextInputBuilder()
-                        .setCustomId('track_location_name')
-                        .setLabel('Track Location Name')
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(record.track_location_name || '')
-                        .setRequired(true);
-
                     const row1 = new ActionRowBuilder().addComponents(s3TimeInput);
                     const row2 = new ActionRowBuilder().addComponents(isValidInput);
                     const row3 = new ActionRowBuilder().addComponents(customSetupInput);
-                    const row4 = new ActionRowBuilder().addComponents(trackLocationInput);
 
-                    modal2.addComponents(row1, row2, row3, row4);
+                    modal2.addComponents(row1, row2, row3);
 
                     // Store first modal data in a temporary cache (we'll encode it in customId)
                     // Encode the data as base64 in customId to pass to second modal

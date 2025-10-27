@@ -1,5 +1,5 @@
 // commands/edit_hotlap.js
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits } = require('discord.js');
 const db = require('../services/database');
 
 module.exports = {
@@ -7,16 +7,91 @@ module.exports = {
         .setName('edit')
         .setDescription('Edit an existing hotlap record')
         .addStringOption(option =>
+            option.setName('track_location')
+                .setDescription('The name of the track location')
+                .setRequired(true)
+                .setAutocomplete(true)
+        )
+        .addStringOption(option =>
             option.setName('name')
                 .setDescription('The Discord tag of the user whose lap needs editing')
                 .setRequired(true)
+                .setAutocomplete(true)
         )
         .addStringOption(option =>
             option.setName('time')
                 .setDescription('The exact lap time string (e.g., "1:27.705")')
                 .setRequired(true)
+                .setAutocomplete(true)
         )
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
         .setDMPermission(false), // Command cannot be used in DMs
+
+    async autocomplete(interaction) {
+        const focusedOption = interaction.options.getFocused(true);
+        const guildId = interaction.guildId;
+
+        try {
+            if (focusedOption.name === 'track_location') {
+                // Get distinct track locations for this guild
+                const result = await db.query(
+                    'SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 ORDER BY track_location_name',
+                    [guildId]
+                );
+                
+                const choices = result.rows
+                    .map(row => row.track_location_name)
+                    .filter(track => track.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .slice(0, 25)
+                    .map(track => ({ name: track, value: track }));
+                
+                await interaction.respond(choices);
+            } else if (focusedOption.name === 'name') {
+                // Get distinct discord tags for the selected track
+                const trackLocation = interaction.options.getString('track_location');
+                if (!trackLocation) {
+                    return await interaction.respond([]);
+                }
+
+                const result = await db.query(
+                    'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 ORDER BY discord_tag',
+                    [guildId, trackLocation]
+                );
+                
+                const choices = result.rows
+                    .map(row => row.discord_tag)
+                    .filter(tag => tag.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .slice(0, 25)
+                    .map(tag => ({ name: tag, value: tag }));
+                
+                await interaction.respond(choices);
+            } else if (focusedOption.name === 'time') {
+                // Get lap times for the selected track and user
+                const trackLocation = interaction.options.getString('track_location');
+                const discordTag = interaction.options.getString('name');
+                
+                if (!trackLocation || !discordTag) {
+                    return await interaction.respond([]);
+                }
+
+                const result = await db.query(
+                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 AND discord_tag ILIKE $3 ORDER BY submission_date DESC',
+                    [guildId, trackLocation, discordTag]
+                );
+                
+                const choices = result.rows
+                    .map(row => row.lap_time)
+                    .filter(time => time.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .slice(0, 25)
+                    .map(time => ({ name: time, value: time }));
+                
+                await interaction.respond(choices);
+            }
+        } catch (error) {
+            console.error('❌ Error in autocomplete:', error);
+            await interaction.respond([]);
+        }
+    },
 
     async execute(interaction) {
         // Check if command is used in a guild
@@ -27,6 +102,7 @@ module.exports = {
             });
         }
 
+        const trackLocation = interaction.options.getString('track_location');
         const discordTag = interaction.options.getString('name');
         const lapTime = interaction.options.getString('time');
         const guildId = interaction.guildId;
@@ -34,33 +110,33 @@ module.exports = {
         try {
             // Fetch the specific hotlap record
             const result = await db.query(
-                'SELECT * FROM hotlaps WHERE guild_id = $1 AND discord_tag = $2 AND lap_time = $3',
-                [guildId, discordTag, lapTime]
+                'SELECT * FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 AND discord_tag ILIKE $3 AND lap_time = $4',
+                [guildId, trackLocation, discordTag, lapTime]
             );
 
             if (result.rows.length === 0) {
                 return interaction.reply({
-                    content: `❌ No hotlap record found for user "${discordTag}" with lap time "${lapTime}" in this server.`,
+                    content: `❌ No hotlap record found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}" in this server.`,
                     ephemeral: true
                 });
             }
 
             if (result.rows.length > 1) {
                 return interaction.reply({
-                    content: `⚠️ Multiple records found for user "${discordTag}" with lap time "${lapTime}". Please contact an administrator for manual resolution.`,
+                    content: `⚠️ Multiple records found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}". Please contact an administrator for manual resolution.`,
                     ephemeral: true
                 });
             }
 
-            // Single record found - show modal
+            // Single record found - show modal with all 8 editable fields
             const record = result.rows[0];
             
             // Create modal
             const modal = new ModalBuilder()
                 .setCustomId(`edit-hotlap-${record.id}`)
-                .setTitle(`Edit Lap: ${record.driver_name} - ${record.lap_time}`);
+                .setTitle(`Edit Lap: ${record.driver_name} - ${record.track_location_name} - ${record.lap_time}`);
 
-            // Create text input components
+            // Create text input components for all 8 editable fields
             const driverNameInput = new TextInputBuilder()
                 .setCustomId('driver_name')
                 .setLabel('Driver Name')
@@ -96,13 +172,6 @@ module.exports = {
                 .setValue(record.s2_time || '')
                 .setRequired(true);
 
-            const s3TimeInput = new TextInputBuilder()
-                .setCustomId('s3_time')
-                .setLabel('Sector 3 Time')
-                .setStyle(TextInputStyle.Short)
-                .setValue(record.s3_time || '')
-                .setRequired(true);
-
             // Create action rows (modals can have up to 5 action rows)
             const row1 = new ActionRowBuilder().addComponents(driverNameInput);
             const row2 = new ActionRowBuilder().addComponents(teamNameInput);
@@ -112,12 +181,7 @@ module.exports = {
 
             modal.addComponents(row1, row2, row3, row4, row5);
 
-            // Store the record in memory for the second modal
-            // We'll use the interaction to pass data through customId
-            // Note: We'll handle s3_time, is_valid, custom_setup, and track_location_name
-            // in the modal submission handler by showing a second modal
-
-            // Show the modal
+            // Show the modal - we'll handle s3_time, is_valid, and custom_setup in a second modal
             await interaction.showModal(modal);
 
         } catch (error) {

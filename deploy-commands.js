@@ -38,18 +38,28 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 description: 'Edit an existing hotlap record',
                 options: [
                     {
+                        name: 'track_location',
+                        type: 3, // STRING
+                        description: 'The name of the track location',
+                        required: true,
+                        autocomplete: true,
+                    },
+                    {
                         name: 'name',
                         type: 3, // STRING
                         description: 'The Discord tag of the user whose lap needs editing',
                         required: true,
+                        autocomplete: true,
                     },
                     {
                         name: 'time',
                         type: 3, // STRING
                         description: 'The exact lap time string (e.g., "1:27.705")',
                         required: true,
+                        autocomplete: true,
                     },
                 ],
+                default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
                 dm_permission: false, // Command cannot be used in DMs
             },
             {
