@@ -34,6 +34,25 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 ],
             },
             {
+                name: 'edit',
+                description: 'Edit an existing hotlap record',
+                options: [
+                    {
+                        name: 'name',
+                        type: 3, // STRING
+                        description: 'The Discord tag of the user whose lap needs editing',
+                        required: true,
+                    },
+                    {
+                        name: 'time',
+                        type: 3, // STRING
+                        description: 'The exact lap time string (e.g., "1:27.705")',
+                        required: true,
+                    },
+                ],
+                dm_permission: false, // Command cannot be used in DMs
+            },
+            {
                 name: 'set_hotlap_channel',
                 description: 'Sets the channel where hotlap screenshots will be automatically analyzed.',
                 options: [
