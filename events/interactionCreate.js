@@ -1,4 +1,4 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../services/database');
 
 // In-memory cache to store first modal data temporarily
@@ -141,6 +141,54 @@ module.exports = {
                     const s1Time = interaction.fields.getTextInputValue('s1_time');
                     const s2Time = interaction.fields.getTextInputValue('s2_time');
 
+                    // Store first modal data in cache with timestamp
+                    editDataCache.set(recordId, {
+                        data: {
+                            driver_name: driverName,
+                            team_name: teamName,
+                            lap_time: lapTime,
+                            s1_time: s1Time,
+                            s2_time: s2Time
+                        },
+                        timestamp: Date.now()
+                    });
+
+                    // Reply with a button to continue to part 2
+                    const continueButton = new ButtonBuilder()
+                        .setCustomId(`edit-hotlap-continue-${recordId}`)
+                        .setLabel('Continue to Part 2')
+                        .setStyle(ButtonStyle.Primary);
+
+                    const row = new ActionRowBuilder().addComponents(continueButton);
+
+                    await interaction.reply({
+                        content: '✅ Part 1 saved! Click the button below to continue with the remaining fields.',
+                        components: [row],
+                        ephemeral: true
+                    });
+
+                } catch (error) {
+                    console.error('❌ Error handling first modal submission:', error);
+                    // Try to reply if we haven't shown the modal yet
+                    try {
+                        if (!interaction.replied && !interaction.deferred) {
+                            return interaction.reply({
+                                content: '⚠️ An error occurred while processing your edit. Please try again.',
+                                ephemeral: true
+                            });
+                        }
+                    } catch (replyError) {
+                        // If we can't reply (e.g., modal was already shown), just log the error
+                        console.error('❌ Could not send error message to user:', replyError);
+                    }
+                }
+            }
+        } else if (interaction.isButton()) {
+            // Handle button interactions for continuing to second modal
+            if (interaction.customId.startsWith('edit-hotlap-continue-')) {
+                try {
+                    const recordId = interaction.customId.replace('edit-hotlap-continue-', '');
+                    
                     // Fetch current record to get remaining fields for second modal
                     const result = await db.query('SELECT * FROM hotlaps WHERE id = $1', [recordId]);
                     
@@ -185,33 +233,19 @@ module.exports = {
 
                     modal2.addComponents(row1, row2, row3);
 
-                    // Store first modal data in cache with timestamp
-                    editDataCache.set(recordId, {
-                        data: {
-                            driver_name: driverName,
-                            team_name: teamName,
-                            lap_time: lapTime,
-                            s1_time: s1Time,
-                            s2_time: s2Time
-                        },
-                        timestamp: Date.now()
-                    });
-
                     // Show the second modal
                     await interaction.showModal(modal2);
 
                 } catch (error) {
-                    console.error('❌ Error handling first modal submission:', error);
-                    // Try to reply if we haven't shown the modal yet
+                    console.error('❌ Error handling button click for second modal:', error);
                     try {
                         if (!interaction.replied && !interaction.deferred) {
                             return interaction.reply({
-                                content: '⚠️ An error occurred while processing your edit. Please try again.',
+                                content: '⚠️ An error occurred while loading the second modal. Please try again.',
                                 ephemeral: true
                             });
                         }
                     } catch (replyError) {
-                        // If we can't reply (e.g., modal was already shown), just log the error
                         console.error('❌ Could not send error message to user:', replyError);
                     }
                 }
