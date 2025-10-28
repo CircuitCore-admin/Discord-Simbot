@@ -89,12 +89,7 @@ module.exports = {
             }
         } catch (error) {
             console.error('❌ Error in autocomplete:', error);
-            // Always respond with empty array on error to prevent interaction failure
-            try {
-                await interaction.respond([]);
-            } catch (respondError) {
-                console.error('❌ Could not respond to autocomplete:', respondError);
-            }
+            await interaction.respond([]);
         }
     },
 
@@ -191,17 +186,10 @@ module.exports = {
 
         } catch (error) {
             console.error('❌ Error in edit command:', error);
-            // Check if we've already shown a modal or replied
-            if (!interaction.replied && !interaction.deferred) {
-                try {
-                    return interaction.reply({
-                        content: '⚠️ An error occurred while fetching the hotlap record. Please try again.',
-                        ephemeral: true
-                    });
-                } catch (replyError) {
-                    console.error('❌ Could not send error message to user:', replyError);
-                }
-            }
+            return interaction.reply({
+                content: '⚠️ An error occurred while fetching the hotlap record. Please try again.',
+                ephemeral: true
+            });
         }
     }
 };

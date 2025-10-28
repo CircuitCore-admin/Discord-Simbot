@@ -46,11 +46,7 @@ module.exports = {
                 }
             } catch (error) {
                 console.error('❌ Error handling autocomplete:', error);
-                try {
-                    await interaction.respond([]);
-                } catch (respondError) {
-                    console.error('❌ Could not respond to autocomplete interaction:', respondError);
-                }
+                await interaction.respond([]);
             }
         } else if (interaction.isModalSubmit()) {
             // Handle modal submissions for edit hotlap
@@ -114,20 +110,16 @@ module.exports = {
                 } catch (error) {
                     console.error('❌ Error handling second modal submission:', error);
                     // Check if we already replied, if not reply, otherwise followUp
-                    try {
-                        if (!interaction.replied && !interaction.deferred) {
-                            return interaction.reply({
-                                content: '⚠️ An error occurred while saving your changes. Please try again.',
-                                ephemeral: true
-                            });
-                        } else {
-                            return interaction.followUp({
-                                content: '⚠️ An error occurred while saving your changes. Please try again.',
-                                ephemeral: true
-                            });
-                        }
-                    } catch (replyError) {
-                        console.error('❌ Could not send error message to user:', replyError);
+                    if (!interaction.replied && !interaction.deferred) {
+                        return interaction.reply({
+                            content: '⚠️ An error occurred while saving your changes. Please try again.',
+                            ephemeral: true
+                        });
+                    } else {
+                        return interaction.followUp({
+                            content: '⚠️ An error occurred while saving your changes. Please try again.',
+                            ephemeral: true
+                        });
                     }
                 }
             } else if (interaction.customId.startsWith('edit-hotlap-')) {
