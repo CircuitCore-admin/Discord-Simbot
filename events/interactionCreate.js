@@ -1,9 +1,6 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const db = require('../services/database');
 
-// In-memory cache to store first modal data temporarily
-const editDataCache = new Map();
-
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
@@ -41,20 +38,15 @@ module.exports = {
             // Check for second modal first (more specific pattern)
             if (interaction.customId.startsWith('edit-hotlap-2-')) {
                 try {
-                    // Parse customId to get record ID
-                    const recordId = interaction.customId.replace('edit-hotlap-2-', '');
+                    // Parse customId to get record ID and first modal data
+                    const parts = interaction.customId.split('-');
+                    const recordId = parts[3];
+                    const encodedData = parts.slice(4).join('-');
                     
-                    // Retrieve first modal data from cache
-                    const firstModalData = editDataCache.get(recordId);
-                    
-                    if (!firstModalData) {
-                        return interaction.reply({
-                            content: '❌ Session expired. Please try the edit command again.',
-                            ephemeral: true
-                        });
-                    }
+                    // Decode first modal data
+                    const firstModalData = JSON.parse(Buffer.from(encodedData, 'base64').toString());
 
-                    // Get values from second modal
+                    // Get values from second modal (only 3 fields now)
                     const s3Time = interaction.fields.getTextInputValue('s3_time');
                     const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
                     const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
@@ -82,9 +74,6 @@ module.exports = {
                             recordId
                         ]
                     );
-
-                    // Clear cache entry
-                    editDataCache.delete(recordId);
 
                     await interaction.reply({
                         content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
@@ -129,7 +118,7 @@ module.exports = {
 
                     const record = result.rows[0];
 
-                    // Create second modal for remaining 3 fields
+                    // Create second modal for remaining 3 fields (removed track_location_name)
                     const modal2 = new ModalBuilder()
                         .setCustomId(`edit-hotlap-2-${recordId}`)
                         .setTitle('Edit Lap (Part 2/2)');
@@ -143,14 +132,14 @@ module.exports = {
 
                     const isValidInput = new TextInputBuilder()
                         .setCustomId('is_valid')
-                        .setLabel('Valid:')
+                        .setLabel('Is Valid (true or false)')
                         .setStyle(TextInputStyle.Short)
                         .setValue(record.is_valid ? 'true' : 'false')
                         .setRequired(true);
 
                     const customSetupInput = new TextInputBuilder()
                         .setCustomId('custom_setup')
-                        .setLabel('Setup:')
+                        .setLabel('Custom Setup (true or false)')
                         .setStyle(TextInputStyle.Short)
                         .setValue(record.custom_setup ? 'true' : 'false')
                         .setRequired(true);
@@ -161,14 +150,19 @@ module.exports = {
 
                     modal2.addComponents(row1, row2, row3);
 
-                    // Store first modal data in cache
-                    editDataCache.set(recordId, {
+                    // Store first modal data in a temporary cache (we'll encode it in customId)
+                    // Encode the data as base64 in customId to pass to second modal
+                    const firstModalData = JSON.stringify({
                         driver_name: driverName,
                         team_name: teamName,
                         lap_time: lapTime,
                         s1_time: s1Time,
                         s2_time: s2Time
                     });
+                    const encodedData = Buffer.from(firstModalData).toString('base64');
+                    
+                    // Update customId to include encoded data
+                    modal2.setCustomId(`edit-hotlap-2-${recordId}-${encodedData}`);
 
                     // Show the second modal
                     await interaction.showModal(modal2);
