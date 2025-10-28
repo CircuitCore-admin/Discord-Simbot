@@ -1,6 +1,21 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const db = require('../services/database');
 
+// In-memory cache to store first modal data temporarily
+// Format: Map<recordId, { data: {...}, timestamp: number }>
+const editDataCache = new Map();
+
+// Cleanup old cache entries (older than 5 minutes)
+setInterval(() => {
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    for (const [key, value] of editDataCache.entries()) {
+        if (value.timestamp < fiveMinutesAgo) {
+            editDataCache.delete(key);
+            console.log(`🧹 Cleaned up expired cache entry: ${key}`);
+        }
+    }
+}, 60 * 1000); // Run every minute
+
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction) {
@@ -31,22 +46,33 @@ module.exports = {
                 }
             } catch (error) {
                 console.error('❌ Error handling autocomplete:', error);
-                await interaction.respond([]);
+                try {
+                    await interaction.respond([]);
+                } catch (respondError) {
+                    console.error('❌ Could not respond to autocomplete interaction:', respondError);
+                }
             }
         } else if (interaction.isModalSubmit()) {
             // Handle modal submissions for edit hotlap
             // Check for second modal first (more specific pattern)
             if (interaction.customId.startsWith('edit-hotlap-2-')) {
                 try {
-                    // Parse customId to get record ID and first modal data
-                    const parts = interaction.customId.split('-');
-                    const recordId = parts[3];
-                    const encodedData = parts.slice(4).join('-');
+                    // Parse customId to get record ID
+                    const recordId = interaction.customId.replace('edit-hotlap-2-', '');
                     
-                    // Decode first modal data
-                    const firstModalData = JSON.parse(Buffer.from(encodedData, 'base64').toString());
+                    // Retrieve first modal data from cache
+                    const cacheEntry = editDataCache.get(recordId);
+                    
+                    if (!cacheEntry) {
+                        return interaction.reply({
+                            content: '❌ Session expired. Please try the edit command again.',
+                            ephemeral: true
+                        });
+                    }
 
-                    // Get values from second modal (only 3 fields now)
+                    const firstModalData = cacheEntry.data;
+
+                    // Get values from second modal
                     const s3Time = interaction.fields.getTextInputValue('s3_time');
                     const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
                     const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
@@ -55,44 +81,53 @@ module.exports = {
                     const isValid = isValidStr === 'true';
                     const customSetup = customSetupStr === 'true';
 
-                    // Update the database (without track_location_name)
-                    await db.query(
-                        `UPDATE hotlaps 
-                         SET driver_name = $1, team_name = $2, lap_time = $3, 
-                             s1_time = $4, s2_time = $5, s3_time = $6, 
-                             is_valid = $7, custom_setup = $8
-                         WHERE id = $9`,
-                        [
-                            firstModalData.driver_name,
-                            firstModalData.team_name,
-                            firstModalData.lap_time,
-                            firstModalData.s1_time,
-                            firstModalData.s2_time,
-                            s3Time,
-                            isValid,
-                            customSetup,
-                            recordId
-                        ]
-                    );
+                    try {
+                        // Update the database (without track_location_name)
+                        await db.query(
+                            `UPDATE hotlaps 
+                             SET driver_name = $1, team_name = $2, lap_time = $3, 
+                                 s1_time = $4, s2_time = $5, s3_time = $6, 
+                                 is_valid = $7, custom_setup = $8
+                             WHERE id = $9`,
+                            [
+                                firstModalData.driver_name,
+                                firstModalData.team_name,
+                                firstModalData.lap_time,
+                                firstModalData.s1_time,
+                                firstModalData.s2_time,
+                                s3Time,
+                                isValid,
+                                customSetup,
+                                recordId
+                            ]
+                        );
 
-                    await interaction.reply({
-                        content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
-                        ephemeral: true
-                    });
+                        await interaction.reply({
+                            content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
+                            ephemeral: true
+                        });
+                    } finally {
+                        // Always clear cache entry, even if update fails
+                        editDataCache.delete(recordId);
+                    }
 
                 } catch (error) {
                     console.error('❌ Error handling second modal submission:', error);
                     // Check if we already replied, if not reply, otherwise followUp
-                    if (!interaction.replied && !interaction.deferred) {
-                        return interaction.reply({
-                            content: '⚠️ An error occurred while saving your changes. Please try again.',
-                            ephemeral: true
-                        });
-                    } else {
-                        return interaction.followUp({
-                            content: '⚠️ An error occurred while saving your changes. Please try again.',
-                            ephemeral: true
-                        });
+                    try {
+                        if (!interaction.replied && !interaction.deferred) {
+                            return interaction.reply({
+                                content: '⚠️ An error occurred while saving your changes. Please try again.',
+                                ephemeral: true
+                            });
+                        } else {
+                            return interaction.followUp({
+                                content: '⚠️ An error occurred while saving your changes. Please try again.',
+                                ephemeral: true
+                            });
+                        }
+                    } catch (replyError) {
+                        console.error('❌ Could not send error message to user:', replyError);
                     }
                 }
             } else if (interaction.customId.startsWith('edit-hotlap-')) {
@@ -118,7 +153,7 @@ module.exports = {
 
                     const record = result.rows[0];
 
-                    // Create second modal for remaining 3 fields (removed track_location_name)
+                    // Create second modal for remaining 3 fields
                     const modal2 = new ModalBuilder()
                         .setCustomId(`edit-hotlap-2-${recordId}`)
                         .setTitle('Edit Lap (Part 2/2)');
@@ -132,14 +167,14 @@ module.exports = {
 
                     const isValidInput = new TextInputBuilder()
                         .setCustomId('is_valid')
-                        .setLabel('Is Valid (true or false)')
+                        .setLabel('Valid:')
                         .setStyle(TextInputStyle.Short)
                         .setValue(record.is_valid ? 'true' : 'false')
                         .setRequired(true);
 
                     const customSetupInput = new TextInputBuilder()
                         .setCustomId('custom_setup')
-                        .setLabel('Custom Setup (true or false)')
+                        .setLabel('Setup:')
                         .setStyle(TextInputStyle.Short)
                         .setValue(record.custom_setup ? 'true' : 'false')
                         .setRequired(true);
@@ -150,19 +185,17 @@ module.exports = {
 
                     modal2.addComponents(row1, row2, row3);
 
-                    // Store first modal data in a temporary cache (we'll encode it in customId)
-                    // Encode the data as base64 in customId to pass to second modal
-                    const firstModalData = JSON.stringify({
-                        driver_name: driverName,
-                        team_name: teamName,
-                        lap_time: lapTime,
-                        s1_time: s1Time,
-                        s2_time: s2Time
+                    // Store first modal data in cache with timestamp
+                    editDataCache.set(recordId, {
+                        data: {
+                            driver_name: driverName,
+                            team_name: teamName,
+                            lap_time: lapTime,
+                            s1_time: s1Time,
+                            s2_time: s2Time
+                        },
+                        timestamp: Date.now()
                     });
-                    const encodedData = Buffer.from(firstModalData).toString('base64');
-                    
-                    // Update customId to include encoded data
-                    modal2.setCustomId(`edit-hotlap-2-${recordId}-${encodedData}`);
 
                     // Show the second modal
                     await interaction.showModal(modal2);
