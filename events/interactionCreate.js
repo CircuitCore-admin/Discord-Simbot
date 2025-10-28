@@ -2,7 +2,19 @@ const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = req
 const db = require('../services/database');
 
 // In-memory cache to store first modal data temporarily
+// Format: Map<recordId, { data: {...}, timestamp: number }>
 const editDataCache = new Map();
+
+// Cleanup old cache entries (older than 5 minutes)
+setInterval(() => {
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    for (const [key, value] of editDataCache.entries()) {
+        if (value.timestamp < fiveMinutesAgo) {
+            editDataCache.delete(key);
+            console.log(`🧹 Cleaned up expired cache entry: ${key}`);
+        }
+    }
+}, 60 * 1000); // Run every minute
 
 module.exports = {
     name: 'interactionCreate',
@@ -45,14 +57,16 @@ module.exports = {
                     const recordId = interaction.customId.replace('edit-hotlap-2-', '');
                     
                     // Retrieve first modal data from cache
-                    const firstModalData = editDataCache.get(recordId);
+                    const cacheEntry = editDataCache.get(recordId);
                     
-                    if (!firstModalData) {
+                    if (!cacheEntry) {
                         return interaction.reply({
                             content: '❌ Session expired. Please try the edit command again.',
                             ephemeral: true
                         });
                     }
+
+                    const firstModalData = cacheEntry.data;
 
                     // Get values from second modal
                     const s3Time = interaction.fields.getTextInputValue('s3_time');
@@ -63,33 +77,35 @@ module.exports = {
                     const isValid = isValidStr === 'true';
                     const customSetup = customSetupStr === 'true';
 
-                    // Update the database (without track_location_name)
-                    await db.query(
-                        `UPDATE hotlaps 
-                         SET driver_name = $1, team_name = $2, lap_time = $3, 
-                             s1_time = $4, s2_time = $5, s3_time = $6, 
-                             is_valid = $7, custom_setup = $8
-                         WHERE id = $9`,
-                        [
-                            firstModalData.driver_name,
-                            firstModalData.team_name,
-                            firstModalData.lap_time,
-                            firstModalData.s1_time,
-                            firstModalData.s2_time,
-                            s3Time,
-                            isValid,
-                            customSetup,
-                            recordId
-                        ]
-                    );
+                    try {
+                        // Update the database (without track_location_name)
+                        await db.query(
+                            `UPDATE hotlaps 
+                             SET driver_name = $1, team_name = $2, lap_time = $3, 
+                                 s1_time = $4, s2_time = $5, s3_time = $6, 
+                                 is_valid = $7, custom_setup = $8
+                             WHERE id = $9`,
+                            [
+                                firstModalData.driver_name,
+                                firstModalData.team_name,
+                                firstModalData.lap_time,
+                                firstModalData.s1_time,
+                                firstModalData.s2_time,
+                                s3Time,
+                                isValid,
+                                customSetup,
+                                recordId
+                            ]
+                        );
 
-                    // Clear cache entry
-                    editDataCache.delete(recordId);
-
-                    await interaction.reply({
-                        content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
-                        ephemeral: true
-                    });
+                        await interaction.reply({
+                            content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
+                            ephemeral: true
+                        });
+                    } finally {
+                        // Always clear cache entry, even if update fails
+                        editDataCache.delete(recordId);
+                    }
 
                 } catch (error) {
                     console.error('❌ Error handling second modal submission:', error);
@@ -161,13 +177,16 @@ module.exports = {
 
                     modal2.addComponents(row1, row2, row3);
 
-                    // Store first modal data in cache
+                    // Store first modal data in cache with timestamp
                     editDataCache.set(recordId, {
-                        driver_name: driverName,
-                        team_name: teamName,
-                        lap_time: lapTime,
-                        s1_time: s1Time,
-                        s2_time: s2Time
+                        data: {
+                            driver_name: driverName,
+                            team_name: teamName,
+                            lap_time: lapTime,
+                            s1_time: s1Time,
+                            s2_time: s2Time
+                        },
+                        timestamp: Date.now()
                     });
 
                     // Show the second modal
