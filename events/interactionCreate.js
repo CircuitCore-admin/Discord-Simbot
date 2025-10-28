@@ -250,6 +250,91 @@ module.exports = {
                     }
                 }
             }
+        } else if (interaction.isStringSelectMenu()) {
+            // Handle select menu interactions for choosing which record to edit
+            if (interaction.customId.startsWith('edit-hotlap-select-')) {
+                try {
+                    const recordId = interaction.values[0];
+                    
+                    // Fetch the selected record
+                    const result = await db.query('SELECT * FROM hotlaps WHERE id = $1', [recordId]);
+                    
+                    if (result.rows.length === 0) {
+                        return interaction.update({
+                            content: '❌ Record not found. It may have been deleted.',
+                            components: [],
+                            ephemeral: true
+                        });
+                    }
+
+                    const record = result.rows[0];
+                    
+                    // Create first modal with 5 fields
+                    const modal = new ModalBuilder()
+                        .setCustomId(`edit-hotlap-${record.id}`)
+                        .setTitle(`Edit Lap: ${record.driver_name} - ${record.track_location_name} - ${record.lap_time}`);
+
+                    // Create text input components for first 5 editable fields
+                    const driverNameInput = new TextInputBuilder()
+                        .setCustomId('driver_name')
+                        .setLabel('Driver Name')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.driver_name || '')
+                        .setRequired(true);
+
+                    const teamNameInput = new TextInputBuilder()
+                        .setCustomId('team_name')
+                        .setLabel('Team Name')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.team_name || '')
+                        .setRequired(true);
+
+                    const lapTimeInput = new TextInputBuilder()
+                        .setCustomId('lap_time')
+                        .setLabel('Lap Time')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.lap_time || '')
+                        .setRequired(true);
+
+                    const s1TimeInput = new TextInputBuilder()
+                        .setCustomId('s1_time')
+                        .setLabel('Sector 1 Time')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.s1_time || '')
+                        .setRequired(true);
+
+                    const s2TimeInput = new TextInputBuilder()
+                        .setCustomId('s2_time')
+                        .setLabel('Sector 2 Time')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.s2_time || '')
+                        .setRequired(true);
+
+                    const row1 = new ActionRowBuilder().addComponents(driverNameInput);
+                    const row2 = new ActionRowBuilder().addComponents(teamNameInput);
+                    const row3 = new ActionRowBuilder().addComponents(lapTimeInput);
+                    const row4 = new ActionRowBuilder().addComponents(s1TimeInput);
+                    const row5 = new ActionRowBuilder().addComponents(s2TimeInput);
+
+                    modal.addComponents(row1, row2, row3, row4, row5);
+
+                    // Show the modal
+                    await interaction.showModal(modal);
+
+                } catch (error) {
+                    console.error('❌ Error handling select menu for edit:', error);
+                    try {
+                        if (!interaction.replied && !interaction.deferred) {
+                            return interaction.reply({
+                                content: '⚠️ An error occurred while loading the edit modal. Please try again.',
+                                ephemeral: true
+                            });
+                        }
+                    } catch (replyError) {
+                        console.error('❌ Could not send error message to user:', replyError);
+                    }
+                }
+            }
         }
     },
 };

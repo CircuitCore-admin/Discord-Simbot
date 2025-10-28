@@ -1,5 +1,5 @@
 // commands/edit_hotlap.js
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, StringSelectMenuBuilder } = require('discord.js');
 const db = require('../services/database');
 
 module.exports = {
@@ -127,8 +127,23 @@ module.exports = {
             }
 
             if (result.rows.length > 1) {
+                // Multiple records found - let user choose by submission date
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(`edit-hotlap-select-${guildId}`)
+                    .setPlaceholder('Select which lap to edit')
+                    .addOptions(
+                        result.rows.map(row => ({
+                            label: `Submitted: ${new Date(row.submission_date).toLocaleString()}`,
+                            description: `ID: ${row.id} | ${row.driver_name} - ${row.lap_time}`,
+                            value: row.id.toString()
+                        }))
+                    );
+
+                const row = new ActionRowBuilder().addComponents(selectMenu);
+
                 return interaction.reply({
-                    content: `⚠️ Multiple records found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}". Please contact an administrator for manual resolution.`,
+                    content: `⚠️ Multiple records found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}".\nPlease select which one to edit based on submission date:`,
+                    components: [row],
                     ephemeral: true
                 });
             }
