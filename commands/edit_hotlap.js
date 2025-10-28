@@ -54,7 +54,7 @@ module.exports = {
                 }
 
                 const result = await db.query(
-                    'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 ORDER BY discord_tag',
+                    'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 ORDER BY discord_tag',
                     [guildId, trackLocation]
                 );
                 
@@ -75,7 +75,7 @@ module.exports = {
                 }
 
                 const result = await db.query(
-                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 ORDER BY submission_date DESC',
+                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 AND discord_tag ILIKE $3 ORDER BY submission_date DESC',
                     [guildId, trackLocation, discordTag]
                 );
                 
@@ -110,7 +110,7 @@ module.exports = {
         try {
             // Fetch the specific hotlap record
             const result = await db.query(
-                'SELECT * FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 AND lap_time = $4',
+                'SELECT * FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 AND discord_tag ILIKE $3 AND lap_time = $4',
                 [guildId, trackLocation, discordTag, lapTime]
             );
 
@@ -128,7 +128,7 @@ module.exports = {
                 });
             }
 
-            // Single record found - show first modal with 5 fields
+            // Single record found - show modal with all 8 editable fields
             const record = result.rows[0];
             
             // Create modal
@@ -136,7 +136,7 @@ module.exports = {
                 .setCustomId(`edit-hotlap-${record.id}`)
                 .setTitle(`Edit Lap: ${record.driver_name} - ${record.track_location_name} - ${record.lap_time}`);
 
-            // Create text input components for first 5 editable fields
+            // Create text input components for all 8 editable fields
             const driverNameInput = new TextInputBuilder()
                 .setCustomId('driver_name')
                 .setLabel('Driver Name')
