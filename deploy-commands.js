@@ -96,6 +96,66 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                     }
                 ],
             },
+            {
+                name: 'submit_hotlap',
+                description: 'Manually submit a hotlap with all data',
+                options: [
+                    {
+                        name: 'track',
+                        type: 3, // STRING
+                        description: 'Track location name (e.g., BELGIUM, TEXAS)',
+                        required: true,
+                    },
+                    {
+                        name: 'team',
+                        type: 3, // STRING
+                        description: 'Team name',
+                        required: true,
+                    },
+                    {
+                        name: 'lap_time',
+                        type: 3, // STRING
+                        description: 'Lap time (e.g., 1:49.631)',
+                        required: true,
+                    },
+                    {
+                        name: 's1_time',
+                        type: 3, // STRING
+                        description: 'Sector 1 time (e.g., 35.123)',
+                        required: true,
+                    },
+                    {
+                        name: 's2_time',
+                        type: 3, // STRING
+                        description: 'Sector 2 time (e.g., 38.456)',
+                        required: true,
+                    },
+                    {
+                        name: 's3_time',
+                        type: 3, // STRING
+                        description: 'Sector 3 time (e.g., 36.052)',
+                        required: true,
+                    },
+                    {
+                        name: 'custom_setup',
+                        type: 5, // BOOLEAN
+                        description: 'Was a custom setup used?',
+                        required: true,
+                    },
+                    {
+                        name: 'is_valid',
+                        type: 5, // BOOLEAN
+                        description: 'Is the lap valid (no penalties)?',
+                        required: true,
+                    },
+                    {
+                        name: 'driver_name',
+                        type: 3, // STRING
+                        description: 'Driver name (optional, defaults to your Discord username)',
+                        required: false,
+                    },
+                ],
+            },
             // The following commands were present in your previous deploy-commands.js.
             // Uncomment them if they are part of your bot's functionality.
             // {
