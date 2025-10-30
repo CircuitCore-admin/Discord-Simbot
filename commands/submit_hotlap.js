@@ -76,7 +76,7 @@ module.exports = {
 
             const submissionDate = new Date();
 
-            // Validate lap time format (basic check)
+            // Validate lap time format (basic check) - allows multi-digit minutes
             const lapTimePattern = /^\d+:\d{2}\.\d{3}$/;
             if (!lapTimePattern.test(lapTime)) {
                 return interaction.editReply('❌ Invalid lap time format. Please use format like "1:49.631" (M:SS.mmm)');
@@ -109,13 +109,12 @@ module.exports = {
             // Construct the reply message
             let replyContent = `📊 Hotlap Manually Submitted:\n`;
             replyContent += `Top Lap Time: ${lapTime}\n`;
-            replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
+            replyContent += `Valid: ✅\n`;
             replyContent += `Driver: ${discordTag}\n`;
             replyContent += `Team: ${teamName}\n`;
             replyContent += `Track: ${trackLocationName}\n`;
             replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-            replyContent += `Custom Setup: ${customSetup ? '✅ Yes' : '❌ No'}\n`;
-            replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
+            replyContent += `Custom Setup: ${customSetup ? '✅ Yes' : '❌ No'}`;
 
             return interaction.editReply(`\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!`);
 
