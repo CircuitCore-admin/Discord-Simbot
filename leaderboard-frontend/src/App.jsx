@@ -555,10 +555,10 @@ function App() {
                 {/* Render the table if we have data, even if it's currently loading a new sort */}
                 {!error && isAuthenticated && filteredLeaderboard.length > 0 && ( 
                     <>
-                        <table className={`leaderboard-table ${loading ? 'is-updating' : ''}`}>
+                        <table className={`leaderboard-table ${loading ? 'is-updating' : ''} ${isSpecialGuild ? 'has-centre-column' : ''}`}>
                              <thead>
                                 <tr>
-                                    <th className="text-left">Rank</th>
+                                    <th className="text-center">Rank</th>
                                     <th className="sortable text-left" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
                                     {isSpecialGuild && <th className="sortable text-left" onClick={() => handleSort('Centre')}>Centre {getSortIcon(sortableColumnsMap['Centre'])}</th>}
                                     <th className="sortable text-right" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
@@ -575,7 +575,7 @@ function App() {
                                     return (
                                     <React.Fragment key={entry.user_id}>
                                         <tr className={entry.user_id === discordUser?.id ? 'is-current-user' : ''}>
-                                          <td data-label="Rank" className="text-left">{rank}</td>
+                                          <td data-label="Rank" className="text-center">{rank}</td>
                                           <td data-label="Driver" className="text-left">
                                             {entry.lap_count > 1
                                               ? (
@@ -611,7 +611,7 @@ function App() {
                                                         {isSpecialGuild && <td data-label="Centre" className="text-left">{lap.centre_name || '-'}</td>}
                                                         <td data-label="Lap Time" className="text-right">{lap.lap_time}</td>
                                                         <td data-label="S1" className="text-right">{lap.s1_time}</td>
-                                                        <td data-label="S2" className="text-right">{lap.s2_time}</td>
+                                                        <td data-label="S2" className="text-right">{lap.s2_time}</td> 
                                                         <td data-label="S3" className="text-right">{lap.s3_time}</td>
                                                         <td data-label="Custom Setup" className="text-left">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
                                                         <td data-label="Date" className="text-left" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>

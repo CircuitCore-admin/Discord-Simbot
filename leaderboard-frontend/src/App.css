@@ -398,52 +398,53 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     table-layout: fixed;
 }
 
-/* Define column widths to prevent shifting */
-.leaderboard-table th:nth-child(1),
-.leaderboard-table td:nth-child(1) {
-    width: 8%;
-}
+/* --- Define column widths --- */
 
-.leaderboard-table th:nth-child(2),
-.leaderboard-table td:nth-child(2) {
-    width: 25%;
-}
+/* Default (8-column layout - NO Centre) */
+.leaderboard-table:not(.has-centre-column) th:nth-child(1),
+.leaderboard-table:not(.has-centre-column) td:nth-child(1) { width: 6%; }  /* Rank */
+.leaderboard-table:not(.has-centre-column) th:nth-child(2),
+.leaderboard-table:not(.has-centre-column) td:nth-child(2) { width: 28%; } /* Driver */
+.leaderboard-table:not(.has-centre-column) th:nth-child(3),
+.leaderboard-table:not(.has-centre-column) td:nth-child(3) { width: 13%; } /* Lap Time */
+.leaderboard-table:not(.has-centre-column) th:nth-child(4),
+.leaderboard-table:not(.has-centre-column) td:nth-child(4) { width: 10%; } /* S1 */
+.leaderboard-table:not(.has-centre-column) th:nth-child(5),
+.leaderboard-table:not(.has-centre-column) td:nth-child(5) { width: 10%; } /* S2 */
+.leaderboard-table:not(.has-centre-column) th:nth-child(6),
+.leaderboard-table:not(.has-centre-column) td:nth-child(6) { width: 10%; } /* S3 */
+.leaderboard-table:not(.has-centre-column) th:nth-child(7),
+.leaderboard-table:not(.has-centre-column) td:nth-child(7) { width: 8%; }  /* Setup */
+.leaderboard-table:not(.has-centre-column) th:nth-child(8),
+.leaderboard-table:not(.has-centre-column) td:nth-child(8) { width: 15%; } /* Date */
+/* Total: 6+28+13+10+10+10+8+15 = 100% */
 
-.leaderboard-table th:nth-child(3),
-.leaderboard-table td:nth-child(3) {
-    width: 15%;
-}
-
-.leaderboard-table th:nth-child(4),
-.leaderboard-table td:nth-child(4) {
-    width: 10%;
-}
-
-.leaderboard-table th:nth-child(5),
-.leaderboard-table td:nth-child(5) {
-    width: 10%;
-}
-
-.leaderboard-table th:nth-child(6),
-.leaderboard-table td:nth-child(6) {
-    width: 10%;
-}
-
-.leaderboard-table th:nth-child(7),
-.leaderboard-table td:nth-child(7) {
-    width: 8%;
-}
-
-.leaderboard-table th:nth-child(8),
-.leaderboard-table td:nth-child(8) {
-    width: 14%;
-}
+/* Special Guild (9-column layout - WITH Centre) */
+.leaderboard-table.has-centre-column th:nth-child(1),
+.leaderboard-table.has-centre-column td:nth-child(1) { width: 6%; }  /* Rank */
+.leaderboard-table.has-centre-column th:nth-child(2),
+.leaderboard-table.has-centre-column td:nth-child(2) { width: 20%; } /* Driver (Reduced) */
+.leaderboard-table.has-centre-column th:nth-child(3),
+.leaderboard-table.has-centre-column td:nth-child(3) { width: 20%; } /* Centre (Increased) */
+.leaderboard-table.has-centre-column th:nth-child(4),
+.leaderboard-table.has-centre-column td:nth-child(4) { width: 12%; } /* Lap Time */
+.leaderboard-table.has-centre-column th:nth-child(5),
+.leaderboard-table.has-centre-column td:nth-child(5) { width: 8%; }  /* S1 */
+.leaderboard-table.has-centre-column th:nth-child(6),
+.leaderboard-table.has-centre-column td:nth-child(6) { width: 8%; }  /* S2 */
+.leaderboard-table.has-centre-column th:nth-child(7),
+.leaderboard-table.has-centre-column td:nth-child(7) { width: 8%; }  /* S3 */
+.leaderboard-table.has-centre-column th:nth-child(8),
+.leaderboard-table.has-centre-column td:nth-child(8) { width: 8%; }  /* Setup */
+.leaderboard-table.has-centre-column th:nth-child(9),
+.leaderboard-table.has-centre-column td:nth-child(9) { width: 10%; } /* Date */
+/* Total: 6+20+20+12+8+8+8+8+10 = 100% */
 
 
 .leaderboard-table th,
 .leaderboard-table td {
     padding: 12px 15px;
-    text-align: left;
+    /* text-align: left; <-- THIS IS THE PROBLEM. IT IS NOW REMOVED. */
     border: none;
     vertical-align: middle;
     height: 54px;
@@ -572,13 +573,19 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 
 /* --- New alignment classes --- */
-.text-right {
+/* Increased specificity to override base table styles */
+.leaderboard-table .text-right {
     text-align: right;
 }
 
-.text-left {
+.leaderboard-table .text-left {
     text-align: left;
 }
+
+.leaderboard-table .text-center {
+    text-align: center;
+}
+
 
 /* --- Current User Highlight (Subtler) --- */
 .leaderboard-table tbody tr.is-current-user {
