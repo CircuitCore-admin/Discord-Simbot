@@ -653,25 +653,3 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         max-width: none;
     }
 }
-
-/* --- CENTRE COLUMN STYLES FOR SPECIAL GUILD --- */
-/* Reduce padding between Driver and Centre columns */
-.leaderboard-table td[data-label="Driver"] {
-    padding-right: 8px;
-}
-
-/* Centre column styles - allow overflow */
-.leaderboard-table td[data-label="Centre"],
-.leaderboard-table th:has(+ th) + th + th:first-of-type {
-    padding-left: 8px;
-    padding-right: 8px;
-    overflow: visible;
-    white-space: nowrap;
-}
-
-.leaderboard-table td[data-label="Centre"] {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: nowrap;
-}
-}
