@@ -164,6 +164,47 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
                 dm_permission: false, // Command cannot be used in DMs
             },
+            {
+                name: 'manage_special_category',
+                description: 'Manages the hotlap categories for this server.',
+                options: [
+                    {
+                        name: 'add',
+                        type: 1, // SUB_COMMAND
+                        description: 'Adds a category for hotlap scanning.',
+                        options: [
+                            {
+                                name: 'category',
+                                type: 7, // CHANNEL
+                                description: 'The category to add',
+                                required: true,
+                                channel_types: [4], // 4 is GUILD_CATEGORY
+                            }
+                        ]
+                    },
+                    {
+                        name: 'remove',
+                        type: 1, // SUB_COMMAND
+                        description: 'Removes a category from hotlap scanning.',
+                        options: [
+                            {
+                                name: 'category',
+                                type: 7, // CHANNEL
+                                description: 'The category to remove',
+                                required: true,
+                                channel_types: [4], // 4 is GUILD_CATEGORY
+                            }
+                        ]
+                    },
+                    {
+                        name: 'list',
+                        type: 1, // SUB_COMMAND
+                        description: 'Lists all scannable hotlap categories.',
+                    }
+                ],
+                default_member_permissions: PermissionFlagsBits.Administrator.toString(),
+                dm_permission: false, // Command cannot be used in DMs
+            },
             // The following commands were present in your previous deploy-commands.js.
             // Uncomment them if they are part of your bot's functionality.
             // {
