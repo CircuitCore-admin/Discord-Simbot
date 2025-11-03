@@ -134,4 +134,144 @@ If the screenshot is COMPLETE (Phase 1 passed), output this JSON with extracted 
     }
 }
 
+/**
+ * Analyzes an image for hotlap data and saves it to the database.
+ * @param {import('discord.js').Message | import('discord.js').ChatInputCommandInteraction} message - The Discord message or interaction.
+ * @param {object | null} manualData - Manually provided data from /submit_hotlap command.
+ * @param {string | null} centreName - The formatted centre name (for special guilds).
+ */
+async function analyzeAndSaveHotlap(message, manualData = null, centreName = null) {
+    const db = require('./database');
+    const isInteraction = message.isChatInputCommand && message.isChatInputCommand();
+    const guildId = message.guild.id;
+    const channelId = message.channel.id;
+    const messageId = message.id;
+    const userId = isInteraction ? message.user.id : message.author.id;
+    const discordTag = isInteraction ? message.user.tag : message.author.tag;
+
+    try {
+        let analysisResult, trackLocationName, driverName, teamName, lapTime, s1Time, s2Time, s3Time, isValid, customSetupBoolean;
+
+        if (manualData) {
+            // Manual submission logic
+            console.log('Processing manual submission...');
+            trackLocationName = manualData.trackName;
+            driverName = manualData.driverName;
+            teamName = manualData.teamName;
+            lapTime = manualData.lapTime;
+            s1Time = manualData.s1;
+            s2Time = manualData.s2;
+            s3Time = manualData.s3;
+            isValid = manualData.isValid;
+            customSetupBoolean = manualData.isCustom;
+        } else {
+            // Automatic submission logic
+            console.log('Processing automatic submission...');
+            const attachment = message.attachments.first();
+            if (!attachment) {
+                throw new Error('No image attachment found.');
+            }
+
+            await message.channel.sendTyping();
+            analysisResult = await analyzeImage(attachment.url);
+
+            if (analysisResult.status === 'incomplete') {
+                await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing the whole screen.`);
+                return;
+            } else if (analysisResult.status !== 'complete') {
+                console.error('❌ Unexpected analysis status from Gemini:', analysisResult.status);
+                await message.reply('⚠️ Something went wrong during analysis. Unexpected AI response.');
+                return;
+            }
+
+            // Reject invalid laps and stop processing
+            if (!analysisResult.is_valid) {
+                const trackName = analysisResult.track_location_name || 'Unknown Track';
+                const time = analysisResult.lap_time || 'N/A';
+                await message.reply(`❌ Lap Rejected: The fastest lap (${time}) on ${trackName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
+                return;
+            }
+
+            trackLocationName = analysisResult.track_location_name;
+            driverName = analysisResult.driver_name;
+            teamName = analysisResult.team_name;
+            lapTime = analysisResult.lap_time;
+            s1Time = analysisResult.s1_time;
+            s2Time = analysisResult.s2_time;
+            s3Time = analysisResult.s3_time;
+            isValid = analysisResult.is_valid;
+            customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
+        }
+
+        const submissionDate = new Date();
+
+        // Insert into the database with centre_name
+        const query = `
+            INSERT INTO hotlaps (
+                guild_id, channel_id, message_id, user_id, discord_tag, 
+                driver_name, team_name, lap_time, s1_time, s2_time, s3_time, 
+                is_valid, custom_setup, track_location_name, submission_date, 
+                centre_name
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            RETURNING id;
+        `;
+
+        const values = [
+            guildId, channelId, messageId, userId, discordTag,
+            driverName, teamName, lapTime, s1Time, s2Time, s3Time,
+            isValid, customSetupBoolean, trackLocationName, submissionDate,
+            centreName
+        ];
+
+        const res = await db.query(query, values);
+        console.log(`Hotlap saved with ID: ${res.rows[0].id}`);
+
+        // Prepare reply content
+        let replyContent;
+        if (manualData) {
+            replyContent = `📊 Hotlap Manually Submitted:\n`;
+            replyContent += `Driver: ${driverName}\n`;
+            replyContent += `Team: ${teamName}\n`;
+            replyContent += `Track: ${trackLocationName}\n`;
+            replyContent += `Lap Time: ${lapTime}\n`;
+            replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
+            replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}`;
+            if (centreName) {
+                replyContent += `\n**Centre:** ${centreName}`;
+            }
+            replyContent += `\nSubmitted by: ${discordTag}`;
+        } else {
+            replyContent = `📊 Hotlap Analysis for your image:\n`;
+            replyContent += `Top Lap Time: ${lapTime}\n`;
+            replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
+            replyContent += `Driver: ${discordTag}\n`;
+            replyContent += `Team: ${teamName}\n`;
+            replyContent += `Track: ${trackLocationName}\n`;
+            replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
+            replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}`;
+            if (centreName) {
+                replyContent += `\n**Centre:** ${centreName}`;
+            }
+            replyContent += `\nNotes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
+        }
+
+        if (isInteraction) {
+            await message.editReply({ content: `\`\`\`\n${replyContent}\n\`\`\`\nHotlap recorded successfully!` });
+        } else {
+            await message.reply({ content: `\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!` });
+        }
+
+    } catch (error) {
+        console.error(`Error processing hotlap: ${error.message}`);
+        const errorContent = `Failed to process hotlap: ${error.message}`;
+        if (isInteraction) {
+            await message.editReply({ content: errorContent });
+        } else {
+            await message.reply(`⚠️ Sorry, I couldn't analyze that image. ${error.message || 'An unknown error occurred.'}`);
+        }
+    }
+}
+
 module.exports = analyzeImage;
+module.exports.analyzeAndSaveHotlap = analyzeAndSaveHotlap;

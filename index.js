@@ -9,6 +9,8 @@ const cors = require('cors');
 const session = require('express-session'); // Import express-session
 
 const analyzeImage = require('./services/analyzeImage');
+const { analyzeAndSaveHotlap } = require('./services/analyzeImage');
+const { formatChannelName } = require('./helpers/formatters');
 const db = require('./services/database'); // Your existing database connection
 
 // --- Discord Bot Setup ---
@@ -62,99 +64,38 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
     if (!message.guild) return;
 
-    let configuredChannelId = null;
-    try {
-        const res = await db.query('SELECT hotlap_channel_id FROM guild_settings WHERE guild_id = $1;', [message.guildId]);
-        if (res.rows.length > 0) {
-            configuredChannelId = res.rows[0].hotlap_channel_id;
-        }
-    } catch (error) {
-        console.error(`❌ Database error fetching guild settings for ${message.guildId}:`, error);
-        return;
-    }
+    // Check for image attachments
+    if (message.attachments.size > 0 && message.attachments.every(attachment => attachment.contentType?.startsWith('image/'))) {
 
-    if (!configuredChannelId || message.channel.id !== configuredChannelId.toString()) {
-        return;
-    }
+        const SPECIAL_GUILD_ID = '1042747615856562187';
+        let processSubmission = false;
+        let centreName = null;
 
-    if (message.attachments.size > 0) {
-        let imageAttachment = null;
-        for (const [key, attachment] of message.attachments) {
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                imageAttachment = attachment;
-                break;
-            }
-        }
-
-        if (imageAttachment) {
-            try {
-                await message.channel.sendTyping();
-                const analysisResult = await analyzeImage(imageAttachment.url);
-
-                if (analysisResult.status === 'incomplete') {
-                    await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing the whole screen.`);
-                } else if (analysisResult.status === 'complete') {
-                    // Reject invalid laps and stop processing
-                    if (!analysisResult.is_valid) {
-                        const trackLocationName = analysisResult.track_location_name || 'Unknown Track';
-                        const lapTime = analysisResult.lap_time || 'N/A';
-                        await message.reply(`❌ Lap Rejected: The fastest lap (${lapTime}) on ${trackLocationName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
-                        return; // Stop processing further for this message
-                    }
-
-                    // If the lap is valid, proceed with database insertion and detailed reply
-                    const guildId = message.guildId;
-                    const channelId = message.channelId;
-                    const messageId = message.id;
-                    const userId = message.author.id;
-                    const discordTag = message.author.tag; // For username#discriminator
-
-                    const driverName = analysisResult.driver_name; // Keep AI-extracted driver name for DB
-                    const teamName = analysisResult.team_name;
-                    const lapTime = analysisResult.lap_time;
-                    const s1Time = analysisResult.s1_time;
-                    const s2Time = analysisResult.s2_time;
-                    const s3Time = analysisResult.s3_time;
-                    const isValid = analysisResult.is_valid;
-                    const customSetupBoolean = analysisResult.custom_setup === 'Yes' ? true : false;
-                    const trackLocationName = analysisResult.track_location_name;
-                    const submissionDate = new Date();
-
-                    let replyContent = `📊 Hotlap Analysis for your image:\n`;
-                    replyContent += `Top Lap Time: ${lapTime}\n`;
-                    replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
-                    replyContent += `Driver: ${discordTag}\n`;
-                    replyContent += `Team: ${teamName}\n`;
-                    replyContent += `Track: ${trackLocationName}\n`;
-                    replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-                    replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}\n`;
-                    replyContent += `Notes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
-
-                    // Insert into the database (driver_name is still included as extracted by AI)
-                    await db.query(
-                        `INSERT INTO hotlaps (guild_id, channel_id, message_id, user_id, discord_tag, driver_name, team_name, lap_time, s1_time, s2_time, s3_time, is_valid, custom_setup, track_location_name, submission_date)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`,
-                        [
-                            guildId, channelId, messageId, userId, discordTag,
-                            driverName, teamName, lapTime,
-                            s1Time, s2Time, s3Time, isValid,
-                            customSetupBoolean,
-                            trackLocationName, submissionDate
-                        ]
-                    );
-
-                    await message.reply({
-                        content: `\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!`
-                    });
-                } else {
-                    console.error('❌ Unexpected analysis status from Gemini:', analysisResult.status);
-                    await message.reply('⚠️ Something went wrong during analysis. Unexpected AI response.');
+        try {
+            if (message.guild.id === SPECIAL_GUILD_ID) {
+                // --- SPECIAL GUILD LOGIC ---
+                // Check if message is in one of the designated categories
+                const categoriesQuery = await db.query('SELECT 1 FROM public.special_hotlap_categories WHERE category_id = $1', [message.channel.parentId]);
+                if (categoriesQuery.rows.length > 0) {
+                    processSubmission = true;
+                    centreName = formatChannelName(message.channel.name);
                 }
-
-            } catch (error) {
-                console.error('❌ Error processing image from message:', error);
-                await message.reply(`⚠️ Sorry, I couldn't analyze that image. ${error.message || 'An unknown error occurred.'}`);
+            } else {
+                // --- NORMAL GUILD LOGIC (Existing) ---
+                const settingsQuery = await db.query('SELECT hotlap_channel_id FROM public.guild_settings WHERE guild_id = $1', [message.guild.id]);
+                if (settingsQuery.rows.length > 0 && message.channel.id === settingsQuery.rows[0].hotlap_channel_id) {
+                    processSubmission = true;
+                    // centreName remains null
+                }
             }
+
+            if (processSubmission) {
+                console.log(`Processing automatic submission for guild ${message.guild.id}, centre: ${centreName || 'N/A'}`);
+                // Pass centreName as the third argument (manualData is null for auto-submit)
+                await analyzeAndSaveHotlap(message, null, centreName);
+            }
+        } catch (dbError) {
+            console.error('Error checking guild settings or categories:', dbError);
         }
     }
 });
