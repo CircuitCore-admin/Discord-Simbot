@@ -21,18 +21,18 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
 (async () => {
     try {
         const commands = [
-            {
-                name: 'analyze_hotlap',
-                description: 'Analyze an F1 hotlap screenshot using OCR and GPT-4',
-                options: [
-                    {
-                        name: 'image',
-                        type: 11, // Attachment
-                        description: 'Upload the screenshot of the hotlap',
-                        required: true,
-                    },
-                ],
-            },
+            // {
+            //     name: 'analyze_hotlap',
+            //     description: 'Analyze an F1 hotlap screenshot using OCR and GPT-4',
+            //     options: [
+            //         {
+            //             name: 'image',
+            //             type: 11, // Attachment
+            //             description: 'Upload the screenshot of the hotlap',
+            //             required: true,
+            //         },
+            //     ],
+            // },
             {
                 name: 'edit',
                 description: 'Edit an existing hotlap record',
@@ -95,6 +95,74 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         required: false, // Optional filter
                     }
                 ],
+            },
+            {
+                name: 'submit_hotlap',
+                description: 'Manually submit a hotlap with all data',
+                options: [
+                    {
+                        name: 'driver_name',
+                        type: 3, // STRING
+                        description: 'Driver name (the person who set the lap time)',
+                        required: true,
+                    },
+                    {
+                        name: 'team',
+                        type: 3, // STRING
+                        description: 'F1 2025 team',
+                        required: true,
+                        choices: [
+                            { name: 'Oracle Red Bull Racing', value: 'Oracle Red Bull Racing' },
+                            { name: 'Scuderia Ferrari', value: 'Scuderia Ferrari' },
+                            { name: 'Mercedes-AMG Petronas Formula One Team', value: 'Mercedes-AMG Petronas Formula One Team' },
+                            { name: 'McLaren F1 Team', value: 'McLaren F1 Team' },
+                            { name: 'Aston Martin Aramco F1 Team', value: 'Aston Martin Aramco F1 Team' },
+                            { name: 'BWT Alpine F1 Team', value: 'BWT Alpine F1 Team' },
+                            { name: 'Atlassian Williams Racing', value: 'Atlassian Williams Racing' },
+                            { name: 'Visa Cash App Racing Bulls F1 Team', value: 'Visa Cash App Racing Bulls F1 Team' },
+                            { name: 'Stake F1 Team Kick Sauber', value: 'Stake F1 Team Kick Sauber' },
+                            { name: 'MoneyGram Haas F1 Team', value: 'MoneyGram Haas F1 Team' }
+                        ],
+                    },
+                    {
+                        name: 'track',
+                        type: 3, // STRING
+                        description: 'Track location name (e.g., BELGIUM, TEXAS)',
+                        required: true,
+                    },
+                    {
+                        name: 'lap_time',
+                        type: 3, // STRING
+                        description: 'Lap time (e.g., 1:49.631)',
+                        required: true,
+                    },
+                    {
+                        name: 's1_time',
+                        type: 3, // STRING
+                        description: 'Sector 1 time (e.g., 35.123)',
+                        required: true,
+                    },
+                    {
+                        name: 's2_time',
+                        type: 3, // STRING
+                        description: 'Sector 2 time (e.g., 38.456)',
+                        required: true,
+                    },
+                    {
+                        name: 's3_time',
+                        type: 3, // STRING
+                        description: 'Sector 3 time (e.g., 36.052)',
+                        required: true,
+                    },
+                    {
+                        name: 'custom_setup',
+                        type: 5, // BOOLEAN
+                        description: 'Was a custom setup used?',
+                        required: true,
+                    },
+                ],
+                default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
+                dm_permission: false, // Command cannot be used in DMs
             },
             // The following commands were present in your previous deploy-commands.js.
             // Uncomment them if they are part of your bot's functionality.
