@@ -112,16 +112,16 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         description: 'F1 2025 team',
                         required: true,
                         choices: [
-                            { name: 'Red Bull Racing', value: 'Red Bull Racing' },
-                            { name: 'Ferrari', value: 'Ferrari' },
-                            { name: 'Mercedes', value: 'Mercedes' },
-                            { name: 'McLaren', value: 'McLaren' },
-                            { name: 'Aston Martin', value: 'Aston Martin' },
-                            { name: 'Alpine', value: 'Alpine' },
-                            { name: 'Williams', value: 'Williams' },
-                            { name: 'RB', value: 'RB' },
-                            { name: 'Kick Sauber', value: 'Kick Sauber' },
-                            { name: 'Haas', value: 'Haas' }
+                            { name: 'Oracle Red Bull Racing', value: 'Oracle Red Bull Racing' },
+                            { name: 'Scuderia Ferrari', value: 'Scuderia Ferrari' },
+                            { name: 'Mercedes-AMG Petronas Formula One Team', value: 'Mercedes-AMG Petronas Formula One Team' },
+                            { name: 'McLaren F1 Team', value: 'McLaren F1 Team' },
+                            { name: 'Aston Martin Aramco F1 Team', value: 'Aston Martin Aramco F1 Team' },
+                            { name: 'BWT Alpine F1 Team', value: 'BWT Alpine F1 Team' },
+                            { name: 'Atlassian Williams Racing', value: 'Atlassian Williams Racing' },
+                            { name: 'Visa Cash App Racing Bulls F1 Team', value: 'Visa Cash App Racing Bulls F1 Team' },
+                            { name: 'Stake F1 Team Kick Sauber', value: 'Stake F1 Team Kick Sauber' },
+                            { name: 'MoneyGram Haas F1 Team', value: 'MoneyGram Haas F1 Team' }
                         ],
                     },
                     {
