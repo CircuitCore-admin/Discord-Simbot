@@ -147,8 +147,6 @@ body {
     padding: 20px;
     background-color: var(--bg-color-surface);
     border-radius: 8px;
-    /* justify-content: flex-start;  Removing old justify-content */
-    /* NEW: Use justify-content to push left and right groups */
     justify-content: space-between;
 }
 
@@ -158,15 +156,14 @@ body {
     gap: 8px;
 }
 
-/* Specific styling for date/time control groups to make them inline */
 .control-group.datetime-local {
-    flex-direction: row; /* Make label and input inline */
-    align-items: center; /* Vertically center label and input */
-    gap: 10px; /* Space between label and input */
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
 }
 
 .control-group.datetime-local label {
-    margin-bottom: 0; /* Remove bottom margin from label */
+    margin-bottom: 0;
 }
 
 .control-group label {
@@ -178,12 +175,9 @@ body {
 }
 
 .control-group.actions {
-    /* No margin-left: auto; needed here, as flexbox handles distribution */
     flex-direction: row;
-    align-items: center; /* Align buttons nicely */
-    gap: 10px; /* Space between buttons */
-    /* To keep the actions and date pickers together on the right */
-    /* Add a flex basis or wrap it in another container if they need to behave as one unit that moves to the right */
+    align-items: center;
+    gap: 10px;
 }
 
 .control-button {
@@ -230,9 +224,8 @@ input[type="datetime-local"]:focus {
     box-shadow: 0 0 8px rgba(225, 6, 0, 0.5);
 }
 
-/* Ensure datetime-local input looks good */
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(1); /* Adjust color for dark mode if needed */
+    filter: invert(1);
     cursor: pointer;
 }
 
@@ -423,9 +416,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .leaderboard-table.has-centre-column th:nth-child(1),
 .leaderboard-table.has-centre-column td:nth-child(1) { width: 6%; }  /* Rank */
 .leaderboard-table.has-centre-column th:nth-child(2),
-.leaderboard-table.has-centre-column td:nth-child(2) { width: 20%; } /* Driver (Reduced) */
+.leaderboard-table.has-centre-column td:nth-child(2) { width: 18%; } /* Driver (CHANGED) */
 .leaderboard-table.has-centre-column th:nth-child(3),
-.leaderboard-table.has-centre-column td:nth-child(3) { width: 20%; } /* Centre (Increased) */
+.leaderboard-table.has-centre-column td:nth-child(3) { width: 22%; } /* Centre (CHANGED) */
 .leaderboard-table.has-centre-column th:nth-child(4),
 .leaderboard-table.has-centre-column td:nth-child(4) { width: 12%; } /* Lap Time */
 .leaderboard-table.has-centre-column th:nth-child(5),
@@ -438,13 +431,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .leaderboard-table.has-centre-column td:nth-child(8) { width: 8%; }  /* Setup */
 .leaderboard-table.has-centre-column th:nth-child(9),
 .leaderboard-table.has-centre-column td:nth-child(9) { width: 10%; } /* Date */
-/* Total: 6+20+20+12+8+8+8+8+10 = 100% */
+/* Total: 6+18+22+12+8+8+8+8+10 = 100% */
 
 
 .leaderboard-table th,
 .leaderboard-table td {
     padding: 12px 15px;
-    /* text-align: left; <-- THIS IS THE PROBLEM. IT IS NOW REMOVED. */
     border: none;
     vertical-align: middle;
     height: 54px;
@@ -483,7 +475,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     transition: transform 0.3s ease;
 }
 
-/* New style to dim the table during background updates (like sorting) */
 .leaderboard-table.is-updating {
     opacity: 0.6;
     pointer-events: none;
@@ -497,6 +488,14 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    /* Added justify-content to center the link content */
+    justify-content: center;
+}
+
+/* This targets the span *inside* the driver link */
+.leaderboard-table .driver-name-link span {
+    /* This ensures the text itself doesn't stay left-aligned */
+    display: inline-block;
 }
 
 .leaderboard-table .expand-arrow {
@@ -573,7 +572,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 
 /* --- New alignment classes --- */
-/* Increased specificity to override base table styles */
 .leaderboard-table .text-right {
     text-align: right;
 }
@@ -589,74 +587,64 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 /* --- Current User Highlight (Subtler) --- */
 .leaderboard-table tbody tr.is-current-user {
-    background-color: rgba(225, 6, 0, 0.08); /* Much lighter red tint */
-    border-left: 3px solid rgba(225, 6, 0, 0.6); /* Thinner, slightly less opaque border */
-    /* Removed font-weight: bold for more subtlety */
-    /* color: var(--color-primary-text); -- keep current text color for readability */
+    background-color: rgba(225, 6, 0, 0.08); 
+    border-left: 3px solid rgba(225, 6, 0, 0.6); 
 }
 
-/* Ensure expanded laps for the current user also have a consistent background */
 .leaderboard-table tbody tr.is-current-user + .additional-lap-row {
-    background-color: rgba(225, 6, 0, 0.04); /* Even lighter for expanded rows */
-    border-left: 3px solid rgba(225, 6, 0, 0.3); /* Slightly lighter border */
+    background-color: rgba(225, 6, 0, 0.04);
+    border-left: 3px solid rgba(225, 6, 0, 0.3);
 }
 
-/* Adjust cell padding for rows with left border to prevent content shift */
 .leaderboard-table tbody tr.is-current-user td:first-child {
-    padding-left: 10px; /* Reduce padding to accommodate the border */
+    padding-left: 10px;
 }
 
-/* Adjust hover effects for the highlighted row to match the new subtlety */
 .leaderboard-table tbody tr.is-current-user:hover {
-    background-color: rgba(225, 6, 0, 0.15); /* Slightly darker on hover */
+    background-color: rgba(225, 6, 0, 0.15);
 }
 
 /* New responsive adjustments for controls-section */
-@media (min-width: 992px) { /* Adjust breakpoint as needed for larger screens */
+@media (min-width: 992px) {
     .controls-section {
-        /* On larger screens, arrange elements into two conceptual columns */
         display: grid;
-        grid-template-columns: repeat(3, auto) 1fr 1fr auto; /* Server, Track, Find Driver, Start, End, Actions */
+        grid-template-columns: repeat(3, auto) 1fr 1fr auto;
         align-items: flex-end;
         gap: 20px;
     }
 
     .controls-section .control-group {
-        /* Ensure inputs take up their full grid cell */
         width: auto;
     }
 
     .controls-section .control-group.actions {
-        /* Align actions to the very end of the grid row */
-        grid-column: -1 / span 1; /* Place in the last column */
-        justify-self: end; /* Push to the right within its grid cell */
+        grid-column: -1 / span 1;
+        justify-self: end;
     }
 
-    /* Adjust specific control groups to span correctly if needed, or remove min-widths */
     .search-input,
     input[type="datetime-local"],
     .custom-dropdown-container {
-        min-width: unset; /* Remove fixed min-width when using grid for better distribution */
-        width: 100%; /* Make them fill their grid column */
+        min-width: unset;
+        width: 100%;
     }
 }
 
-/* For smaller screens, revert to flex-wrap with space-between if the grid doesn't fit */
 @media (max-width: 991px) {
     .controls-section {
         display: flex;
         flex-wrap: wrap;
-        justify-content: space-between; /* Distribute items across the row as before */
+        justify-content: space-between;
     }
 
     .control-group {
-        flex-basis: calc(50% - 10px); /* Adjust to allow two items per row, or more depending on content */
+        flex-basis: calc(50% - 10px);
         max-width: calc(50% - 10px);
     }
 
     .control-group.actions,
     .control-group.datetime-local {
-        flex-basis: auto; /* Let content dictate width for these groups */
+        flex-basis: auto;
         max-width: none;
     }
 }

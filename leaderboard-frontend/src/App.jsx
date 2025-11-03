@@ -352,15 +352,13 @@ function App() {
         let matchesStartDate = true;
         let matchesEndDate = true;
 
-        // Apply start date/time filter
         if (startDate) {
-            const startDateTime = new Date(startDate); // Directly use the datetime-local string
+            const startDateTime = new Date(startDate);
             matchesStartDate = submissionDate >= startDateTime;
         }
 
-        // Apply end date/time filter
         if (endDate) {
-            const endDateTime = new Date(endDate); // Directly use the datetime-local string
+            const endDateTime = new Date(endDate);
             matchesEndDate = submissionDate <= endDateTime;
         }
 
@@ -390,8 +388,8 @@ function App() {
                 setExpandedDriverLaps(null);
                 setCurrentPage(1);
                 setError(null);
-                localStorage.removeItem('selectedGuildId'); // Clear stored data
-                localStorage.removeItem('selectedTrack'); // Clear stored data
+                localStorage.removeItem('selectedGuildId');
+                localStorage.removeItem('selectedTrack');
             } else {
                 console.error('Logout failed:', response.statusText);
                 setError('Failed to log out.');
@@ -406,7 +404,6 @@ function App() {
         setDownloadingCSV(true);
         setError(null);
         try {
-            // Pass startDate and endDate directly as they now contain full datetime strings
             const params = new URLSearchParams({
                 track: selectedTrack,
                 guildId: selectedGuildId,
@@ -487,7 +484,6 @@ function App() {
                                 }}
                             />
                         </div>
-                        {/* Start Date and Time Combined Field */}
                         <div className="control-group">
                             <label htmlFor="startDate">Start</label>
                             <input
@@ -499,15 +495,12 @@ function App() {
                                     const newStartDate = e.target.value;
                                     setStartDate(newStartDate);
                                     setCurrentPage(1);
-
-                                    // If newStartDate is later than current endDate, adjust endDate
                                     if (endDate && new Date(endDate) < new Date(newStartDate)) {
                                         setEndDate(newStartDate);
                                     }
                                 }}
                             />
                         </div>
-                        {/* End Date and Time Combined Field */}
                         <div className="control-group">
                             <label htmlFor="endDate">End</label>
                             <input
@@ -519,8 +512,6 @@ function App() {
                                     const newEndDate = e.target.value;
                                     setEndDate(newEndDate);
                                     setCurrentPage(1);
-
-                                    // If newEndDate is earlier than current startDate, adjust endDate
                                     if (startDate && new Date(newEndDate) < new Date(startDate)) {
                                         setEndDate(startDate); 
                                     }
@@ -547,26 +538,26 @@ function App() {
                         <div className="stay-logged-in-checkbox"><input type="checkbox" id="stay" checked={stayLoggedIn} onChange={(e)=>setStayLoggedIn(e.target.checked)} /><label htmlFor="stay">Stay Logged In</label></div>
                     </div>
                 )}
-                 {/* Only show the full page spinner on initial load */}
                 {loading && leaderboardData.length === 0 && <div className="spinner-container"><div className="spinner"></div></div>}
 
                 {error && <p className="error-message">{error}</p>}
 
-                {/* Render the table if we have data, even if it's currently loading a new sort */}
                 {!error && isAuthenticated && filteredLeaderboard.length > 0 && ( 
                     <>
                         <table className={`leaderboard-table ${loading ? 'is-updating' : ''} ${isSpecialGuild ? 'has-centre-column' : ''}`}>
                              <thead>
                                 <tr>
                                     <th className="text-center">Rank</th>
-                                    <th className="sortable text-left" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
-                                    {isSpecialGuild && <th className="sortable text-left" onClick={() => handleSort('Centre')}>Centre {getSortIcon(sortableColumnsMap['Centre'])}</th>}
-                                    <th className="sortable text-right" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
-                                    <th className="sortable text-right" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
-                                    <th className="sortable text-right" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
-                                    <th className="sortable text-right" onClick={() => handleSort('S3')}>S3 {getSortIcon(sortableColumnsMap['S3'])}</th>
-                                    <th className="sortable text-left" onClick={() => handleSort('Custom Setup')}>Setup {getSortIcon(sortableColumnsMap['Custom Setup'])}</th>
-                                    <th className="sortable text-left" onClick={() => handleSort('Date')}>Date {getSortIcon(sortableColumnsMap['Date'])}</th>
+                                    {/* CHANGED THIS LINE */}
+                                    <th className="sortable text-center" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
+                                    
+                                    {isSpecialGuild && <th className="sortable text-center" onClick={() => handleSort('Centre')}>Centre {getSortIcon(sortableColumnsMap['Centre'])}</th>}
+                                    <th className="sortable text-center" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
+                                    <th className="sortable text-center" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
+                                    <th className="sortable text-center" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
+                                    <th className="sortable text-center" onClick={() => handleSort('S3')}>S3 {getSortIcon(sortableColumnsMap['S3'])}</th>
+                                    <th className="sortable text-center" onClick={() => handleSort('Custom Setup')}>Setup {getSortIcon(sortableColumnsMap['Custom Setup'])}</th>
+                                    <th className="sortable text-center" onClick={() => handleSort('Date')}>Date {getSortIcon(sortableColumnsMap['Date'])}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -576,7 +567,9 @@ function App() {
                                     <React.Fragment key={entry.user_id}>
                                         <tr className={entry.user_id === discordUser?.id ? 'is-current-user' : ''}>
                                           <td data-label="Rank" className="text-center">{rank}</td>
-                                          <td data-label="Driver" className="text-left">
+                                          
+                                          {/* CHANGED THIS LINE */}
+                                          <td data-label="Driver" className="text-center">
                                             {entry.lap_count > 1
                                               ? (
                                                 <span
@@ -593,13 +586,14 @@ function App() {
                                               : <span>{entry.discord_tag || entry.driver_name}</span>
                                             }
                                           </td>
-                                            {isSpecialGuild && <td data-label="Centre" className="text-left">{entry.centre_name || '-'}</td>}
-                                            <td data-label="Lap Time" className="text-right">{entry.lap_time}</td>
-                                            <td data-label="S1" className="text-right">{entry.s1_time}</td>
-                                            <td data-label="S2" className="text-right">{entry.s2_time}</td>
-                                            <td data-label="S3" className="text-right">{entry.s3_time}</td>
-                                            <td data-label="Custom Setup" className="text-left">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                            <td data-label="Date" className="text-left" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
+
+                                            {isSpecialGuild && <td data-label="Centre" className="text-center">{entry.centre_name || '-'}</td>}
+                                            <td data-label="Lap Time" className="text-center">{entry.lap_time}</td>
+                                            <td data-label="S1" className="text-center">{entry.s1_time}</td>
+                                            <td data-label="S2" className="text-center">{entry.s2_time}</td>
+                                            <td data-label="S3" className="text-center">{entry.s3_time}</td>
+                                            <td data-label="Custom Setup" className="text-center">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                            <td data-label="Date" className="text-center" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
                                         </tr>
                                         {expandedDriverId === entry.user_id && (
                                             loadingExpandedLaps ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><div className="spinner-container" style={{height: '100px'}}><div className="spinner"></div></div></td></tr> :
@@ -607,14 +601,18 @@ function App() {
                                             expandedDriverLaps && expandedDriverLaps.length > 1 && (
                                                 expandedDriverLaps.filter(lap => lap.submission_date !== entry.submission_date).map(lap => (
                                                     <tr key={lap.id} className="additional-lap-row">
-                                                        <td></td><td></td>
-                                                        {isSpecialGuild && <td data-label="Centre" className="text-left">{lap.centre_name || '-'}</td>}
-                                                        <td data-label="Lap Time" className="text-right">{lap.lap_time}</td>
-                                                        <td data-label="S1" className="text-right">{lap.s1_time}</td>
-                                                        <td data-label="S2" className="text-right">{lap.s2_time}</td> 
-                                                        <td data-label="S3" className="text-right">{lap.s3_time}</td>
-                                                        <td data-label="Custom Setup" className="text-left">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                                        <td data-label="Date" className="text-left" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
+                                                        <td></td>
+                                                        
+                                                        {/* This cell is for the (empty) driver column, so it should also be centered */}
+                                                        <td className="text-center"></td>
+
+                                                        {isSpecialGuild && <td data-label="Centre" className="text-center">{lap.centre_name || '-'}</td>}
+                                                        <td data-label="Lap Time" className="text-center">{lap.lap_time}</td>
+                                                        <td data-label="S1" className="text-center">{lap.s1_time}</td>
+                                                        <td data-label="S2" className="text-center">{lap.s2_time}</td> 
+                                                        <td data-label="S3" className="text-center">{lap.s3_time}</td>
+                                                        <td data-label="Custom Setup" className="text-center">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                                        <td data-label="Date" className="text-center" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
                                                     </tr>
                                                 ))
                                             )
@@ -639,7 +637,6 @@ function App() {
                         />
                     </>
                 )}
-                {/* Display message if no track is selected or leaderboard is empty after initial load */}
                 {!isAuthenticated && !loading && (
                     <p className="no-data-message">Please log in with Discord to view leaderboards.</p>
                 )}

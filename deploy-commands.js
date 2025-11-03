@@ -77,25 +77,25 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 default_member_permissions: PermissionFlagsBits.ManageChannels.toString(),
                 setDMPermission: false, // Command cannot be used in DMs
             },
-            {
-                name: 'f1-leaderboard',
-                description: 'Displays the F1 hotlap leaderboard for a selected track.',
-                options: [
-                    {
-                        name: 'track',
-                        type: 3, // STRING type
-                        description: 'Select a track to view the leaderboard.',
-                        required: true,
-                        autocomplete: true, // This enables dynamic suggestions for tracks
-                    },
-                    {
-                        name: 'custom_setup_only',
-                        type: 5, // BOOLEAN type
-                        description: 'Show only laps with custom setup (True/False).',
-                        required: false, // Optional filter
-                    }
-                ],
-            },
+            // {
+            //     name: 'f1-leaderboard',
+            //     description: 'Displays the F1 hotlap leaderboard for a selected track.',
+            //     options: [
+            //         {
+            //             name: 'track',
+            //             type: 3, // STRING type
+            //             description: 'Select a track to view the leaderboard.',
+            //             required: true,
+            //             autocomplete: true, // This enables dynamic suggestions for tracks
+            //         },
+            //         {
+            //             name: 'custom_setup_only',
+            //             type: 5, // BOOLEAN type
+            //             description: 'Show only laps with custom setup (True/False).',
+            //             required: false, // Optional filter
+            //         }
+            //     ],
+            // },
             {
                 name: 'submit_hotlap',
                 description: 'Manually submit a hotlap with all data',
