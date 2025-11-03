@@ -65,7 +65,13 @@ client.on('messageCreate', async message => {
     if (!message.guild) return;
 
     // Check for image attachments
-    if (message.attachments.size > 0 && message.attachments.every(attachment => attachment.contentType?.startsWith('image/'))) {
+    if (message.attachments.size > 0) {
+        // Check if message has at least one image attachment
+        const hasImage = Array.from(message.attachments.values()).some(attachment => 
+            attachment.contentType?.startsWith('image/')
+        );
+        
+        if (!hasImage) return;
 
         const SPECIAL_GUILD_ID = '1042747615856562187';
         let processSubmission = false;

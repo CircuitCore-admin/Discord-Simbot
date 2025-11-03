@@ -17,8 +17,8 @@ async function getSpecialChannelsForGuild(client, guildId) {
         let textChannels = [];
 
         for (const categoryId of categoryIds) {
-            const category = await guild.channels.fetch(categoryId, { force: true }).catch(() => null);
-            if (category && category.type === ChannelType.GuildCategory) {
+            const category = await guild.channels.fetch(categoryId).catch(() => null);
+            if (category && category.type === ChannelType.GuildCategory && category.children) {
                 const channelsInCategory = category.children.cache.filter(ch => ch.type === ChannelType.GuildText);
                 textChannels = textChannels.concat(Array.from(channelsInCategory.values()));
             }

@@ -142,7 +142,7 @@ If the screenshot is COMPLETE (Phase 1 passed), output this JSON with extracted 
  */
 async function analyzeAndSaveHotlap(message, manualData = null, centreName = null) {
     const db = require('./database');
-    const isInteraction = message.isChatInputCommand && message.isChatInputCommand();
+    const isInteraction = message.isChatInputCommand?.();
     const guildId = message.guild.id;
     const channelId = message.channel.id;
     const messageId = message.id;
