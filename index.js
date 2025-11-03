@@ -334,7 +334,7 @@ app.get('/api/leaderboard', async (req, res) => {
     const allowedSortColumns = new Set([
         'driver_name', 'team_name', 'lap_time', 's1_time', 's2_time',
         's3_time', 'submission_date', 'track_location_name', 'discord_tag',
-        'custom_setup'
+        'custom_setup', 'centre_name'
     ]);
 
     if (!allowedSortColumns.has(sortColumn)) {
@@ -358,6 +358,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 submission_date,
                 user_id,
                 discord_tag,
+                centre_name,
                 ROW_NUMBER() OVER (
                     PARTITION BY user_id, track_location_name
                     ORDER BY
@@ -390,7 +391,8 @@ app.get('/api/leaderboard', async (req, res) => {
             submission_date,
             user_id,
             discord_tag,
-            lap_count
+            lap_count,
+            centre_name
         FROM RankedLaps
         WHERE rn = 1
     `;
@@ -422,6 +424,7 @@ app.get('/api/leaderboard', async (req, res) => {
         case 'driver_name':
         case 'team_name':
         case 'track_location_name':
+        case 'centre_name':
             // Use LOWER() for case-insensitive alphabetical sorting
             orderByClause = `LOWER(${sortColumn}) ${orderDirection}`;
             break;
@@ -496,6 +499,7 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                 submission_date,
                 user_id,
                 discord_tag,
+                centre_name,
                 ROW_NUMBER() OVER (
                     PARTITION BY user_id, track_location_name
                     ORDER BY
@@ -524,7 +528,8 @@ app.get('/api/leaderboard/csv', async (req, res) => {
             s2_time AS "S2 Time",
             s3_time AS "S3 Time",
             CASE WHEN custom_setup THEN 'Yes' ELSE 'No' END AS "Custom Setup",
-            submission_date AS "Submission Date"
+            submission_date AS "Submission Date",
+            centre_name AS "Centre"
         FROM RankedLaps
         WHERE rn = 1
         ORDER BY
@@ -614,7 +619,8 @@ app.get('/api/driverLaps', async (req, res) => {
                 track_location_name,
                 submission_date,
                 user_id,
-                discord_tag
+                discord_tag,
+                centre_name
             FROM hotlaps
             WHERE user_id = $1 AND track_location_name ILIKE $2 AND guild_id = $3
             ORDER BY

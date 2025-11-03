@@ -170,6 +170,10 @@ function App() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(25);
 
+    // Special guild ID for centre name feature
+    const SPECIAL_GUILD_ID = '1042747615856562187';
+    const isSpecialGuild = selectedGuildId === SPECIAL_GUILD_ID;
+
     // Effect to save selectedGuildId to localStorage
     useEffect(() => {
         localStorage.setItem('selectedGuildId', selectedGuildId);
@@ -183,6 +187,7 @@ function App() {
     const sortableColumnsMap = {
         'Lap Time': 'lap_time', 'S1': 's1_time', 'S2': 's2_time', 'S3': 's3_time',
         'Driver': 'discord_tag', 'Date': 'submission_date', 'Custom Setup': 'custom_setup',
+        'Centre': 'centre_name',
     };
 
     const handleSort = (columnName) => {
@@ -555,6 +560,7 @@ function App() {
                                 <tr>
                                     <th className="text-left">Rank</th>
                                     <th className="sortable text-left" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
+                                    {isSpecialGuild && <th className="sortable text-left" onClick={() => handleSort('Centre')}>Centre {getSortIcon(sortableColumnsMap['Centre'])}</th>}
                                     <th className="sortable text-right" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
                                     <th className="sortable text-right" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
                                     <th className="sortable text-right" onClick={() => handleSort('S2')}>S2 {getSortIcon(sortableColumnsMap['S2'])}</th>
@@ -587,6 +593,7 @@ function App() {
                                               : <span>{entry.discord_tag || entry.driver_name}</span>
                                             }
                                           </td>
+                                            {isSpecialGuild && <td data-label="Centre" className="text-left">{entry.centre_name || '-'}</td>}
                                             <td data-label="Lap Time" className="text-right">{entry.lap_time}</td>
                                             <td data-label="S1" className="text-right">{entry.s1_time}</td>
                                             <td data-label="S2" className="text-right">{entry.s2_time}</td>
@@ -595,12 +602,13 @@ function App() {
                                             <td data-label="Date" className="text-left" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
                                         </tr>
                                         {expandedDriverId === entry.user_id && (
-                                            loadingExpandedLaps ? <tr><td colSpan="8"><div className="spinner-container" style={{height: '100px'}}><div className="spinner"></div></div></td></tr> :
-                                            expandedLapsError ? <tr><td colSpan="8"><p className="error-message">{expandedLapsError}</p></td></tr> :
+                                            loadingExpandedLaps ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><div className="spinner-container" style={{height: '100px'}}><div className="spinner"></div></div></td></tr> :
+                                            expandedLapsError ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><p className="error-message">{expandedLapsError}</p></td></tr> :
                                             expandedDriverLaps && expandedDriverLaps.length > 1 && (
                                                 expandedDriverLaps.filter(lap => lap.submission_date !== entry.submission_date).map(lap => (
                                                     <tr key={lap.id} className="additional-lap-row">
                                                         <td></td><td></td>
+                                                        {isSpecialGuild && <td data-label="Centre" className="text-left">{lap.centre_name || '-'}</td>}
                                                         <td data-label="Lap Time" className="text-right">{lap.lap_time}</td>
                                                         <td data-label="S1" className="text-right">{lap.s1_time}</td>
                                                         <td data-label="S2" className="text-right">{lap.s2_time}</td>
@@ -616,7 +624,7 @@ function App() {
                                 })}
                                  {filteredLeaderboard.length === 0 && selectedTrack && (
                                     <tr>
-                                        <td colSpan="8" className="no-data-message">
+                                        <td colSpan={isSpecialGuild ? "9" : "8"} className="no-data-message">
                                             No results found for "{searchTerm}" on this track.
                                         </td>
                                     </tr>
