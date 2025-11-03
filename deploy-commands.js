@@ -21,18 +21,18 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
 (async () => {
     try {
         const commands = [
-            {
-                name: 'analyze_hotlap',
-                description: 'Analyze an F1 hotlap screenshot using OCR and GPT-4',
-                options: [
-                    {
-                        name: 'image',
-                        type: 11, // Attachment
-                        description: 'Upload the screenshot of the hotlap',
-                        required: true,
-                    },
-                ],
-            },
+            // {
+            //     name: 'analyze_hotlap',
+            //     description: 'Analyze an F1 hotlap screenshot using OCR and GPT-4',
+            //     options: [
+            //         {
+            //             name: 'image',
+            //             type: 11, // Attachment
+            //             description: 'Upload the screenshot of the hotlap',
+            //             required: true,
+            //         },
+            //     ],
+            // },
             {
                 name: 'edit',
                 description: 'Edit an existing hotlap record',
@@ -161,6 +161,8 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         required: true,
                     },
                 ],
+                default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
+                dm_permission: false, // Command cannot be used in DMs
             },
             // The following commands were present in your previous deploy-commands.js.
             // Uncomment them if they are part of your bot's functionality.
