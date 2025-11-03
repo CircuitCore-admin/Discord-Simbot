@@ -12,9 +12,26 @@ module.exports = {
                 .setRequired(true)
         )
         .addStringOption(option =>
-            option.setName('team')
-                .setDescription('Team name')
+            option.setName('driver_name')
+                .setDescription('Driver name (the person who set the lap time)')
                 .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('team')
+                .setDescription('F1 2025 team')
+                .setRequired(true)
+                .addChoices(
+                    { name: 'Red Bull Racing', value: 'Red Bull Racing' },
+                    { name: 'Ferrari', value: 'Ferrari' },
+                    { name: 'Mercedes', value: 'Mercedes' },
+                    { name: 'McLaren', value: 'McLaren' },
+                    { name: 'Aston Martin', value: 'Aston Martin' },
+                    { name: 'Alpine', value: 'Alpine' },
+                    { name: 'Williams', value: 'Williams' },
+                    { name: 'RB', value: 'RB' },
+                    { name: 'Kick Sauber', value: 'Kick Sauber' },
+                    { name: 'Haas', value: 'Haas' }
+                )
         )
         .addStringOption(option =>
             option.setName('lap_time')
@@ -40,16 +57,6 @@ module.exports = {
             option.setName('custom_setup')
                 .setDescription('Was a custom setup used?')
                 .setRequired(true)
-        )
-        .addBooleanOption(option =>
-            option.setName('is_valid')
-                .setDescription('Is the lap valid (no penalties)?')
-                .setRequired(true)
-        )
-        .addStringOption(option =>
-            option.setName('driver_name')
-                .setDescription('Driver name (optional, defaults to your Discord username)')
-                .setRequired(false)
         ),
 
     async execute(interaction) {
@@ -61,9 +68,10 @@ module.exports = {
             const channelId = interaction.channelId;
             const messageId = interaction.id;
             const userId = interaction.user.id;
-            const discordTag = interaction.user.tag;
+            const adminDiscordTag = interaction.user.tag; // Admin who submitted
 
             // Get command options
+            const driverName = interaction.options.getString('driver_name');
             const trackLocationName = interaction.options.getString('track');
             const teamName = interaction.options.getString('team');
             const lapTime = interaction.options.getString('lap_time');
@@ -71,8 +79,10 @@ module.exports = {
             const s2Time = interaction.options.getString('s2_time');
             const s3Time = interaction.options.getString('s3_time');
             const customSetup = interaction.options.getBoolean('custom_setup');
-            const isValid = interaction.options.getBoolean('is_valid');
-            const driverName = interaction.options.getString('driver_name') || discordTag;
+            const isValid = true; // Always valid since admins won't submit invalid laps
+
+            // Use driver_name for discord_tag since driver doesn't have Discord
+            const discordTag = driverName;
 
             const submissionDate = new Date();
 
@@ -86,11 +96,6 @@ module.exports = {
             const sectorTimePattern = /^\d+\.\d{3}$/;
             if (!sectorTimePattern.test(s1Time) || !sectorTimePattern.test(s2Time) || !sectorTimePattern.test(s3Time)) {
                 return interaction.editReply('❌ Invalid sector time format. Please use format like "35.123" (SS.mmm)');
-            }
-
-            // Check if the lap is invalid and reject it
-            if (!isValid) {
-                return interaction.editReply(`❌ Lap Rejected: The lap (${lapTime}) on ${trackLocationName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
             }
 
             // Insert into the database
@@ -108,15 +113,15 @@ module.exports = {
 
             // Construct the reply message
             let replyContent = `📊 Hotlap Manually Submitted:\n`;
-            replyContent += `Top Lap Time: ${lapTime}\n`;
-            replyContent += `Valid: ✅\n`;
-            replyContent += `Driver: ${discordTag}\n`;
+            replyContent += `Driver: ${driverName}\n`;
             replyContent += `Team: ${teamName}\n`;
             replyContent += `Track: ${trackLocationName}\n`;
+            replyContent += `Lap Time: ${lapTime}\n`;
             replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-            replyContent += `Custom Setup: ${customSetup ? '✅ Yes' : '❌ No'}`;
+            replyContent += `Custom Setup: ${customSetup ? '✅ Yes' : '❌ No'}\n`;
+            replyContent += `Submitted by: ${adminDiscordTag}`;
 
-            return interaction.editReply(`\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!`);
+            return interaction.editReply(`\`\`\`\n${replyContent}\n\`\`\`\nHotlap recorded successfully!`);
 
         } catch (err) {
             console.error('❌ Command Error:', err);

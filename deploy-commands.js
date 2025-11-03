@@ -101,15 +101,33 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 description: 'Manually submit a hotlap with all data',
                 options: [
                     {
-                        name: 'track',
+                        name: 'driver_name',
                         type: 3, // STRING
-                        description: 'Track location name (e.g., BELGIUM, TEXAS)',
+                        description: 'Driver name (the person who set the lap time)',
                         required: true,
                     },
                     {
                         name: 'team',
                         type: 3, // STRING
-                        description: 'Team name',
+                        description: 'F1 2025 team',
+                        required: true,
+                        choices: [
+                            { name: 'Red Bull Racing', value: 'Red Bull Racing' },
+                            { name: 'Ferrari', value: 'Ferrari' },
+                            { name: 'Mercedes', value: 'Mercedes' },
+                            { name: 'McLaren', value: 'McLaren' },
+                            { name: 'Aston Martin', value: 'Aston Martin' },
+                            { name: 'Alpine', value: 'Alpine' },
+                            { name: 'Williams', value: 'Williams' },
+                            { name: 'RB', value: 'RB' },
+                            { name: 'Kick Sauber', value: 'Kick Sauber' },
+                            { name: 'Haas', value: 'Haas' }
+                        ],
+                    },
+                    {
+                        name: 'track',
+                        type: 3, // STRING
+                        description: 'Track location name (e.g., BELGIUM, TEXAS)',
                         required: true,
                     },
                     {
@@ -141,18 +159,6 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         type: 5, // BOOLEAN
                         description: 'Was a custom setup used?',
                         required: true,
-                    },
-                    {
-                        name: 'is_valid',
-                        type: 5, // BOOLEAN
-                        description: 'Is the lap valid (no penalties)?',
-                        required: true,
-                    },
-                    {
-                        name: 'driver_name',
-                        type: 3, // STRING
-                        description: 'Driver name (optional, defaults to your Discord username)',
-                        required: false,
                     },
                 ],
             },
