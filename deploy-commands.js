@@ -77,25 +77,25 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 default_member_permissions: PermissionFlagsBits.ManageChannels.toString(),
                 setDMPermission: false, // Command cannot be used in DMs
             },
-            {
-                name: 'f1-leaderboard',
-                description: 'Displays the F1 hotlap leaderboard for a selected track.',
-                options: [
-                    {
-                        name: 'track',
-                        type: 3, // STRING type
-                        description: 'Select a track to view the leaderboard.',
-                        required: true,
-                        autocomplete: true, // This enables dynamic suggestions for tracks
-                    },
-                    {
-                        name: 'custom_setup_only',
-                        type: 5, // BOOLEAN type
-                        description: 'Show only laps with custom setup (True/False).',
-                        required: false, // Optional filter
-                    }
-                ],
-            },
+            // {
+            //     name: 'f1-leaderboard',
+            //     description: 'Displays the F1 hotlap leaderboard for a selected track.',
+            //     options: [
+            //         {
+            //             name: 'track',
+            //             type: 3, // STRING type
+            //             description: 'Select a track to view the leaderboard.',
+            //             required: true,
+            //             autocomplete: true, // This enables dynamic suggestions for tracks
+            //         },
+            //         {
+            //             name: 'custom_setup_only',
+            //             type: 5, // BOOLEAN type
+            //             description: 'Show only laps with custom setup (True/False).',
+            //             required: false, // Optional filter
+            //         }
+            //     ],
+            // },
             {
                 name: 'submit_hotlap',
                 description: 'Manually submit a hotlap with all data',
@@ -162,6 +162,47 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                     },
                 ],
                 default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
+                dm_permission: false, // Command cannot be used in DMs
+            },
+            {
+                name: 'manage_special_category',
+                description: 'Manages the hotlap categories for this server.',
+                options: [
+                    {
+                        name: 'add',
+                        type: 1, // SUB_COMMAND
+                        description: 'Adds a category for hotlap scanning.',
+                        options: [
+                            {
+                                name: 'category',
+                                type: 7, // CHANNEL
+                                description: 'The category to add',
+                                required: true,
+                                channel_types: [4], // 4 is GUILD_CATEGORY
+                            }
+                        ]
+                    },
+                    {
+                        name: 'remove',
+                        type: 1, // SUB_COMMAND
+                        description: 'Removes a category from hotlap scanning.',
+                        options: [
+                            {
+                                name: 'category',
+                                type: 7, // CHANNEL
+                                description: 'The category to remove',
+                                required: true,
+                                channel_types: [4], // 4 is GUILD_CATEGORY
+                            }
+                        ]
+                    },
+                    {
+                        name: 'list',
+                        type: 1, // SUB_COMMAND
+                        description: 'Lists all scannable hotlap categories.',
+                    }
+                ],
+                default_member_permissions: PermissionFlagsBits.Administrator.toString(),
                 dm_permission: false, // Command cannot be used in DMs
             },
             // The following commands were present in your previous deploy-commands.js.
