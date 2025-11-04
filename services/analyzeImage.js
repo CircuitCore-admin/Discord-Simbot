@@ -251,7 +251,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
             replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}`;
             if (centreName) {
-                replyContent += `\n**Centre:** ${centreName}`;
+                replyContent += `\nCentre: ${centreName}`;
             }
             replyContent += `\nNotes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
         }
