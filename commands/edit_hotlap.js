@@ -1,5 +1,5 @@
 // commands/edit_hotlap.js
-const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, PermissionFlagsBits, StringSelectMenuBuilder, MessageFlags } = require('discord.js'); // Added MessageFlags
 const db = require('../services/database');
 
 module.exports = {
@@ -103,7 +103,7 @@ module.exports = {
         if (!interaction.guildId) {
             return interaction.reply({
                 content: '❌ This command can only be used in a server.',
-                ephemeral: true
+                flags: [MessageFlags.Ephemeral] // MODIFIED
             });
         }
 
@@ -122,7 +122,7 @@ module.exports = {
             if (result.rows.length === 0) {
                 return interaction.reply({
                     content: `❌ No hotlap record found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}" in this server.`,
-                    ephemeral: true
+                    flags: [MessageFlags.Ephemeral] // MODIFIED
                 });
             }
 
@@ -144,11 +144,11 @@ module.exports = {
                 return interaction.reply({
                     content: `⚠️ Multiple records found for user "${discordTag}" with lap time "${lapTime}" on track "${trackLocation}".\nPlease select which one to edit based on submission date:`,
                     components: [row],
-                    ephemeral: true
+                    flags: [MessageFlags.Ephemeral] // MODIFIED
                 });
             }
 
-            // Single record found - show first modal with 5 fields
+            // Single record found - show the single modal with 5 fields
             const record = result.rows[0];
             
             // Create modal
@@ -156,19 +156,12 @@ module.exports = {
                 .setCustomId(`edit-hotlap-${record.id}`)
                 .setTitle(`Edit Lap: ${record.driver_name} - ${record.track_location_name} - ${record.lap_time}`);
 
-            // Create text input components for first 5 editable fields
+            // Create text input components for 5 editable fields
             const driverNameInput = new TextInputBuilder()
                 .setCustomId('driver_name')
                 .setLabel('Driver Name')
                 .setStyle(TextInputStyle.Short)
                 .setValue(record.driver_name || '')
-                .setRequired(true);
-
-            const teamNameInput = new TextInputBuilder()
-                .setCustomId('team_name')
-                .setLabel('Team Name')
-                .setStyle(TextInputStyle.Short)
-                .setValue(record.team_name || '')
                 .setRequired(true);
 
             const lapTimeInput = new TextInputBuilder()
@@ -191,17 +184,24 @@ module.exports = {
                 .setStyle(TextInputStyle.Short)
                 .setValue(record.s2_time || '')
                 .setRequired(true);
+            
+            const s3TimeInput = new TextInputBuilder()
+                .setCustomId('s3_time')
+                .setLabel('Sector 3 Time')
+                .setStyle(TextInputStyle.Short)
+                .setValue(record.s3_time || '')
+                .setRequired(true);
 
             // Create action rows (modals can have up to 5 action rows)
             const row1 = new ActionRowBuilder().addComponents(driverNameInput);
-            const row2 = new ActionRowBuilder().addComponents(teamNameInput);
-            const row3 = new ActionRowBuilder().addComponents(lapTimeInput);
-            const row4 = new ActionRowBuilder().addComponents(s1TimeInput);
-            const row5 = new ActionRowBuilder().addComponents(s2TimeInput);
+            const row2 = new ActionRowBuilder().addComponents(lapTimeInput);
+            const row3 = new ActionRowBuilder().addComponents(s1TimeInput);
+            const row4 = new ActionRowBuilder().addComponents(s2TimeInput);
+            const row5 = new ActionRowBuilder().addComponents(s3TimeInput);
 
             modal.addComponents(row1, row2, row3, row4, row5);
 
-            // Show the modal - we'll handle s3_time, is_valid, and custom_setup in a second modal
+            // Show the single modal
             await interaction.showModal(modal);
 
         } catch (error) {
@@ -211,7 +211,7 @@ module.exports = {
                 try {
                     return interaction.reply({
                         content: '⚠️ An error occurred while fetching the hotlap record. Please try again.',
-                        ephemeral: true
+                        flags: [MessageFlags.Ephemeral] // MODIFIED
                     });
                 } catch (replyError) {
                     console.error('❌ Could not send error message to user:', replyError);

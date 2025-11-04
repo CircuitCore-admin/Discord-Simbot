@@ -1,20 +1,7 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js'); // Added MessageFlags
 const db = require('../services/database');
 
-// In-memory cache to store first modal data temporarily
-// Format: Map<recordId, { data: {...}, timestamp: number }>
-const editDataCache = new Map();
-
-// Cleanup old cache entries (older than 5 minutes)
-setInterval(() => {
-    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-    for (const [key, value] of editDataCache.entries()) {
-        if (value.timestamp < fiveMinutesAgo) {
-            editDataCache.delete(key);
-            console.log(`🧹 Cleaned up expired cache entry: ${key}`);
-        }
-    }
-}, 60 * 1000); // Run every minute
+// --- REMOVED: No longer need cache or cleanup for a single modal ---
 
 module.exports = {
     name: 'interactionCreate',
@@ -30,7 +17,7 @@ module.exports = {
                 console.error('❌ Error executing command:', error);
                 await interaction.reply({
                     content: 'There was an error executing that command.',
-                    ephemeral: true,
+                    flags: [MessageFlags.Ephemeral], // MODIFIED
                 });
             }
         } else if (interaction.isAutocomplete()) {
@@ -53,128 +40,53 @@ module.exports = {
                 }
             }
         } else if (interaction.isModalSubmit()) {
-            // Handle modal submissions for edit hotlap
-            // Check for second modal first (more specific pattern)
-            if (interaction.customId.startsWith('edit-hotlap-2-')) {
-                try {
-                    // Parse customId to get record ID
-                    const recordId = interaction.customId.replace('edit-hotlap-2-', '');
-                    
-                    // Retrieve first modal data from cache
-                    const cacheEntry = editDataCache.get(recordId);
-                    
-                    if (!cacheEntry) {
-                        return interaction.reply({
-                            content: '❌ Session expired. Please try the edit command again.',
-                            ephemeral: true
-                        });
-                    }
+            // --- REMOVED: Logic for 'edit-hotlap-2-' ---
 
-                    const firstModalData = cacheEntry.data;
-
-                    // Get values from second modal
-                    const s3Time = interaction.fields.getTextInputValue('s3_time');
-                    const isValidStr = interaction.fields.getTextInputValue('is_valid').toLowerCase();
-                    const customSetupStr = interaction.fields.getTextInputValue('custom_setup').toLowerCase();
-
-                    // Convert boolean strings to actual booleans
-                    const isValid = isValidStr === 'true';
-                    const customSetup = customSetupStr === 'true';
-
-                    try {
-                        // Update the database (without track_location_name)
-                        await db.query(
-                            `UPDATE hotlaps 
-                             SET driver_name = $1, team_name = $2, lap_time = $3, 
-                                 s1_time = $4, s2_time = $5, s3_time = $6, 
-                                 is_valid = $7, custom_setup = $8
-                             WHERE id = $9`,
-                            [
-                                firstModalData.driver_name,
-                                firstModalData.team_name,
-                                firstModalData.lap_time,
-                                firstModalData.s1_time,
-                                firstModalData.s2_time,
-                                s3Time,
-                                isValid,
-                                customSetup,
-                                recordId
-                            ]
-                        );
-
-                        await interaction.reply({
-                            content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${firstModalData.lap_time}`,
-                            ephemeral: true
-                        });
-                    } finally {
-                        // Always clear cache entry, even if update fails
-                        editDataCache.delete(recordId);
-                    }
-
-                } catch (error) {
-                    console.error('❌ Error handling second modal submission:', error);
-                    // Check if we already replied, if not reply, otherwise followUp
-                    try {
-                        if (!interaction.replied && !interaction.deferred) {
-                            return interaction.reply({
-                                content: '⚠️ An error occurred while saving your changes. Please try again.',
-                                ephemeral: true
-                            });
-                        } else {
-                            return interaction.followUp({
-                                content: '⚠️ An error occurred while saving your changes. Please try again.',
-                                ephemeral: true
-                            });
-                        }
-                    } catch (replyError) {
-                        console.error('❌ Could not send error message to user:', replyError);
-                    }
-                }
-            } else if (interaction.customId.startsWith('edit-hotlap-')) {
+            // Handle the single modal submission
+            if (interaction.customId.startsWith('edit-hotlap-')) {
                 try {
                     const recordId = interaction.customId.replace('edit-hotlap-', '');
                     
-                    // Get values from first modal
+                    // Get values from the single modal
                     const driverName = interaction.fields.getTextInputValue('driver_name');
-                    const teamName = interaction.fields.getTextInputValue('team_name');
                     const lapTime = interaction.fields.getTextInputValue('lap_time');
                     const s1Time = interaction.fields.getTextInputValue('s1_time');
                     const s2Time = interaction.fields.getTextInputValue('s2_time');
+                    const s3Time = interaction.fields.getTextInputValue('s3_time');
 
-                    // Store first modal data in cache with timestamp
-                    editDataCache.set(recordId, {
-                        data: {
-                            driver_name: driverName,
-                            team_name: teamName,
-                            lap_time: lapTime,
-                            s1_time: s1Time,
-                            s2_time: s2Time
-                        },
-                        timestamp: Date.now()
-                    });
+                    // --- REMOVED: Cache logic ---
+                    // --- REMOVED: Button reply ---
 
-                    // Reply with a button to continue to part 2
-                    const continueButton = new ButtonBuilder()
-                        .setCustomId(`edit-hotlap-continue-${recordId}`)
-                        .setLabel('Continue to Part 2')
-                        .setStyle(ButtonStyle.Primary);
-
-                    const row = new ActionRowBuilder().addComponents(continueButton);
+                    // --- ADDED: Direct database update ---
+                    await db.query(
+                        `UPDATE hotlaps 
+                         SET driver_name = $1, lap_time = $2, s1_time = $3, 
+                             s2_time = $4, s3_time = $5
+                         WHERE id = $6`,
+                        [
+                            driverName,
+                            lapTime,
+                            s1Time,
+                            s2Time,
+                            s3Time,
+                            recordId
+                        ]
+                    );
 
                     await interaction.reply({
-                        content: '✅ Part 1 saved! Click the button below to continue with the remaining fields.',
-                        components: [row],
-                        ephemeral: true
+                        content: `✅ Hotlap record (ID: ${recordId}) has been successfully updated!\nNew lap time: ${lapTime}`,
+                        flags: [MessageFlags.Ephemeral] // MODIFIED
                     });
+                    // --- END OF MODIFICATION ---
 
                 } catch (error) {
-                    console.error('❌ Error handling first modal submission:', error);
+                    console.error('❌ Error handling modal submission:', error);
                     // Try to reply if we haven't shown the modal yet
                     try {
                         if (!interaction.replied && !interaction.deferred) {
                             return interaction.reply({
                                 content: '⚠️ An error occurred while processing your edit. Please try again.',
-                                ephemeral: true
+                                flags: [MessageFlags.Ephemeral] // MODIFIED
                             });
                         }
                     } catch (replyError) {
@@ -184,72 +96,9 @@ module.exports = {
                 }
             }
         } else if (interaction.isButton()) {
-            // Handle button interactions for continuing to second modal
-            if (interaction.customId.startsWith('edit-hotlap-continue-')) {
-                try {
-                    const recordId = interaction.customId.replace('edit-hotlap-continue-', '');
-                    
-                    // Fetch current record to get remaining fields for second modal
-                    const result = await db.query('SELECT * FROM hotlaps WHERE id = $1', [recordId]);
-                    
-                    if (result.rows.length === 0) {
-                        return interaction.reply({
-                            content: '❌ Record not found. It may have been deleted.',
-                            ephemeral: true
-                        });
-                    }
+            // --- REMOVED: All 'edit-hotlap-continue-' logic ---
+            console.log(`Unhandled button interaction: ${interaction.customId}`);
 
-                    const record = result.rows[0];
-
-                    // Create second modal for remaining 3 fields
-                    const modal2 = new ModalBuilder()
-                        .setCustomId(`edit-hotlap-2-${recordId}`)
-                        .setTitle('Edit Lap (Part 2/2)');
-
-                    const s3TimeInput = new TextInputBuilder()
-                        .setCustomId('s3_time')
-                        .setLabel('Sector 3 Time')
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(record.s3_time || '')
-                        .setRequired(true);
-
-                    const isValidInput = new TextInputBuilder()
-                        .setCustomId('is_valid')
-                        .setLabel('Valid:')
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(record.is_valid ? 'true' : 'false')
-                        .setRequired(true);
-
-                    const customSetupInput = new TextInputBuilder()
-                        .setCustomId('custom_setup')
-                        .setLabel('Setup:')
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(record.custom_setup ? 'true' : 'false')
-                        .setRequired(true);
-
-                    const row1 = new ActionRowBuilder().addComponents(s3TimeInput);
-                    const row2 = new ActionRowBuilder().addComponents(isValidInput);
-                    const row3 = new ActionRowBuilder().addComponents(customSetupInput);
-
-                    modal2.addComponents(row1, row2, row3);
-
-                    // Show the second modal
-                    await interaction.showModal(modal2);
-
-                } catch (error) {
-                    console.error('❌ Error handling button click for second modal:', error);
-                    try {
-                        if (!interaction.replied && !interaction.deferred) {
-                            return interaction.reply({
-                                content: '⚠️ An error occurred while loading the second modal. Please try again.',
-                                ephemeral: true
-                            });
-                        }
-                    } catch (replyError) {
-                        console.error('❌ Could not send error message to user:', replyError);
-                    }
-                }
-            }
         } else if (interaction.isStringSelectMenu()) {
             // Handle select menu interactions for choosing which record to edit
             if (interaction.customId.startsWith('edit-hotlap-select-')) {
@@ -263,18 +112,18 @@ module.exports = {
                         return interaction.update({
                             content: '❌ Record not found. It may have been deleted.',
                             components: [],
-                            ephemeral: true
+                            flags: [MessageFlags.Ephemeral] // MODIFIED
                         });
                     }
 
                     const record = result.rows[0];
                     
-                    // Create first modal with 5 fields
+                    // --- MODIFIED: Create the new 5-field modal ---
                     const modal = new ModalBuilder()
                         .setCustomId(`edit-hotlap-${record.id}`)
                         .setTitle(`Edit Lap: ${record.driver_name} - ${record.track_location_name} - ${record.lap_time}`);
 
-                    // Create text input components for first 5 editable fields
+                    // Create text input components for 5 editable fields
                     const driverNameInput = new TextInputBuilder()
                         .setCustomId('driver_name')
                         .setLabel('Driver Name')
@@ -282,12 +131,7 @@ module.exports = {
                         .setValue(record.driver_name || '')
                         .setRequired(true);
 
-                    const teamNameInput = new TextInputBuilder()
-                        .setCustomId('team_name')
-                        .setLabel('Team Name')
-                        .setStyle(TextInputStyle.Short)
-                        .setValue(record.team_name || '')
-                        .setRequired(true);
+                    // --- REMOVED: teamNameInput ---
 
                     const lapTimeInput = new TextInputBuilder()
                         .setCustomId('lap_time')
@@ -309,14 +153,22 @@ module.exports = {
                         .setStyle(TextInputStyle.Short)
                         .setValue(record.s2_time || '')
                         .setRequired(true);
+                    
+                    const s3TimeInput = new TextInputBuilder()
+                        .setCustomId('s3_time')
+                        .setLabel('Sector 3 Time')
+                        .setStyle(TextInputStyle.Short)
+                        .setValue(record.s3_time || '')
+                        .setRequired(true);
 
                     const row1 = new ActionRowBuilder().addComponents(driverNameInput);
-                    const row2 = new ActionRowBuilder().addComponents(teamNameInput);
-                    const row3 = new ActionRowBuilder().addComponents(lapTimeInput);
-                    const row4 = new ActionRowBuilder().addComponents(s1TimeInput);
-                    const row5 = new ActionRowBuilder().addComponents(s2TimeInput);
+                    const row2 = new ActionRowBuilder().addComponents(lapTimeInput);
+                    const row3 = new ActionRowBuilder().addComponents(s1TimeInput);
+                    const row4 = new ActionRowBuilder().addComponents(s2TimeInput);
+                    const row5 = new ActionRowBuilder().addComponents(s3TimeInput);
 
                     modal.addComponents(row1, row2, row3, row4, row5);
+                    // --- END OF MODIFICATION ---
 
                     // Show the modal
                     await interaction.showModal(modal);
@@ -327,7 +179,7 @@ module.exports = {
                         if (!interaction.replied && !interaction.deferred) {
                             return interaction.reply({
                                 content: '⚠️ An error occurred while loading the edit modal. Please try again.',
-                                ephemeral: true
+                                flags: [MessageFlags.Ephemeral] // MODIFIED
                             });
                         }
                     } catch (replyError) {
