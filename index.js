@@ -60,6 +60,9 @@ client.once('ready', () => {
 });
 
 // Message Create Listener for Automatic Image Processing
+// Note: This only processes regular messages with attachments, NOT slash commands.
+// Slash commands like /upload_hotlap are handled separately and won't trigger this listener,
+// preventing double logging.
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
     if (!message.guild) return;
