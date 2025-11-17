@@ -25,7 +25,28 @@ module.exports = {
             option.setName('driver_name')
                 .setDescription('Override the driver name (the person who set the lap time)')
                 .setRequired(true)
+                .setAutocomplete(true)
         ),
+
+    async autocomplete(interaction) {
+        const focusedOption = interaction.options.getFocused(true);
+
+        if (focusedOption.name === 'driver_name') {
+            try {
+                // Query distinct driver names from discord_tag field (which contains the manual overrides)
+                const driverQuery = 'SELECT DISTINCT discord_tag FROM hotlaps WHERE discord_tag ILIKE $1 ORDER BY discord_tag LIMIT 25';
+                const queryResult = await db.query(driverQuery, [`%${focusedOption.value}%`]);
+                const choices = queryResult.rows.map(row => row.discord_tag).filter(name => name && name.trim() !== '');
+                
+                await interaction.respond(
+                    choices.map(choice => ({ name: choice, value: choice }))
+                );
+            } catch (error) {
+                console.error('Error in driver_name autocomplete:', error);
+                await interaction.respond([]);
+            }
+        }
+    },
 
     async execute(interaction) {
         await interaction.deferReply();

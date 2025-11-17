@@ -179,6 +179,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         type: 3, // STRING
                         description: 'Override the driver name (the person who set the lap time)',
                         required: true,
+                        autocomplete: true,
                     },
                 ],
                 dm_permission: false, // Command cannot be used in DMs
