@@ -380,7 +380,6 @@ app.get('/api/leaderboard', async (req, res) => {
                 COUNT(*) OVER (PARTITION BY discord_tag, track_location_name) as lap_count
             FROM hotlaps
             WHERE track_location_name ILIKE $1 AND guild_id = $2
-                AND discord_tag NOT LIKE '%#%'
         )
         SELECT
             id,
@@ -472,7 +471,7 @@ app.get('/api/leaderboard/csv', async (req, res) => {
         return res.status(403).send('Forbidden: You are not a member of this guild or it has no leaderboards.');
     }
 
-    let whereConditions = ['track_location_name ILIKE $1', 'guild_id = $2', "discord_tag NOT LIKE '%#%'"];
+    let whereConditions = ['track_location_name ILIKE $1', 'guild_id = $2'];
     let queryParams = [trackName, guildId];
     let paramIndex = 3;
 
