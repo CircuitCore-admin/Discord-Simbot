@@ -147,6 +147,7 @@ module.exports = {
             const manualData = {
                 trackName: interaction.options.getString('track'),
                 driverName: interaction.options.getString('driver_name'),
+                discordTagOverride: interaction.options.getString('driver_name'), // Use driver name for discord_tag on leaderboard
                 teamName: interaction.options.getString('team'),
                 lapTime: lapTime,
                 s1: s1Time,

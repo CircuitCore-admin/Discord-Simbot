@@ -230,6 +230,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             centreName
         ];
 
+        console.log(`Saving hotlap with discord_tag: ${discordTagToUse}, driver_name: ${driverName}`);
         const res = await db.query(query, values);
         console.log(`Hotlap saved with ID: ${res.rows[0].id}`);
 
