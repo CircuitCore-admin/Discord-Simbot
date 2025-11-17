@@ -165,6 +165,33 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 dm_permission: false, // Command cannot be used in DMs
             },
             {
+                name: 'upload_hotlap',
+                description: 'Upload a hotlap image with manual driver name override',
+                options: [
+                    {
+                        name: 'image',
+                        type: 11, // ATTACHMENT
+                        description: 'Upload the screenshot of the hotlap',
+                        required: true,
+                    },
+                    {
+                        name: 'driver_name',
+                        type: 3, // STRING
+                        description: 'Override the driver name (the person who set the lap time)',
+                        required: true,
+                    },
+                    {
+                        name: 'centre',
+                        type: 3, // STRING
+                        description: 'The centre you are racing for (Special Guild Only)',
+                        required: false,
+                        autocomplete: true,
+                    },
+                ],
+                default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
+                dm_permission: false, // Command cannot be used in DMs
+            },
+            {
                 name: 'manage_special_category',
                 description: 'Manages the hotlap categories for this server.',
                 options: [
