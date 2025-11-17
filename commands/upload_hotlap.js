@@ -1,4 +1,9 @@
 // commands/upload_hotlap.js
+// This command allows users to upload a hotlap image with manual driver name override.
+// It analyzes the image to extract lap data but uses the manually provided driver name
+// instead of the AI-detected name. This prevents double logging since slash commands
+// create interactions, not messages, so they don't trigger the messageCreate listener.
+
 const { SlashCommandBuilder, ChannelType } = require('discord.js');
 const analyzeImage = require('../services/analyzeImage');
 const { analyzeAndSaveHotlap } = require('../services/analyzeImage');
