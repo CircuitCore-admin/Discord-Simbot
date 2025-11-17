@@ -156,11 +156,20 @@ module.exports = {
                 isCustom: interaction.options.getBoolean('custom_setup'),
             };
 
-            // Get and format centre name
-            const centreSlug = interaction.options.getString('centre');
+            // Auto-detect centre name from channel if in special guild
             let centreName = null;
-            if (interaction.guild.id === SPECIAL_GUILD_ID && centreSlug) {
-                centreName = formatChannelName(centreSlug);
+            if (interaction.guild.id === SPECIAL_GUILD_ID) {
+                // Check if channel is in one of the designated categories
+                const categoriesQuery = await db.query('SELECT 1 FROM public.special_hotlap_categories WHERE category_id = $1', [interaction.channel.parentId]);
+                if (categoriesQuery.rows.length > 0) {
+                    centreName = formatChannelName(interaction.channel.name);
+                }
+                
+                // Also check for manual centre override (if provided)
+                const centreSlug = interaction.options.getString('centre');
+                if (centreSlug) {
+                    centreName = formatChannelName(centreSlug);
+                }
             }
 
             // Pass centreName as the third argument

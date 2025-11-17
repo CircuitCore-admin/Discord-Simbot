@@ -180,15 +180,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         description: 'Override the driver name (the person who set the lap time)',
                         required: true,
                     },
-                    {
-                        name: 'centre',
-                        type: 3, // STRING
-                        description: 'The centre you are racing for (Special Guild Only)',
-                        required: false,
-                        autocomplete: true,
-                    },
                 ],
-                default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
                 dm_permission: false, // Command cannot be used in DMs
             },
             {

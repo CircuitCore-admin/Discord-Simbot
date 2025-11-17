@@ -151,6 +151,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
 
     try {
         let analysisResult, trackLocationName, driverName, teamName, lapTime, s1Time, s2Time, s3Time, isValid, customSetupBoolean;
+        let discordTagToUse = discordTag; // Default to actual discord tag
 
         if (manualData) {
             // Manual submission logic
@@ -164,6 +165,11 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             s3Time = manualData.s3;
             isValid = manualData.isValid;
             customSetupBoolean = manualData.isCustom;
+            
+            // If discordTagOverride is provided, use it instead of the actual discord tag
+            if (manualData.discordTagOverride) {
+                discordTagToUse = manualData.discordTagOverride;
+            }
         } else {
             // Automatic submission logic
             console.log('Processing automatic submission...');
@@ -218,7 +224,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
         `;
 
         const values = [
-            guildId, channelId, messageId, userId, discordTag,
+            guildId, channelId, messageId, userId, discordTagToUse,
             driverName, teamName, lapTime, s1Time, s2Time, s3Time,
             isValid, customSetupBoolean, trackLocationName, submissionDate,
             centreName
