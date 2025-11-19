@@ -338,7 +338,7 @@ function App() {
         setLoadingExpandedLaps(true);
         try {
             // CHANGE: Send 'discordTag' query parameter instead of 'userId'
-            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/driverLaps?discordTag=${encodeURIComponent(identifier)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/driverLaps?discord_tag=${encodeURIComponent(identifier)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) throw new Error("Failed to fetch driver's laps");
             const data = await response.json();
             setExpandedDriverLaps(data);
@@ -599,7 +599,7 @@ function App() {
                                                 <td data-label="Custom Setup" className="text-center">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
                                                 <td data-label="Date" className="text-center" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
                                             </tr>
-                                            {expandedDriverId === entry.user_id && (
+                                            {expandedDriverId === entry.discord_tag && (
                                                 loadingExpandedLaps ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><div className="spinner-container" style={{ height: '100px' }}><div className="spinner"></div></div></td></tr> :
                                                     expandedLapsError ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><p className="error-message">{expandedLapsError}</p></td></tr> :
                                                         expandedDriverLaps && expandedDriverLaps.length > 1 && (
