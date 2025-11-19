@@ -6,26 +6,26 @@ import './App.css';
 // --- SVG Icon Components ---
 const ChevronDownIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+        <path fillRule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z" />
     </svg>
 );
 
 const CheckIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" className="icon-check">
-        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
     </svg>
 );
 
 const XIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" className="icon-x">
-        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
     </svg>
 );
 
 const DownloadIcon = () => (
-     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 1 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 1 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
     </svg>
 );
 
@@ -48,7 +48,7 @@ const CustomDropdown = ({ options, selectedValue, onSelect, getIconUrl, getPrefi
     const selectedLabel = selectedOption ? (selectedOption.name || selectedOption) : defaultLabel;
     const selectedIcon = selectedOption && getIconUrl ? getIconUrl(selectedOption.id, selectedOption.icon) : null;
     const selectedPrefix = selectedOption && getPrefix ? getPrefix(selectedOption.name || selectedOption) : null;
-    
+
     return (
         <div className="custom-dropdown-container" ref={dropdownRef}>
             <div
@@ -68,7 +68,7 @@ const CustomDropdown = ({ options, selectedValue, onSelect, getIconUrl, getPrefi
                     ) : (
                         options.map((option) => (
                             <li
-                                key={option.id || option} 
+                                key={option.id || option}
                                 className={`dropdown-item ${selectedValue === (option.id || option) ? 'selected' : ''}`}
                                 onClick={() => {
                                     onSelect(option.id || option);
@@ -90,7 +90,7 @@ const CustomDropdown = ({ options, selectedValue, onSelect, getIconUrl, getPrefi
 // --- Helper Functions ---
 const getGuildIconUrl = (guildId, iconHash) => {
     if (!guildId) return null;
-    if (!iconHash) return `https://cdn.discordapp.com/embed/avatars/0.png`; 
+    if (!iconHash) return `https://cdn.discordapp.com/embed/avatars/0.png`;
     return `https://cdn.discordapp.com/icons/${guildId}/${iconHash}.png?size=32`;
 };
 
@@ -117,7 +117,7 @@ const getFlagForTrack = (trackName) => {
     const normalizedTrackName = trackName.toUpperCase();
     const countryCode = trackToCountryCode[normalizedTrackName];
     if (!countryCode) return null;
-    
+
     const base = 0x1F1A5;
     const char1 = String.fromCodePoint(base + countryCode.charCodeAt(0));
     const char2 = String.fromCodePoint(base + countryCode.charCodeAt(1));
@@ -161,10 +161,10 @@ function App() {
     const [downloadingCSV, setDownloadingCSV] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [stayLoggedIn, setStayLoggedIn] = useState(true);
-    
+
     const [searchTerm, setSearchTerm] = useState('');
-    const [startDate, setStartDate] = useState(''); 
-    const [endDate, setEndDate] = useState('');     
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -264,7 +264,7 @@ function App() {
         };
         checkAuthStatus();
     }, []);
-    
+
     useEffect(() => {
         if (!isAuthenticated || !selectedGuildId) { setTracks([]); return; }
         const fetchTracks = async () => {
@@ -282,8 +282,8 @@ function App() {
                 } else {
                     setSelectedTrack(''); // No tracks for this guild
                 }
-            } catch (e) { 
-                setError("Failed to load tracks."); 
+            } catch (e) {
+                setError("Failed to load tracks.");
                 console.error("Tracks error:", e);
             }
         };
@@ -308,7 +308,7 @@ function App() {
         };
         fetchLeaderboard();
     }, [isAuthenticated, selectedTrack, sortColumn, sortOrder, selectedGuildId]);
-    
+
     const handleTrackChange = (value) => {
         setSelectedTrack(value);
         setExpandedDriverId(null);
@@ -325,16 +325,20 @@ function App() {
         setCurrentPage(1);
     };
 
-    const toggleDriverLaps = async (userId, trackName, event) => {
+    const toggleDriverLaps = async (identifier, trackName, event) => {
         if(event) event.stopPropagation();
-        if (expandedDriverId === userId) {
+        
+        // Check against the new identifier
+        if (expandedDriverId === identifier) {
             setExpandedDriverId(null);
             return;
         }
-        setExpandedDriverId(userId);
+        
+        setExpandedDriverId(identifier); // Set the expanded ID to the tag
         setLoadingExpandedLaps(true);
         try {
-            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/driverLaps?userId=${encodeURIComponent(userId)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
+            // CHANGE: Send 'discordTag' query parameter instead of 'userId'
+            const response = await fetch(`https://f1-hotlaps.circuitcore.net/api/driverLaps?discordTag=${encodeURIComponent(identifier)}&track=${encodeURIComponent(trackName)}&guildId=${encodeURIComponent(selectedGuildId)}`);
             if (!response.ok) throw new Error("Failed to fetch driver's laps");
             const data = await response.json();
             setExpandedDriverLaps(data);
@@ -344,10 +348,10 @@ function App() {
             setLoadingExpandedLaps(false);
         }
     };
-    
+
     const filteredLeaderboard = leaderboardData.filter(entry => {
         const matchesSearchTerm = entry.discord_tag.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         const submissionDate = new Date(entry.submission_date);
         let matchesStartDate = true;
         let matchesEndDate = true;
@@ -371,7 +375,7 @@ function App() {
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     const handleDiscordLogin = () => { window.location.href = `https://f1-hotlaps.circuitcore.net/auth/discord?stayLoggedIn=${stayLoggedIn}`; };
-    
+
     const handleDiscordLogout = async () => {
         try {
             const response = await fetch('https://f1-hotlaps.circuitcore.net/auth/logout', {
@@ -407,7 +411,7 @@ function App() {
             const params = new URLSearchParams({
                 track: selectedTrack,
                 guildId: selectedGuildId,
-                startDate: startDate, 
+                startDate: startDate,
                 endDate: endDate,
             }).toString();
 
@@ -434,7 +438,7 @@ function App() {
     };
 
     const toggleDarkMode = () => setIsDarkMode(p => !p);
-    
+
     return (
         <div className={`app-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
             <header className="app-header">
@@ -447,7 +451,7 @@ function App() {
                     </p>
                 )}
             </header>
-            
+
             <div className="controls-section">
                 {isAuthenticated && (
                     <>
@@ -472,9 +476,9 @@ function App() {
                                 disabled={!selectedGuildId || tracks.length === 0}
                             />
                         </div>
-                         <div className="control-group">
+                        <div className="control-group">
                             <label>Find Driver</label>
-                             <input
+                            <input
                                 type="text"
                                 placeholder="Search by name..."
                                 className="search-input"
@@ -513,13 +517,13 @@ function App() {
                                     setEndDate(newEndDate);
                                     setCurrentPage(1);
                                     if (startDate && new Date(newEndDate) < new Date(startDate)) {
-                                        setEndDate(startDate); 
+                                        setEndDate(startDate);
                                     }
                                 }}
                             />
                         </div>
                         <div className="control-group actions">
-                             <button onClick={handleDownloadCSV} disabled={!selectedTrack || !selectedGuildId || loading || downloadingCSV} className="control-button">
+                            <button onClick={handleDownloadCSV} disabled={!selectedTrack || !selectedGuildId || loading || downloadingCSV} className="control-button">
                                 <DownloadIcon />
                                 {downloadingCSV ? 'Downloading...' : 'CSV'}
                             </button>
@@ -530,27 +534,27 @@ function App() {
                     </>
                 )}
             </div>
-            
+
             <div className="leaderboard-section">
                 {!isAuthenticated && (
-                     <div className="login-container">
+                    <div className="login-container">
                         <button onClick={handleDiscordLogin} className="discord-login-button">Login with Discord</button>
-                        <div className="stay-logged-in-checkbox"><input type="checkbox" id="stay" checked={stayLoggedIn} onChange={(e)=>setStayLoggedIn(e.target.checked)} /><label htmlFor="stay">Stay Logged In</label></div>
+                        <div className="stay-logged-in-checkbox"><input type="checkbox" id="stay" checked={stayLoggedIn} onChange={(e) => setStayLoggedIn(e.target.checked)} /><label htmlFor="stay">Stay Logged In</label></div>
                     </div>
                 )}
                 {loading && leaderboardData.length === 0 && <div className="spinner-container"><div className="spinner"></div></div>}
 
                 {error && <p className="error-message">{error}</p>}
 
-                {!error && isAuthenticated && filteredLeaderboard.length > 0 && ( 
+                {!error && isAuthenticated && filteredLeaderboard.length > 0 && (
                     <>
                         <table className={`leaderboard-table ${loading ? 'is-updating' : ''} ${isSpecialGuild ? 'has-centre-column' : ''}`}>
-                             <thead>
+                            <thead>
                                 <tr>
                                     <th className="text-center">Rank</th>
                                     {/* CHANGED THIS LINE */}
                                     <th className="sortable text-center" onClick={() => handleSort('Driver')}>Driver {getSortIcon(sortableColumnsMap['Driver'])}</th>
-                                    
+
                                     {isSpecialGuild && <th className="sortable text-center" onClick={() => handleSort('Centre')}>Centre {getSortIcon(sortableColumnsMap['Centre'])}</th>}
                                     <th className="sortable text-center" onClick={() => handleSort('Lap Time')}>Lap Time {getSortIcon(sortableColumnsMap['Lap Time'])}</th>
                                     <th className="sortable text-center" onClick={() => handleSort('S1')}>S1 {getSortIcon(sortableColumnsMap['S1'])}</th>
@@ -564,63 +568,63 @@ function App() {
                                 {currentLeaderboardItems.map((entry, i) => {
                                     const rank = indexOfFirstItem + i + 1;
                                     return (
-                                    <React.Fragment key={entry.user_id}>
-                                        <tr className={entry.user_id === discordUser?.id ? 'is-current-user' : ''}>
-                                          <td data-label="Rank" className="text-center">{rank}</td>
-                                          
-                                          {/* CHANGED THIS LINE */}
-                                          <td data-label="Driver" className="text-center">
-                                            {entry.lap_count > 1
-                                              ? (
-                                                <span
-                                                  className="driver-name-link"
-                                                  onClick={e => { e.stopPropagation(); toggleDriverLaps(entry.user_id, entry.track_location_name); }}
-                                                  title="Click to view all laps"
-                                                >
-                                                  <span>{entry.discord_tag || entry.driver_name}</span>
-                                                  <span className={`expand-arrow ${expandedDriverId === entry.user_id ? 'is-expanded' : ''}`}>
-                                                    <ChevronDownIcon/>
-                                                  </span>
-                                                </span>
-                                              )
-                                              : <span>{entry.discord_tag || entry.driver_name}</span>
-                                            }
-                                          </td>
+                                        <React.Fragment key={entry.user_id}>
+                                            <tr className={entry.user_id === discordUser?.id ? 'is-current-user' : ''}>
+                                                <td data-label="Rank" className="text-center">{rank}</td>
 
-                                            {isSpecialGuild && <td data-label="Centre" className="text-center">{entry.centre_name || '-'}</td>}
-                                            <td data-label="Lap Time" className="text-center">{entry.lap_time}</td>
-                                            <td data-label="S1" className="text-center">{entry.s1_time}</td>
-                                            <td data-label="S2" className="text-center">{entry.s2_time}</td>
-                                            <td data-label="S3" className="text-center">{entry.s3_time}</td>
-                                            <td data-label="Custom Setup" className="text-center">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                            <td data-label="Date" className="text-center" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
-                                        </tr>
-                                        {expandedDriverId === entry.user_id && (
-                                            loadingExpandedLaps ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><div className="spinner-container" style={{height: '100px'}}><div className="spinner"></div></div></td></tr> :
-                                            expandedLapsError ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><p className="error-message">{expandedLapsError}</p></td></tr> :
-                                            expandedDriverLaps && expandedDriverLaps.length > 1 && (
-                                                expandedDriverLaps.filter(lap => lap.submission_date !== entry.submission_date).map(lap => (
-                                                    <tr key={lap.id} className="additional-lap-row">
-                                                        <td></td>
-                                                        
-                                                        {/* This cell is for the (empty) driver column, so it should also be centered */}
-                                                        <td className="text-center"></td>
+                                                {/* CHANGED THIS LINE */}
+                                                <td data-label="Driver" className="text-center">
+                                                    {entry.lap_count > 1
+                                                        ? (
+                                                            <span
+                                                                className="driver-name-link"
+                                                                onClick={e => { e.stopPropagation(); toggleDriverLaps(entry.discord_tag, entry.track_location_name); }}
+                                                                title="Click to view all laps"
+                                                            >
+                                                                <span>{entry.discord_tag || entry.driver_name}</span>
+                                                                <span className={`expand-arrow ${expandedDriverId === entry.discord_tag ? 'is-expanded' : ''}`}>
+                                                                    <ChevronDownIcon />
+                                                                </span>
+                                                            </span>
+                                                        )
+                                                        : <span>{entry.discord_tag || entry.driver_name}</span>
+                                                    }
+                                                </td>
 
-                                                        {isSpecialGuild && <td data-label="Centre" className="text-center">{lap.centre_name || '-'}</td>}
-                                                        <td data-label="Lap Time" className="text-center">{lap.lap_time}</td>
-                                                        <td data-label="S1" className="text-center">{lap.s1_time}</td>
-                                                        <td data-label="S2" className="text-center">{lap.s2_time}</td> 
-                                                        <td data-label="S3" className="text-center">{lap.s3_time}</td>
-                                                        <td data-label="Custom Setup" className="text-center">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
-                                                        <td data-label="Date" className="text-center" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
-                                                    </tr>
-                                                ))
-                                            )
-                                        )}
-                                    </React.Fragment>
+                                                {isSpecialGuild && <td data-label="Centre" className="text-center">{entry.centre_name || '-'}</td>}
+                                                <td data-label="Lap Time" className="text-center">{entry.lap_time}</td>
+                                                <td data-label="S1" className="text-center">{entry.s1_time}</td>
+                                                <td data-label="S2" className="text-center">{entry.s2_time}</td>
+                                                <td data-label="S3" className="text-center">{entry.s3_time}</td>
+                                                <td data-label="Custom Setup" className="text-center">{entry.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                                <td data-label="Date" className="text-center" title={new Date(entry.submission_date).toLocaleString()}>{formatDateTime(entry.submission_date)}</td>
+                                            </tr>
+                                            {expandedDriverId === entry.user_id && (
+                                                loadingExpandedLaps ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><div className="spinner-container" style={{ height: '100px' }}><div className="spinner"></div></div></td></tr> :
+                                                    expandedLapsError ? <tr><td colSpan={isSpecialGuild ? "9" : "8"}><p className="error-message">{expandedLapsError}</p></td></tr> :
+                                                        expandedDriverLaps && expandedDriverLaps.length > 1 && (
+                                                            expandedDriverLaps.filter(lap => lap.submission_date !== entry.submission_date).map(lap => (
+                                                                <tr key={lap.id} className="additional-lap-row">
+                                                                    <td></td>
+
+                                                                    {/* This cell is for the (empty) driver column, so it should also be centered */}
+                                                                    <td className="text-center"></td>
+
+                                                                    {isSpecialGuild && <td data-label="Centre" className="text-center">{lap.centre_name || '-'}</td>}
+                                                                    <td data-label="Lap Time" className="text-center">{lap.lap_time}</td>
+                                                                    <td data-label="S1" className="text-center">{lap.s1_time}</td>
+                                                                    <td data-label="S2" className="text-center">{lap.s2_time}</td>
+                                                                    <td data-label="S3" className="text-center">{lap.s3_time}</td>
+                                                                    <td data-label="Custom Setup" className="text-center">{lap.custom_setup ? <CheckIcon /> : <XIcon />}</td>
+                                                                    <td data-label="Date" className="text-center" title={new Date(lap.submission_date).toLocaleString()}>{formatDateTime(lap.submission_date)}</td>
+                                                                </tr>
+                                                            ))
+                                                        )
+                                            )}
+                                        </React.Fragment>
                                     )
                                 })}
-                                 {filteredLeaderboard.length === 0 && selectedTrack && (
+                                {filteredLeaderboard.length === 0 && selectedTrack && (
                                     <tr>
                                         <td colSpan={isSpecialGuild ? "9" : "8"} className="no-data-message">
                                             No results found for "{searchTerm}" on this track.
@@ -629,7 +633,7 @@ function App() {
                                 )}
                             </tbody>
                         </table>
-                        <Pagination 
+                        <Pagination
                             itemsPerPage={itemsPerPage}
                             totalItems={filteredLeaderboard.length}
                             paginate={paginate}
@@ -641,10 +645,10 @@ function App() {
                     <p className="no-data-message">Please log in with Discord to view leaderboards.</p>
                 )}
                 {isAuthenticated && !selectedTrack && !loading && tracks.length > 0 && (
-                     <p className="no-data-message">Please select a track to view the leaderboard.</p>
+                    <p className="no-data-message">Please select a track to view the leaderboard.</p>
                 )}
-                 {isAuthenticated && !selectedTrack && !loading && tracks.length === 0 && (
-                     <p className="no-data-message">No tracks available for this server. Try selecting a different server or check if any hotlaps have been submitted.</p>
+                {isAuthenticated && !selectedTrack && !loading && tracks.length === 0 && (
+                    <p className="no-data-message">No tracks available for this server. Try selecting a different server or check if any hotlaps have been submitted.</p>
                 )}
             </div>
         </div>

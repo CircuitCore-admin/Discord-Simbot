@@ -360,7 +360,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 discord_tag,
                 centre_name,
                 ROW_NUMBER() OVER (
-                    PARTITION BY user_id, track_location_name
+                    PARTITION BY discord_tag, track_location_name
                     ORDER BY
                         CASE
                             WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\\.[0-9]{3}$' THEN
@@ -374,7 +374,7 @@ app.get('/api/leaderboard', async (req, res) => {
                         END ASC,
                         submission_date ASC
                 ) as rn,
-                COUNT(*) OVER (PARTITION BY user_id, track_location_name) as lap_count
+                COUNT(*) OVER (PARTITION BY discord_tag, track_location_name) as lap_count
             FROM hotlaps
             WHERE track_location_name ILIKE $1 AND guild_id = $2
         )
@@ -501,7 +501,7 @@ app.get('/api/leaderboard/csv', async (req, res) => {
                 discord_tag,
                 centre_name,
                 ROW_NUMBER() OVER (
-                    PARTITION BY user_id, track_location_name
+                    PARTITION BY discord_tag, track_location_name
                     ORDER BY
                         CASE
                             WHEN lap_time ~ '^[0-9]+:[0-5][0-9]\\.[0-9]{3}$' THEN
@@ -590,11 +590,11 @@ app.get('/api/driverLaps', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized: Not logged in.' });
     }
 
-    const userId = req.query.userId;
+    const discord_tag = req.query.discord_tag;
     const trackName = req.query.track;
     const guildId = req.query.guildId;
 
-    if (!userId || !trackName || !guildId) {
+    if (!discord_tag || !trackName || !guildId) {
         return res.status(400).json({ error: 'User ID, track name, and Guild ID are required.' });
     }
 
@@ -622,7 +622,7 @@ app.get('/api/driverLaps', async (req, res) => {
                 discord_tag,
                 centre_name
             FROM hotlaps
-            WHERE user_id = $1 AND track_location_name ILIKE $2 AND guild_id = $3
+            WHERE discord_tag = $1 AND track_location_name ILIKE $2 AND guild_id = $3
             ORDER BY
                 -- Ensure driver laps are sorted by lap time
                 CASE
@@ -635,7 +635,7 @@ app.get('/api/driverLaps', async (req, res) => {
                         SPLIT_PART(lap_time, '.', 2)::INT
                     ELSE 999999999
                 END ASC;`,
-            [userId, trackName, guildId]
+            [discord_tag, trackName, guildId]
         );
         res.json(result.rows);
     } catch (err) {
