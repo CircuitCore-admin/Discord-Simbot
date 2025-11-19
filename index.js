@@ -74,25 +74,21 @@ client.on('messageCreate', async message => {
         if (!hasImage) return;
 
         const SPECIAL_GUILD_ID = '1042747615856562187';
+        
+        // --- CHANGE: Skip Special Guild for auto-processing ---
+        if (message.guild.id === SPECIAL_GUILD_ID) {
+            return; 
+        }
+
         let processSubmission = false;
         let centreName = null;
 
         try {
-            if (message.guild.id === SPECIAL_GUILD_ID) {
-                // --- SPECIAL GUILD LOGIC ---
-                // Check if message is in one of the designated categories
-                const categoriesQuery = await db.query('SELECT 1 FROM public.special_hotlap_categories WHERE category_id = $1', [message.channel.parentId]);
-                if (categoriesQuery.rows.length > 0) {
-                    processSubmission = true;
-                    centreName = formatChannelName(message.channel.name);
-                }
-            } else {
-                // --- NORMAL GUILD LOGIC (Existing) ---
-                const settingsQuery = await db.query('SELECT hotlap_channel_id FROM public.guild_settings WHERE guild_id = $1', [message.guild.id]);
-                if (settingsQuery.rows.length > 0 && message.channel.id === settingsQuery.rows[0].hotlap_channel_id) {
-                    processSubmission = true;
-                    // centreName remains null
-                }
+            // --- NORMAL GUILD LOGIC (Existing) ---
+            const settingsQuery = await db.query('SELECT hotlap_channel_id FROM public.guild_settings WHERE guild_id = $1', [message.guild.id]);
+            if (settingsQuery.rows.length > 0 && message.channel.id === settingsQuery.rows[0].hotlap_channel_id) {
+                processSubmission = true;
+                // centreName remains null
             }
 
             if (processSubmission) {
@@ -590,12 +586,13 @@ app.get('/api/driverLaps', async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized: Not logged in.' });
     }
 
-    const discord_tag = req.query.discord_tag;
+    // --- CHANGED: Read discord_tag from query instead of userId ---
+    const discordTag = req.query.discord_tag;
     const trackName = req.query.track;
     const guildId = req.query.guildId;
 
-    if (!discord_tag || !trackName || !guildId) {
-        return res.status(400).json({ error: 'User ID, track name, and Guild ID are required.' });
+    if (!discordTag || !trackName || !guildId) {
+        return res.status(400).json({ error: 'Discord Tag, track name, and Guild ID are required.' });
     }
 
     const userGuilds = req.session.userGuilds || [];
@@ -635,7 +632,7 @@ app.get('/api/driverLaps', async (req, res) => {
                         SPLIT_PART(lap_time, '.', 2)::INT
                     ELSE 999999999
                 END ASC;`,
-            [discord_tag, trackName, guildId]
+            [discordTag, trackName, guildId]
         );
         res.json(result.rows);
     } catch (err) {

@@ -1,4 +1,5 @@
 // services/analyzeImage.js
+const { EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 const model = require('./gemini'); // Path from services/analyzeImage.js to services/gemini.js
 
@@ -139,15 +140,24 @@ If the screenshot is COMPLETE (Phase 1 passed), output this JSON with extracted 
  * @param {import('discord.js').Message | import('discord.js').ChatInputCommandInteraction} message - The Discord message or interaction.
  * @param {object | null} manualData - Manually provided data from /submit_hotlap command.
  * @param {string | null} centreName - The formatted centre name (for special guilds).
+ * @param {string | null} driverOverride - Optional driver name override (forces this discord_tag).
+ * @param {object | null} interactionAttachment - The attachment object from a slash command interaction.
  */
-async function analyzeAndSaveHotlap(message, manualData = null, centreName = null) {
+async function analyzeAndSaveHotlap(message, manualData = null, centreName = null, driverOverride = null, interactionAttachment = null) {
     const db = require('./database');
     const isInteraction = message.isChatInputCommand?.();
     const guildId = message.guild.id;
     const channelId = message.channel.id;
     const messageId = message.id;
+
+    // Handle Driver Override (Staff Feature)
     const userId = isInteraction ? message.user.id : message.author.id;
-    const discordTag = isInteraction ? message.user.tag : message.author.tag;
+    let discordTag = isInteraction ? message.user.tag : message.author.tag;
+
+    if (driverOverride) {
+        console.log(`Driver Override Active: Replacing ${discordTag} with ${driverOverride}`);
+        discordTag = driverOverride;
+    }
 
     try {
         let analysisResult, trackLocationName, driverName, teamName, lapTime, s1Time, s2Time, s3Time, isValid, customSetupBoolean;
@@ -166,21 +176,38 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             customSetupBoolean = manualData.isCustom;
         } else {
             // Automatic submission logic
-            console.log('Processing automatic submission...');
-            const attachment = message.attachments.first();
+            console.log('Processing automatic submission (Image Analysis)...');
+
+            // Determine which attachment to use (Interaction vs Message)
+            let attachment;
+            if (interactionAttachment) {
+                attachment = interactionAttachment;
+            } else {
+                attachment = message.attachments ? message.attachments.first() : null;
+            }
+
             if (!attachment) {
                 throw new Error('No image attachment found.');
             }
 
-            await message.channel.sendTyping();
+            if (isInteraction) {
+                // If we are here via slash command, we might need to defer if not already deferred
+            } else {
+                await message.channel.sendTyping();
+            }
+
             analysisResult = await analyzeImage(attachment.url);
 
             if (analysisResult.status === 'incomplete') {
-                await message.reply(`⚠️ ${analysisResult.message}. Please upload a full screenshot showing the whole screen.`);
+                const replyMsg = `⚠️ ${analysisResult.message}. Please upload a full screenshot showing the whole screen.`;
+                if (isInteraction) await message.editReply(replyMsg);
+                else await message.reply(replyMsg);
                 return;
             } else if (analysisResult.status !== 'complete') {
                 console.error('❌ Unexpected analysis status from Gemini:', analysisResult.status);
-                await message.reply('⚠️ Something went wrong during analysis. Unexpected AI response.');
+                const replyMsg = '⚠️ Something went wrong during analysis. Unexpected AI response.';
+                if (isInteraction) await message.editReply(replyMsg);
+                else await message.reply(replyMsg);
                 return;
             }
 
@@ -188,7 +215,16 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             if (!analysisResult.is_valid) {
                 const trackName = analysisResult.track_location_name || 'Unknown Track';
                 const time = analysisResult.lap_time || 'N/A';
-                await message.reply(`❌ Lap Rejected: The fastest lap (${time}) on ${trackName} is invalid due to a penalty. Only valid laps can be processed and recorded.`);
+                const replyMsg = `❌ Lap Rejected: The fastest lap (${time}) on ${trackName} is invalid due to a penalty. Only valid laps can be processed and recorded.`;
+
+                // --- UPDATED: Repost image even on rejection (ONLY for upload_hotlap) ---
+                const replyPayload = { content: replyMsg };
+                if (isInteraction && interactionAttachment) {
+                    replyPayload.files = [interactionAttachment.url];
+                }
+
+                if (isInteraction) await message.editReply(replyPayload);
+                else await message.reply(replyMsg);
                 return;
             }
 
@@ -227,45 +263,89 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
         const res = await db.query(query, values);
         console.log(`Hotlap saved with ID: ${res.rows[0].id}`);
 
-        // Prepare reply content
-        let replyContent;
-        if (manualData) {
-            replyContent = `📊 Hotlap Manually Submitted:\n`;
-            replyContent += `Driver: ${driverName}\n`;
-            replyContent += `Team: ${teamName}\n`;
-            replyContent += `Track: ${trackLocationName}\n`;
-            replyContent += `Lap Time: ${lapTime}\n`;
-            replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-            replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}`;
-            if (centreName) {
-                replyContent += `\n**Centre:** ${centreName}`;
-            }
-            replyContent += `\nSubmitted by: ${discordTag}`;
-        } else {
-            replyContent = `📊 Hotlap Analysis for your image:\n`;
-            replyContent += `Top Lap Time: ${lapTime}\n`;
-            replyContent += `Valid: ${isValid ? '✅' : '❌'}\n`;
-            replyContent += `Driver: ${discordTag}\n`;
-            replyContent += `Team: ${teamName}\n`;
-            replyContent += `Track: ${trackLocationName}\n`;
-            replyContent += `Sectors: S1: ${s1Time}, S2: ${s2Time}, S3: ${s3Time}\n`;
-            replyContent += `Custom Setup: ${customSetupBoolean ? '✅ Yes' : '❌ No'}`;
-            if (centreName) {
-                replyContent += `\nCentre: ${centreName}`;
-            }
-            replyContent += `\nNotes: ${isValid ? 'None' : 'Penalty detected on fastest lap'}`;
+        // --- CONSTRUCT FIELDS DYNAMICALLY ---
+        // This ensures 'Centre' only appears if it exists (Special Guild)
+        const embedFields = [
+            { name: '🏎️ Driver', value: discordTag, inline: true },
+        ];
+
+        // CONDITIONAL ADD: Only add Centre if not null
+        if (centreName) {
+            embedFields.push({ name: '📍 Centre', value: centreName, inline: true });
         }
 
+        embedFields.push(
+            { name: '🏁 Track', value: trackLocationName, inline: true },
+            { name: '⏱️ Lap Time', value: lapTime, inline: true },
+            { name: '🏎️ Team', value: teamName, inline: true },
+            { name: '✅ Valid?', value: isValid ? 'Yes' : 'No', inline: true },
+            { name: '🔧 Custom Setup', value: customSetupBoolean ? 'Yes' : 'No', inline: true },
+            { name: '⏱️ Sectors', value: `S1: ${s1Time} | S2: ${s2Time} | S3: ${s3Time}`, inline: true }
+        );
+
+        // --- CREATE RESPONSE EMBED ---
+        const responseEmbed = new EmbedBuilder()
+            .setColor(isValid ? 0x00AAFF : 0xFF0000) 
+            .setTitle(manualData ? '📊 Hotlap Manually Submitted' : '📊 Hotlap Analysis Complete')
+            .addFields(embedFields) // Use the dynamic array
+            .setTimestamp()
+            .setFooter({ text: 'CircuitCore Hotlap System' });
+
+        if (interactionAttachment) {
+            responseEmbed.setImage(interactionAttachment.url);
+        }
+
+        const responsePayload = { 
+            content: `✅ **Hotlap recorded successfully!**`,
+            embeds: [responseEmbed]
+        };
+
         if (isInteraction) {
-            await message.editReply({ content: `\`\`\`\n${replyContent}\n\`\`\`\nHotlap recorded successfully!` });
+            await message.editReply(responsePayload);
         } else {
-            await message.reply({ content: `\`\`\`\n${replyContent}\n\`\`\`\nYour hotlap has been recorded!` });
+            await message.reply(responsePayload);
+        }
+        // --- REPOST LOGIC (New Feature) ---
+        // Only repost if we have an image (skips manual submissions)
+        if (interactionAttachment) {
+            const REPOST_CHANNEL_ID = '1150796001137934396';
+            try {
+                const targetChannel = await message.client.channels.fetch(REPOST_CHANNEL_ID);
+                if (targetChannel) {
+                    const uploaderTag = isInteraction ? message.user.tag : message.author.tag;
+                    const uploaderAvatar = isInteraction ? message.user.displayAvatarURL() : message.author.displayAvatarURL();
+
+                    const embed = new EmbedBuilder()
+                        .setColor(0x00AAFF) // CircuitCore Blue-ish
+                        .setTitle('🔥 New Hotlap Uploaded!')
+                        .setAuthor({ name: `Uploaded by ${uploaderTag}`, iconURL: uploaderAvatar })
+                        .addFields(
+                            { name: '🏎️ Driver', value: discordTag, inline: true }, // This shows the "Driver Name" (overridden if applicable)
+                            { name: '📍 Centre', value: centreName || 'N/A', inline: true },
+                            { name: '🏁 Track', value: trackLocationName, inline: true },
+                            { name: '⏱️ Lap Time', value: lapTime, inline: true },
+                            { name: '🏎️ Team', value: teamName, inline: true },
+                            { name: '✅ Valid?', value: isValid ? 'Yes' : 'No', inline: true },
+                            { name: '🔧 Custom Setup', value: customSetupBoolean ? 'Yes' : 'No', inline: true },
+                            { name: '⏱️ Sectors', value: `S1: ${s1Time} | S2: ${s2Time} | S3: ${s3Time}`, inline: true }
+                        )
+                        .setImage(interactionAttachment.url)
+                        .setTimestamp()
+                        .setFooter({ text: 'CircuitCore Hotlap System' });
+
+                    await targetChannel.send({ embeds: [embed] });
+                    console.log(`Reposted hotlap embed to channel ${REPOST_CHANNEL_ID}`);
+                }
+            } catch (err) {
+                console.error('Failed to repost hotlap to log channel:', err.message);
+            }
         }
 
     } catch (error) {
         console.error(`Error processing hotlap: ${error.message}`);
         const errorContent = `Failed to process hotlap: ${error.message}`;
         if (isInteraction) {
+            // If reply was deferred, use editReply, otherwise reply
             await message.editReply({ content: errorContent });
         } else {
             await message.reply(`⚠️ Sorry, I couldn't analyze that image. ${error.message || 'An unknown error occurred.'}`);

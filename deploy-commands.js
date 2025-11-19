@@ -105,6 +105,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         type: 3, // STRING
                         description: 'Driver name (the person who set the lap time)',
                         required: true,
+                        autocomplete: true, // Added autocomplete support
                     },
                     {
                         name: 'team',
@@ -129,6 +130,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         type: 3, // STRING
                         description: 'Track location name (e.g., BELGIUM, TEXAS)',
                         required: true,
+                        autocomplete: true, // Added autocomplete support
                     },
                     {
                         name: 'lap_time',
@@ -159,6 +161,13 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                         type: 5, // BOOLEAN
                         description: 'Was a custom setup used?',
                         required: true,
+                    },
+                    {
+                        name: 'centre',
+                        type: 7, // CHANNEL
+                        description: 'Ping the centre channel you are racing for (Special Guild Only)',
+                        required: false,
+                        channel_types: [0], // Restrict to Text Channels only
                     },
                 ],
                 default_member_permissions: PermissionFlagsBits.ManageMessages.toString(),
@@ -204,6 +213,27 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 ],
                 default_member_permissions: PermissionFlagsBits.Administrator.toString(),
                 dm_permission: false, // Command cannot be used in DMs
+            },
+            {
+                name: 'upload_hotlap',
+                description: 'Upload a hotlap image for analysis (Staff can override driver name)',
+                options: [
+                    {
+                        name: 'image',
+                        type: 11, // Attachment
+                        description: 'The leaderboard screenshot',
+                        required: true,
+                    },
+                    {
+                        name: 'driver_name',
+                        type: 3, // STRING
+                        description: 'Override Driver Name (Centre Staff Only)',
+                        required: false,
+                        autocomplete: true,
+                    },
+                ],
+                // No default_member_permissions set here, so everyone can use it.
+                // The permission check for 'driver_name' is handled inside the command execution logic.
             },
             // The following commands were present in your previous deploy-commands.js.
             // Uncomment them if they are part of your bot's functionality.
