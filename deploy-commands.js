@@ -63,6 +63,35 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 dm_permission: false, // Command cannot be used in DMs
             },
             {
+                name: 'delete_hotlap',
+                description: 'Delete a hotlap record (Admin only)',
+                options: [
+                    {
+                        name: 'track_location',
+                        type: 3, // STRING
+                        description: 'The name of the track location',
+                        required: true,
+                        autocomplete: true,
+                    },
+                    {
+                        name: 'name',
+                        type: 3, // STRING
+                        description: 'The Discord tag of the user',
+                        required: true,
+                        autocomplete: true,
+                    },
+                    {
+                        name: 'time',
+                        type: 3, // STRING
+                        description: 'The exact lap time string (e.g., "1:27.705")',
+                        required: true,
+                        autocomplete: true,
+                    },
+                ],
+                default_member_permissions: PermissionFlagsBits.Administrator.toString(),
+                dm_permission: false, // Command cannot be used in DMs
+            },
+            {
                 name: 'set_hotlap_channel',
                 description: 'Sets the channel where hotlap screenshots will be automatically analyzed.',
                 options: [

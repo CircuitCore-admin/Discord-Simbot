@@ -187,6 +187,47 @@ module.exports = {
                     }
                 }
             }
+            // Handle select menu interactions for choosing which record to delete
+            else if (interaction.customId.startsWith('delete-hotlap-select-')) {
+                try {
+                    const recordId = interaction.values[0];
+                    
+                    // Fetch the selected record
+                    const result = await db.query('SELECT * FROM hotlaps WHERE id = $1', [recordId]);
+                    
+                    if (result.rows.length === 0) {
+                        return interaction.update({
+                            content: '❌ Record not found. It may have been already deleted.',
+                            components: [],
+                            flags: [MessageFlags.Ephemeral]
+                        });
+                    }
+
+                    const record = result.rows[0];
+                    
+                    // Delete the record
+                    await db.query('DELETE FROM hotlaps WHERE id = $1', [record.id]);
+
+                    await interaction.update({
+                        content: `✅ Successfully deleted hotlap record!\n\n**Details:**\n🏎️ Driver: ${record.discord_tag}\n🏁 Track: ${record.track_location_name}\n⏱️ Lap Time: ${record.lap_time}\n📅 Submitted: ${new Date(record.submission_date).toLocaleString()}`,
+                        components: [],
+                        flags: [MessageFlags.Ephemeral]
+                    });
+
+                } catch (error) {
+                    console.error('❌ Error handling select menu for delete:', error);
+                    try {
+                        if (!interaction.replied && !interaction.deferred) {
+                            return interaction.reply({
+                                content: '⚠️ An error occurred while deleting the record. Please try again.',
+                                flags: [MessageFlags.Ephemeral]
+                            });
+                        }
+                    } catch (replyError) {
+                        console.error('❌ Could not send error message to user:', replyError);
+                    }
+                }
+            }
         }
     },
 };
