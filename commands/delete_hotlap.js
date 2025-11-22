@@ -35,33 +35,36 @@ module.exports = {
             if (focusedOption.name === 'track_location') {
                 // Get distinct track locations for this guild
                 const result = await db.query(
-                    'SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 ORDER BY track_location_name',
-                    [guildId]
+                    'SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 ORDER BY track_location_name LIMIT 25',
+                    [guildId, `%${focusedOption.value}%`]
                 );
                 
                 const choices = result.rows
                     .map(row => row.track_location_name)
-                    .filter(track => track && track.toLowerCase().includes(focusedOption.value.toLowerCase()))
-                    .slice(0, 25)
+                    .filter(track => track) // Null safety check
                     .map(track => ({ name: track, value: track }));
                 
                 await interaction.respond(choices);
             } else if (focusedOption.name === 'name') {
-                // Get distinct discord tags for the selected track
+                // Get distinct discord tags, optionally filtered by track if one is selected
                 const trackLocation = interaction.options.getString('track_location');
-                if (!trackLocation) {
-                    return await interaction.respond([]);
+                
+                let query, params;
+                if (trackLocation) {
+                    // Filter by track if one is selected
+                    query = 'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag ILIKE $3 ORDER BY discord_tag LIMIT 25';
+                    params = [guildId, trackLocation, `%${focusedOption.value}%`];
+                } else {
+                    // Show all drivers from this guild if no track selected
+                    query = 'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND discord_tag ILIKE $2 ORDER BY discord_tag LIMIT 25';
+                    params = [guildId, `%${focusedOption.value}%`];
                 }
 
-                const result = await db.query(
-                    'SELECT DISTINCT discord_tag FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 ORDER BY discord_tag',
-                    [guildId, trackLocation]
-                );
+                const result = await db.query(query, params);
                 
                 const choices = result.rows
                     .map(row => row.discord_tag)
-                    .filter(tag => tag && tag.toLowerCase().includes(focusedOption.value.toLowerCase()))
-                    .slice(0, 25)
+                    .filter(tag => tag) // Null safety check
                     .map(tag => ({ name: tag, value: tag }));
                 
                 await interaction.respond(choices);
@@ -75,14 +78,13 @@ module.exports = {
                 }
 
                 const result = await db.query(
-                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 ORDER BY submission_date DESC',
-                    [guildId, trackLocation, discordTag]
+                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 AND lap_time ILIKE $4 ORDER BY submission_date DESC LIMIT 25',
+                    [guildId, trackLocation, discordTag, `%${focusedOption.value}%`]
                 );
                 
                 const choices = result.rows
                     .map(row => row.lap_time)
-                    .filter(time => time && time.toLowerCase().includes(focusedOption.value.toLowerCase()))
-                    .slice(0, 25)
+                    .filter(time => time) // Null safety check
                     .map(time => ({ name: time, value: time }));
                 
                 await interaction.respond(choices);
