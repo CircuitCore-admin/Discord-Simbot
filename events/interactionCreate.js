@@ -210,8 +210,7 @@ module.exports = {
 
                     await interaction.update({
                         content: `✅ Successfully deleted hotlap record!\n\n**Details:**\n🏎️ Driver: ${record.discord_tag}\n🏁 Track: ${record.track_location_name}\n⏱️ Lap Time: ${record.lap_time}\n📅 Submitted: ${new Date(record.submission_date).toLocaleString()}`,
-                        components: [],
-                        flags: [MessageFlags.Ephemeral]
+                        components: []
                     });
 
                 } catch (error) {

@@ -168,8 +168,7 @@ module.exports = {
             await db.query('DELETE FROM hotlaps WHERE id = $1', [record.id]);
 
             await interaction.reply({
-                content: `✅ Successfully deleted hotlap record!\n\n**Details:**\n🏎️ Driver: ${record.discord_tag}\n🏁 Track: ${record.track_location_name}\n⏱️ Lap Time: ${record.lap_time}\n📅 Submitted: ${new Date(record.submission_date).toLocaleString()}`,
-                flags: [MessageFlags.Ephemeral]
+                content: `✅ Successfully deleted hotlap record!\n\n**Details:**\n🏎️ Driver: ${record.discord_tag}\n🏁 Track: ${record.track_location_name}\n⏱️ Lap Time: ${record.lap_time}\n📅 Submitted: ${new Date(record.submission_date).toLocaleString()}`
             });
 
         } catch (error) {
