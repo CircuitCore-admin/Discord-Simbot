@@ -47,7 +47,7 @@ module.exports = {
                 await interaction.respond(choices);
             } else if (focusedOption.name === 'name') {
                 // Get distinct discord tags, optionally filtered by track if one is selected
-                const trackLocation = interaction.options.getString('track_location');
+                const trackLocation = interaction.options.getString('track');
                 
                 let query, params;
                 if (trackLocation) {
@@ -70,7 +70,7 @@ module.exports = {
                 await interaction.respond(choices);
             } else if (focusedOption.name === 'time') {
                 // Get lap times, optionally filtered by track and/or driver
-                const trackLocation = interaction.options.getString('track_location');
+                const trackLocation = interaction.options.getString('track');
                 const discordTag = interaction.options.getString('name');
                 
                 let query, params;
@@ -121,7 +121,7 @@ module.exports = {
             });
         }
 
-        const trackLocation = interaction.options.getString('track_location');
+        const trackLocation = interaction.options.getString('track');
         const discordTag = interaction.options.getString('name');
         const lapTime = interaction.options.getString('time');
         const guildId = interaction.guildId;
