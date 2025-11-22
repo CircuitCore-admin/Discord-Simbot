@@ -67,7 +67,7 @@ const rest = new REST({ version: '10' }).setToken(discordToken);
                 description: 'Delete a hotlap record (Admin only)',
                 options: [
                     {
-                        name: 'track_location',
+                        name: 'track',
                         type: 3, // STRING
                         description: 'The name of the track location',
                         required: true,

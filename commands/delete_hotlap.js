@@ -7,7 +7,7 @@ module.exports = {
         .setName('delete_hotlap')
         .setDescription('Delete a hotlap record (Admin only)')
         .addStringOption(option =>
-            option.setName('track_location')
+            option.setName('track')
                 .setDescription('The name of the track location')
                 .setRequired(true)
                 .setAutocomplete(true)
@@ -32,7 +32,7 @@ module.exports = {
         const guildId = interaction.guildId;
 
         try {
-            if (focusedOption.name === 'track_location') {
+            if (focusedOption.name === 'track') {
                 // Get distinct track locations for this guild
                 const result = await db.query(
                     'SELECT DISTINCT track_location_name FROM hotlaps WHERE guild_id = $1 AND track_location_name ILIKE $2 ORDER BY track_location_name LIMIT 25',

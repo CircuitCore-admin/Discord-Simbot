@@ -289,7 +289,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
             .setTitle(manualData ? '📊 Hotlap Manually Submitted' : '📊 Hotlap Analysis Complete')
             .addFields(embedFields) // Use the dynamic array
             .setTimestamp()
-            .setFooter({ text: 'CircuitCore Hotlap System' });
+            .setFooter({ text: 'CircuitCore - By R. Ottens' });
 
         if (interactionAttachment) {
             responseEmbed.setImage(interactionAttachment.url);
@@ -308,7 +308,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
         // --- REPOST LOGIC (New Feature) ---
         // Only repost if we have an image (skips manual submissions)
         if (interactionAttachment) {
-            const REPOST_CHANNEL_ID = '1150796001137934396';
+            const REPOST_CHANNEL_ID = '1440733073338535987';
             try {
                 const targetChannel = await message.client.channels.fetch(REPOST_CHANNEL_ID);
                 if (targetChannel) {
@@ -331,7 +331,7 @@ async function analyzeAndSaveHotlap(message, manualData = null, centreName = nul
                         )
                         .setImage(interactionAttachment.url)
                         .setTimestamp()
-                        .setFooter({ text: 'CircuitCore Hotlap System' });
+                        .setFooter({ text: 'CircuitCore - By R. Ottens' });
 
                     await targetChannel.send({ embeds: [embed] });
                     console.log(`Reposted hotlap embed to channel ${REPOST_CHANNEL_ID}`);
