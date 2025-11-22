@@ -41,7 +41,7 @@ module.exports = {
                 
                 const choices = result.rows
                     .map(row => row.track_location_name)
-                    .filter(track => track.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .filter(track => track && track.toLowerCase().includes(focusedOption.value.toLowerCase()))
                     .slice(0, 25)
                     .map(track => ({ name: track, value: track }));
                 
@@ -60,7 +60,7 @@ module.exports = {
                 
                 const choices = result.rows
                     .map(row => row.discord_tag)
-                    .filter(tag => tag.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .filter(tag => tag && tag.toLowerCase().includes(focusedOption.value.toLowerCase()))
                     .slice(0, 25)
                     .map(tag => ({ name: tag, value: tag }));
                 
@@ -81,7 +81,7 @@ module.exports = {
                 
                 const choices = result.rows
                     .map(row => row.lap_time)
-                    .filter(time => time.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                    .filter(time => time && time.toLowerCase().includes(focusedOption.value.toLowerCase()))
                     .slice(0, 25)
                     .map(time => ({ name: time, value: time }));
                 
