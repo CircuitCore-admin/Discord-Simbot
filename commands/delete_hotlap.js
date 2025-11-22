@@ -69,18 +69,30 @@ module.exports = {
                 
                 await interaction.respond(choices);
             } else if (focusedOption.name === 'time') {
-                // Get lap times for the selected track and user
+                // Get lap times, optionally filtered by track and/or driver
                 const trackLocation = interaction.options.getString('track_location');
                 const discordTag = interaction.options.getString('name');
                 
-                if (!trackLocation || !discordTag) {
-                    return await interaction.respond([]);
+                let query, params;
+                if (trackLocation && discordTag) {
+                    // Filter by both track and driver if both are selected
+                    query = 'SELECT DISTINCT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 AND lap_time ILIKE $4 ORDER BY lap_time LIMIT 25';
+                    params = [guildId, trackLocation, discordTag, `%${focusedOption.value}%`];
+                } else if (trackLocation) {
+                    // Filter by track only if track is selected
+                    query = 'SELECT DISTINCT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND lap_time ILIKE $3 ORDER BY lap_time LIMIT 25';
+                    params = [guildId, trackLocation, `%${focusedOption.value}%`];
+                } else if (discordTag) {
+                    // Filter by driver only if driver is selected
+                    query = 'SELECT DISTINCT lap_time FROM hotlaps WHERE guild_id = $1 AND discord_tag = $2 AND lap_time ILIKE $3 ORDER BY lap_time LIMIT 25';
+                    params = [guildId, discordTag, `%${focusedOption.value}%`];
+                } else {
+                    // Show all lap times from this guild if nothing is selected
+                    query = 'SELECT DISTINCT lap_time FROM hotlaps WHERE guild_id = $1 AND lap_time ILIKE $2 ORDER BY lap_time LIMIT 25';
+                    params = [guildId, `%${focusedOption.value}%`];
                 }
 
-                const result = await db.query(
-                    'SELECT lap_time FROM hotlaps WHERE guild_id = $1 AND track_location_name = $2 AND discord_tag = $3 AND lap_time ILIKE $4 ORDER BY submission_date DESC LIMIT 25',
-                    [guildId, trackLocation, discordTag, `%${focusedOption.value}%`]
-                );
+                const result = await db.query(query, params);
                 
                 const choices = result.rows
                     .map(row => row.lap_time)
